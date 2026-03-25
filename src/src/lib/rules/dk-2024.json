@@ -1,0 +1,105 @@
+{
+  "country": "Denmark",
+  "countryCode": "DK",
+  "currency": "DKK",
+  "taxYear": 2024,
+  "lastUpdated": "2025-03-01",
+
+  "costBasisMethod": "fifo",
+  "cryptoToCryptoTaxable": true,
+
+  "holdingPeriod": {
+    "enabled": false,
+    "thresholdDays": 0,
+    "exemptFromTax": false
+  },
+
+  "incomeTypes": [
+    {
+      "label": "Kapitalindkomst",
+      "description": "Capital income — gains/losses from selling or exchanging crypto assets",
+      "events": ["sell", "trade"],
+      "brackets": [
+        {
+          "min": 0,
+          "max": 49700,
+          "rate": 0,
+          "label": "Personfradrag (personal allowance)"
+        },
+        {
+          "min": 49700,
+          "max": 600000,
+          "rate": 0.37,
+          "label": "Bundskat + kommuneskat"
+        },
+        {
+          "min": 600000,
+          "max": null,
+          "rate": 0.42,
+          "label": "Bundskat + kommuneskat + topskat"
+        }
+      ],
+      "lossRules": {
+        "deductible": true,
+        "offsetAgainstGains": true,
+        "offsetAgainstIncome": true,
+        "carryForward": false,
+        "carryForwardYears": null,
+        "effectiveRate": 0.33
+      },
+      "contributions": []
+    },
+    {
+      "label": "Personlig indkomst (B-indkomst)",
+      "description": "Personal/B income — crypto received as income (mining, staking, airdrops)",
+      "events": ["mining", "staking", "airdrop"],
+      "brackets": [
+        {
+          "min": 0,
+          "max": 49700,
+          "rate": 0,
+          "label": "Personfradrag (personal allowance)"
+        },
+        {
+          "min": 49700,
+          "max": 600000,
+          "rate": 0.37,
+          "label": "Bundskat + kommuneskat"
+        },
+        {
+          "min": 600000,
+          "max": null,
+          "rate": 0.52,
+          "label": "Bundskat + kommuneskat + topskat"
+        }
+      ],
+      "lossRules": {
+        "deductible": false,
+        "offsetAgainstGains": false,
+        "offsetAgainstIncome": false,
+        "carryForward": false,
+        "carryForwardYears": null,
+        "effectiveRate": null
+      },
+      "contributions": [
+        {
+          "name": "AM-bidrag",
+          "rate": 0.08,
+          "appliesToGross": true
+        }
+      ]
+    }
+  ],
+
+  "notes": [
+    "Crypto speculation gains are taxed as kapitalindkomst (Statsskatteloven §4-6).",
+    "FIFO is applied per asset (BTC and ETH are separate queues).",
+    "AM-bidrag (8%) applies to personlig indkomst (mining/staking) but NOT to kapitalindkomst.",
+    "AM-bidrag is deducted from gross before bracket calculation.",
+    "Losses on kapitalindkomst may be deducted at a lower effective rate (~33%) than the gain rate.",
+    "Crypto-to-crypto swaps are taxable disposal events under kapitalindkomst.",
+    "No holding period exemption exists in Denmark.",
+    "Report gains in Rubrik 20 on the annual tax return.",
+    "Market value at receipt becomes cost basis for mining/staking/airdrop income."
+  ]
+}

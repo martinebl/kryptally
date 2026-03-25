@@ -17,5 +17,8 @@
     "svelte-check": "^4.4.5",
     "typescript": "~5.9.3",
     "vite": "^8.0.1"
+  },
+  "dependencies": {
+    "bignumber.js": "^10.0.2"
   }
 }
