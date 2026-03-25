@@ -74,7 +74,7 @@ export class LotTracker {
         lots.sort((a, b) => new Date(b.dateAcquired).getTime() - new Date(a.dateAcquired).getTime());
         break;
       case 'hifo':
-        lots.sort((a, b) => b.costBasisPerUnit.comparedTo(a.costBasisPerUnit));
+        lots.sort((a, b) => b.costBasisPerUnit.comparedTo(a.costBasisPerUnit) ?? 0);
         break;
       case 'average':
         this.consolidateToAverage(lots);
