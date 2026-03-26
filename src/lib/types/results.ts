@@ -36,3 +36,15 @@ export interface LotRecord {
   dateAcquired: string;
   source: string; // transaction id
 }
+
+export interface DisposalResult {
+  costBasis: BigNumber;
+  lots: { lot: LotRecord; amountUsed: BigNumber }[];
+}
+
+export interface ILotTracker {
+  addLot(lot: LotRecord): void;
+  dispose(asset: string, amount: BigNumber): DisposalResult;
+  getLots(asset: string): LotRecord[];
+  getAssets(): string[];
+}

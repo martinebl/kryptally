@@ -1,7 +1,7 @@
 import BigNumber from 'bignumber.js';
-import type { CostBasisMethod, LotRecord } from '$lib/types';
+import type { CostBasisMethod, DisposalResult, ILotTracker, LotRecord } from '$lib/types';
 
-export class LotTracker {
+export class LotTracker implements ILotTracker {
   private lots: Map<string, LotRecord[]> = new Map();
 
   constructor(private method: CostBasisMethod = 'fifo') {}
@@ -20,7 +20,7 @@ export class LotTracker {
    * Dispose of `amount` units of `asset`, returning the cost basis consumed.
    * Mutates the internal lot list.
    */
-  dispose(asset: string, amount: BigNumber): { costBasis: BigNumber; lots: { lot: LotRecord; amountUsed: BigNumber }[] } {
+  dispose(asset: string, amount: BigNumber): DisposalResult {
     const assetLots = this.lots.get(asset);
     if (!assetLots || assetLots.length === 0) {
       return { costBasis: new BigNumber(0), lots: [] };
