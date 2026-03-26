@@ -41,7 +41,7 @@
       ],
       "lossRules": {
         "deductible": true,
-        "offsetAgainstGains": true,
+        "offsetAgainstGains": false,
         "offsetAgainstIncome": true,
         "carryForward": false,
         "carryForwardYears": null,

@@ -1,5 +1,5 @@
 import BigNumber from 'bignumber.js';
-import type { CostBasisMethod, LotRecord } from '../types';
+import type { CostBasisMethod, LotRecord } from '$lib/types';
 
 export class LotTracker {
   private lots: Map<string, LotRecord[]> = new Map();
