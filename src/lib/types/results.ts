@@ -1,8 +1,9 @@
 import type BigNumber from 'bignumber.js';
+import type { Transaction } from '$lib/types/transaction';
 
 export interface TaxableEvent {
   transactionId: string;
-  date: string;
+  date: Date;
   asset: string;
   amount: BigNumber;
   proceeds: BigNumber;       // fiat value received
@@ -47,4 +48,8 @@ export interface ILotTracker {
   dispose(asset: string, amount: BigNumber): DisposalResult;
   getLots(asset: string): LotRecord[];
   getAssets(): string[];
+}
+
+export interface ITaxCalculator {
+  process(transactions: Transaction[]): TaxSummary;
 }
