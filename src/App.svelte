@@ -2,6 +2,7 @@
   import svelteLogo from './assets/svelte.svg'
   import LandingPage from '$lib/components/LandingPage.svelte'
   import ImportPage from '$lib/components/ImportPage.svelte'
+  import ResultsPage from '$lib/components/ResultsPage.svelte'
 
   let currentPage = $state('home');
 
@@ -37,6 +38,13 @@
         >
           Import
         </button>
+        <button
+          class="cursor-pointer border-none bg-transparent text-sm transition-colors hover:text-text-heading
+            {currentPage === 'results' ? 'text-accent' : 'text-text'}"
+          onclick={() => navigate('results')}
+        >
+          Results
+        </button>
       </div>
     </nav>
   </header>
@@ -46,6 +54,8 @@
       <LandingPage onNavigate={navigate} />
     {:else if currentPage === 'import'}
       <ImportPage />
+    {:else if currentPage === 'results'}
+      <ResultsPage />
     {/if}
   </main>
 
