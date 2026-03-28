@@ -83,7 +83,7 @@ describe('LedgerImporter', () => {
     expect(txs[0].id).toContain('hash1');
   });
 
-  it('sets fiatValue to zero (to be filled by converter layer)', () => {
+  it('sets fiatValue to zero when countervalue is zero', () => {
     const input = csv(
       makeRow('2024-01-15T10:30:00.000Z', 'BTC', 'IN', '0.5', '0'),
     );
@@ -91,6 +91,22 @@ describe('LedgerImporter', () => {
 
     expect(txs[0].fiatValue.isZero()).toBe(true);
     expect(txs[0].fiatCurrency).toBe('');
+  });
+
+  it('parses countervalue when present', () => {
+    const input = csv(
+      makeRow('2024-01-15T10:30:00.000Z', 'BTC', 'IN', '0.5', '0', 'abc123', 'Confirmed', 'My Bitcoin', 'xpub6...', 'DKK', '11839.38', '11200.70'),
+    );
+    const txs = importer.parse(input);
+
+    expect(txs[0].fiatCurrency).toBe('DKK');
+    expect(txs[0].fiatValue.isEqualTo(bn('11839.38'))).toBe(true);
+  });
+
+  it('exposes preprocessors', () => {
+    const ledger = new LedgerImporter();
+    expect(ledger.preprocessors.length).toBeGreaterThan(0);
+    expect(ledger.preprocessors[0].id).toBe('reclassify-inbound-as-buys');
   });
 
   it('handles multiple rows', () => {

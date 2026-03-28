@@ -1,6 +1,7 @@
 import Papa from 'papaparse';
 import BigNumber from 'bignumber.js';
-import type { Transaction, TransactionType, IExchangeImporter } from '$lib/types';
+import type { Transaction, TransactionType, IExchangeImporter, IImportPreprocessor } from '$lib/types';
+import { reclassifyInboundAsBuys } from '$lib/preprocessors/reclassify-inbound-as-buys';
 
 interface LedgerRow {
   'Operation Date': string;
@@ -9,6 +10,8 @@ interface LedgerRow {
   'Operation Amount': string;
   'Operation Fees': string;
   'Operation Hash': string;
+  'Countervalue Ticker'?: string;
+  'Countervalue at Operation Date'?: string;
 }
 
 const INBOUND_TYPES = new Set(['IN', 'NFT_IN']);
@@ -33,6 +36,20 @@ const resolveType = (opType: string): TransactionType => {
 const isInbound = (opType: string): boolean =>
   INBOUND_TYPES.has(opType);
 
+const parseCountervalue = (row: LedgerRow): { fiatCurrency: string; fiatValue: BigNumber } => {
+  const ticker = row['Countervalue Ticker']?.trim() ?? '';
+  const rawValue = row['Countervalue at Operation Date']?.trim() ?? '';
+
+  if (ticker === '' || rawValue === '') {
+    return { fiatCurrency: '', fiatValue: new BigNumber(0) };
+  }
+
+  const value = new BigNumber(rawValue);
+  return value.isNaN() || value.isZero()
+    ? { fiatCurrency: '', fiatValue: new BigNumber(0) }
+    : { fiatCurrency: ticker, fiatValue: value };
+};
+
 const rowToTransaction = (row: LedgerRow): Transaction => {
   const opType = row['Operation Type'];
   const ticker = row['Currency Ticker'];
@@ -41,6 +58,7 @@ const rowToTransaction = (row: LedgerRow): Transaction => {
   const hash = row['Operation Hash'];
   const type = resolveType(opType);
   const inbound = isInbound(opType);
+  const { fiatCurrency, fiatValue } = parseCountervalue(row);
 
   return {
     id: `ledger-${hash}`,
@@ -52,8 +70,8 @@ const rowToTransaction = (row: LedgerRow): Transaction => {
     ...(fees.isGreaterThan(0)
       ? { feeAsset: ticker, feeAmount: fees }
       : {}),
-    fiatCurrency: '',
-    fiatValue: new BigNumber(0),
+    fiatCurrency,
+    fiatValue,
     exchange: 'Ledger',
     notes: `tx: ${hash}`,
   };
@@ -61,6 +79,10 @@ const rowToTransaction = (row: LedgerRow): Transaction => {
 
 export class LedgerImporter implements IExchangeImporter {
   readonly exchangeName = 'Ledger';
+
+  readonly preprocessors: IImportPreprocessor[] = [
+    reclassifyInboundAsBuys,
+  ];
 
   parse(csv: string): Transaction[] {
     const trimmed = csv.trim();
