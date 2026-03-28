@@ -27,6 +27,7 @@ export interface TaxSummary {
   incomeFromAirdrops: BigNumber;
   totalIncome: BigNumber;
   estimatedTax: BigNumber;
+  lossCarryForward: BigNumber;
   events: TaxableEvent[];
 }
 

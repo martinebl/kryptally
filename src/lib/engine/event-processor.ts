@@ -1,0 +1,133 @@
+import BigNumber from 'bignumber.js';
+import type { Transaction, TransactionType } from '$lib/types/transaction';
+import type { TaxRules, TaxableEventType } from '$lib/types/tax-rules';
+import type { ILotTracker, TaxableEvent } from '$lib/types/results';
+
+const ZERO = new BigNumber(0);
+
+export const transactionTypeToTaxEvent: Partial<Record<TransactionType, TaxableEventType>> = {
+  sell: 'sell',
+  trade: 'trade',
+  mining: 'mining',
+  staking: 'staking',
+  airdrop: 'airdrop',
+  fee: 'fee',
+};
+
+const daysBetween = (from: string, to: string): number =>
+  Math.floor((new Date(to).getTime() - new Date(from).getTime()) / (1000 * 60 * 60 * 24));
+
+const computeHoldingDays = (
+  disposedLots: { lot: { dateAcquired: string }; amountUsed: BigNumber }[],
+  disposalDate: string,
+  totalAmount: BigNumber,
+): number => {
+  if (disposedLots.length === 0) return 0;
+
+  const weightedDays = disposedLots.reduce((sum, { lot, amountUsed }) => {
+    const days = daysBetween(lot.dateAcquired, disposalDate);
+    return sum.plus(amountUsed.times(days));
+  }, ZERO);
+
+  return totalAmount.gt(0)
+    ? weightedDays.div(totalAmount).integerValue(BigNumber.ROUND_FLOOR).toNumber()
+    : 0;
+};
+
+const processDisposal = (
+  tx: Transaction,
+  rules: TaxRules,
+  lotTracker: ILotTracker,
+): TaxableEvent | null => {
+  const asset = tx.fromAsset;
+  const amount = tx.fromAmount;
+  if (!asset || !amount) return null;
+
+  if (tx.type === 'trade' && !rules.cryptoToCryptoTaxable) return null;
+
+  const disposal = lotTracker.dispose(asset, amount);
+  const proceeds = tx.fiatValue;
+  const costBasis = disposal.costBasis;
+  const gainLoss = proceeds.minus(costBasis);
+  const holdingDays = computeHoldingDays(disposal.lots, tx.date, amount);
+  const isLongTerm = rules.holdingPeriod.enabled && holdingDays >= rules.holdingPeriod.thresholdDays;
+
+  return {
+    transactionId: tx.id,
+    date: new Date(tx.date),
+    asset,
+    amount,
+    proceeds,
+    costBasis,
+    gainLoss,
+    holdingDays,
+    isLongTerm,
+    type: 'disposal',
+  };
+};
+
+const processIncome = (tx: Transaction): TaxableEvent | null => {
+  const asset = tx.toAsset;
+  const amount = tx.toAmount;
+  if (!asset || !amount) return null;
+
+  return {
+    transactionId: tx.id,
+    date: new Date(tx.date),
+    asset,
+    amount,
+    proceeds: tx.fiatValue,
+    costBasis: ZERO,
+    gainLoss: tx.fiatValue,
+    holdingDays: 0,
+    isLongTerm: false,
+    type: 'income',
+  };
+};
+
+const addLotFromTransaction = (tx: Transaction, lotTracker: ILotTracker): void => {
+  const asset = tx.toAsset;
+  const amount = tx.toAmount;
+  if (!asset || !amount || amount.eq(0)) return;
+
+  lotTracker.addLot({
+    asset,
+    amount,
+    costBasisPerUnit: tx.fiatValue.div(amount),
+    dateAcquired: tx.date,
+    source: tx.id,
+  });
+};
+
+export const processTransaction = (
+  tx: Transaction,
+  rules: TaxRules,
+  lotTracker: ILotTracker,
+): TaxableEvent | null => {
+  switch (tx.type) {
+    case 'buy':
+    case 'transfer':
+      addLotFromTransaction(tx, lotTracker);
+      return null;
+
+    case 'sell':
+    case 'fee':
+      return processDisposal(tx, rules, lotTracker);
+
+    case 'trade': {
+      const event = processDisposal(tx, rules, lotTracker);
+      addLotFromTransaction(tx, lotTracker);
+      return event;
+    }
+
+    case 'mining':
+    case 'staking':
+    case 'airdrop': {
+      addLotFromTransaction(tx, lotTracker);
+      return processIncome(tx);
+    }
+
+    default:
+      return null;
+  }
+};

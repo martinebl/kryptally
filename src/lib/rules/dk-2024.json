@@ -41,7 +41,7 @@
       ],
       "lossRules": {
         "deductible": true,
-        "offsetAgainstGains": false,
+        "offsetAgainstGains": true,
         "offsetAgainstIncome": true,
         "carryForward": false,
         "carryForwardYears": null,
@@ -96,7 +96,7 @@
     "FIFO is applied per asset (BTC and ETH are separate queues).",
     "AM-bidrag (8%) applies to personlig indkomst (mining/staking) but NOT to kapitalindkomst.",
     "AM-bidrag is deducted from gross before bracket calculation.",
-    "Losses on kapitalindkomst may be deducted at a lower effective rate (~33%) than the gain rate.",
+    "Losses net against gains within kapitalindkomst. Net negative kapitalindkomst is deductible at a lower tax value (~33%, municipal tax rate) than positive kapitalindkomst.",
     "Crypto-to-crypto swaps are taxable disposal events under kapitalindkomst.",
     "No holding period exemption exists in Denmark.",
     "Report gains in Rubrik 20 on the annual tax return.",
