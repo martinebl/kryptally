@@ -1,4 +1,17 @@
 import type BigNumber from 'bignumber.js';
+import type { Transaction } from './transaction';
+
+/** Parses an exchange-specific CSV into normalized Transactions */
+export interface IExchangeImporter {
+  /** Human-readable name of the exchange (e.g. "Ledger") */
+  readonly exchangeName: string;
+
+  /**
+   * Parse raw CSV text into Transactions.
+   * Fiat values will be zero — the import layer fills those in via converters.
+   */
+  parse(csv: string): Transaction[];
+}
 
 /** Converts a crypto asset to its fiat value at a given point in time */
 export interface ICryptoToFiatConverter {

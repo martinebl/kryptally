@@ -1,14 +1,22 @@
 <script lang="ts">
   import svelteLogo from './assets/svelte.svg'
+  import type { Transaction } from '$lib/types';
   import LandingPage from '$lib/components/LandingPage.svelte'
   import ImportPage from '$lib/components/ImportPage.svelte'
   import ResultsPage from '$lib/components/ResultsPage.svelte'
+  import TestResultsPage from '$lib/components/TestResultsPage.svelte'
 
   let currentPage = $state('home');
+  let transactions = $state<Transaction[]>([]);
 
   const navigate = (page: string) => {
     currentPage = page;
     window.scrollTo(0, 0);
+  };
+
+  const handleImport = (imported: Transaction[]) => {
+    transactions = imported;
+    navigate('results');
   };
 </script>
 
@@ -45,6 +53,13 @@
         >
           Results
         </button>
+        <button
+          class="cursor-pointer border-none bg-transparent text-sm transition-colors hover:text-text-heading
+            {currentPage === 'test-results' ? 'text-accent' : 'text-text'}"
+          onclick={() => navigate('test-results')}
+        >
+          Test Results
+        </button>
       </div>
     </nav>
   </header>
@@ -53,9 +68,11 @@
     {#if currentPage === 'home'}
       <LandingPage onNavigate={navigate} />
     {:else if currentPage === 'import'}
-      <ImportPage />
+      <ImportPage onImport={handleImport} />
     {:else if currentPage === 'results'}
-      <ResultsPage />
+      <ResultsPage {transactions} />
+    {:else if currentPage === 'test-results'}
+      <TestResultsPage />
     {/if}
   </main>
 
