@@ -4,7 +4,7 @@ import { processTransaction } from '$lib/engine/event-processor';
 import { LotTracker } from '$lib/engine/lot-tracker';
 import type { Transaction } from '$lib/types/transaction';
 import type { TaxRules } from '$lib/types/tax-rules';
-import dkRules from '$lib/rules/dk-2024.json';
+import dkRules from '$lib/rules/dk/dk-2024.json';
 
 const bn = (n: number) => new BigNumber(n);
 const rules = dkRules as TaxRules;

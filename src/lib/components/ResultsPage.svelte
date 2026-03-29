@@ -7,7 +7,7 @@
   import type { Transaction } from '$lib/types/transaction';
   import type { TaxRules } from '$lib/types/tax-rules';
   import type { TaxSummary, TaxableEvent } from '$lib/types/results';
-  import dkRules from '$lib/rules/dk-2024.json';
+  import dkRules from '$lib/rules/dk/dk-2024.json';
 
   interface Props {
     transactions: Transaction[];

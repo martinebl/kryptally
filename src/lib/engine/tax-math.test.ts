@@ -3,7 +3,7 @@ import BigNumber from 'bignumber.js';
 import { applyBrackets, applyContributionsAndBrackets, computeDisposalTax } from '$lib/engine/tax-math';
 import type { IncomeType, TaxBracket } from '$lib/types/tax-rules';
 import type { TaxRules } from '$lib/types/tax-rules';
-import dkRules from '$lib/rules/dk-2024.json';
+import dkRules from '$lib/rules/dk/dk-2024.json';
 
 const bn = (n: number) => new BigNumber(n);
 const rules = dkRules as TaxRules;
