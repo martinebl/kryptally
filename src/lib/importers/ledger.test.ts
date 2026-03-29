@@ -42,7 +42,7 @@ describe('LedgerImporter', () => {
     expect(txs[0].type).toBe('transfer');
     expect(txs[0].toAsset).toBe('BTC');
     expect(txs[0].toAmount!.isEqualTo(bn('0.5'))).toBe(true);
-    expect(txs[0].date).toBe('2024-01-15T10:30:00.000Z');
+    expect(txs[0].date).toEqual(new Date('2024-01-15T10:30:00.000Z'));
     expect(txs[0].exchange).toBe('Ledger');
   });
 

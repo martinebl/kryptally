@@ -62,7 +62,7 @@ const rowToTransaction = (row: LedgerRow): Transaction => {
 
   return {
     id: `ledger-${hash}`,
-    date: row['Operation Date'],
+    date: new Date(row['Operation Date']),
     type,
     ...(inbound
       ? { toAsset: ticker, toAmount: amount }

@@ -7,7 +7,7 @@ const makeLot = (
   asset: string,
   amount: number,
   costBasisPerUnit: number,
-  dateAcquired: string,
+  dateAcquired: Date,
   source = 'test',
 ): LotRecord => ({
   asset,
@@ -34,8 +34,8 @@ describe('LotTracker', () => {
 
     it('tracks multiple assets independently', () => {
       const tracker = seedTracker('fifo', [
-        makeLot('BTC', 1, 50000, '2024-01-01'),
-        makeLot('ETH', 10, 3000, '2024-01-01'),
+        makeLot('BTC', 1, 50000, new Date('2024-01-01')),
+        makeLot('ETH', 10, 3000, new Date('2024-01-01')),
       ]);
 
       expect(tracker.getAssets()).toEqual(['BTC', 'ETH']);
@@ -55,8 +55,8 @@ describe('LotTracker', () => {
   describe('dispose — FIFO', () => {
     it('uses the oldest lot cost basis first', () => {
       const tracker = seedTracker('fifo', [
-        makeLot('BTC', 1, 40000, '2024-01-01', 'old'),
-        makeLot('BTC', 1, 60000, '2024-06-01', 'new'),
+        makeLot('BTC', 1, 40000, new Date('2024-01-01'), 'old'),
+        makeLot('BTC', 1, 60000, new Date('2024-06-01'), 'new'),
       ]);
 
       const result = tracker.dispose('BTC', bn(1));
@@ -67,8 +67,8 @@ describe('LotTracker', () => {
 
     it('spans multiple lots when amount exceeds first lot', () => {
       const tracker = seedTracker('fifo', [
-        makeLot('BTC', 0.5, 40000, '2024-01-01'),
-        makeLot('BTC', 0.5, 60000, '2024-06-01'),
+        makeLot('BTC', 0.5, 40000, new Date('2024-01-01')),
+        makeLot('BTC', 0.5, 60000, new Date('2024-06-01')),
       ]);
 
       const result = tracker.dispose('BTC', bn(0.75));
@@ -82,8 +82,8 @@ describe('LotTracker', () => {
   describe('dispose — LIFO', () => {
     it('uses the newest lot cost basis first', () => {
       const tracker = seedTracker('lifo', [
-        makeLot('BTC', 1, 40000, '2024-01-01', 'old'),
-        makeLot('BTC', 1, 60000, '2024-06-01', 'new'),
+        makeLot('BTC', 1, 40000, new Date('2024-01-01'), 'old'),
+        makeLot('BTC', 1, 60000, new Date('2024-06-01'), 'new'),
       ]);
 
       const result = tracker.dispose('BTC', bn(1));
@@ -96,9 +96,9 @@ describe('LotTracker', () => {
   describe('dispose — HIFO', () => {
     it('uses the highest cost lot first', () => {
       const tracker = seedTracker('hifo', [
-        makeLot('BTC', 1, 40000, '2024-01-01', 'cheap'),
-        makeLot('BTC', 1, 70000, '2024-03-01', 'expensive'),
-        makeLot('BTC', 1, 55000, '2024-06-01', 'mid'),
+        makeLot('BTC', 1, 40000, new Date('2024-01-01'), 'cheap'),
+        makeLot('BTC', 1, 70000, new Date('2024-03-01'), 'expensive'),
+        makeLot('BTC', 1, 55000, new Date('2024-06-01'), 'mid'),
       ]);
 
       const result = tracker.dispose('BTC', bn(1));
@@ -111,8 +111,8 @@ describe('LotTracker', () => {
   describe('dispose — Average cost', () => {
     it('uses weighted average for equal lot sizes', () => {
       const tracker = seedTracker('average', [
-        makeLot('BTC', 1, 40000, '2024-01-01'),
-        makeLot('BTC', 1, 60000, '2024-06-01'),
+        makeLot('BTC', 1, 40000, new Date('2024-01-01')),
+        makeLot('BTC', 1, 60000, new Date('2024-06-01')),
       ]);
 
       // Average = (40000 + 60000) / 2 = 50000
@@ -123,8 +123,8 @@ describe('LotTracker', () => {
 
     it('uses weighted average for unequal lot sizes', () => {
       const tracker = seedTracker('average', [
-        makeLot('BTC', 3, 40000, '2024-01-01'),
-        makeLot('BTC', 1, 80000, '2024-06-01'),
+        makeLot('BTC', 3, 40000, new Date('2024-01-01')),
+        makeLot('BTC', 1, 80000, new Date('2024-06-01')),
       ]);
 
       // Average = (3*40000 + 1*80000) / 4 = 50000 per unit
@@ -134,11 +134,47 @@ describe('LotTracker', () => {
     });
   });
 
+  describe('getHoldings', () => {
+    it('returns empty array for a fresh tracker', () => {
+      const tracker = new LotTracker('fifo');
+      expect(tracker.getHoldings()).toEqual([]);
+    });
+
+    it('returns total amount per asset across multiple lots', () => {
+      const tracker = seedTracker('fifo', [
+        makeLot('BTC', 0.5, 40000, new Date('2024-01-01')),
+        makeLot('BTC', 1.5, 60000, new Date('2024-06-01')),
+        makeLot('ETH', 10, 3000, new Date('2024-01-01')),
+      ]);
+
+      const holdings = tracker.getHoldings();
+      expect(holdings).toHaveLength(2);
+
+      const btc = holdings.find((h) => h.asset === 'BTC')!;
+      expect(btc.totalAmount.toNumber()).toBe(2);
+
+      const eth = holdings.find((h) => h.asset === 'ETH')!;
+      expect(eth.totalAmount.toNumber()).toBe(10);
+    });
+
+    it('reflects remaining amounts after partial disposal', () => {
+      const tracker = seedTracker('fifo', [
+        makeLot('BTC', 2, 50000, new Date('2024-01-01')),
+      ]);
+
+      tracker.dispose('BTC', bn(0.75));
+
+      const holdings = tracker.getHoldings();
+      expect(holdings).toHaveLength(1);
+      expect(holdings[0].totalAmount.toNumber()).toBe(1.25);
+    });
+  });
+
   describe('sequential disposals', () => {
     it('returns correct cost basis across multiple sells', () => {
       const tracker = seedTracker('fifo', [
-        makeLot('BTC', 2, 40000, '2024-01-01'),
-        makeLot('BTC', 1, 60000, '2024-06-01'),
+        makeLot('BTC', 2, 40000, new Date('2024-01-01')),
+        makeLot('BTC', 1, 60000, new Date('2024-06-01')),
       ]);
 
       const first = tracker.dispose('BTC', bn(1));
@@ -151,8 +187,8 @@ describe('LotTracker', () => {
 
     it('does not affect other assets', () => {
       const tracker = seedTracker('fifo', [
-        makeLot('BTC', 1, 50000, '2024-01-01'),
-        makeLot('ETH', 5, 3000, '2024-01-01'),
+        makeLot('BTC', 1, 50000, new Date('2024-01-01')),
+        makeLot('ETH', 5, 3000, new Date('2024-01-01')),
       ]);
 
       tracker.dispose('BTC', bn(1));

@@ -20,7 +20,7 @@ describe('processTransaction', () => {
     it('adds a lot and returns no event', () => {
       const tracker = new LotTracker(rules.costBasisMethod);
       const event = processTransaction(
-        makeTx({ id: 'buy-1', type: 'buy', date: '2024-01-15', toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(100000) }),
+        makeTx({ id: 'buy-1', type: 'buy', date: new Date('2024-01-15'), toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(100000) }),
         rules,
         tracker,
       );
@@ -35,12 +35,12 @@ describe('processTransaction', () => {
     it('returns a disposal event with correct gain', () => {
       const tracker = new LotTracker(rules.costBasisMethod);
       processTransaction(
-        makeTx({ id: 'buy-1', type: 'buy', date: '2024-01-15', toAsset: 'BTC', toAmount: bn(2), fiatValue: bn(200000) }),
+        makeTx({ id: 'buy-1', type: 'buy', date: new Date('2024-01-15'), toAsset: 'BTC', toAmount: bn(2), fiatValue: bn(200000) }),
         rules, tracker,
       );
 
       const event = processTransaction(
-        makeTx({ id: 'sell-1', type: 'sell', date: '2024-06-15', fromAsset: 'BTC', fromAmount: bn(1), fiatValue: bn(150000) }),
+        makeTx({ id: 'sell-1', type: 'sell', date: new Date('2024-06-15'), fromAsset: 'BTC', fromAmount: bn(1), fiatValue: bn(150000) }),
         rules, tracker,
       );
 
@@ -54,12 +54,12 @@ describe('processTransaction', () => {
     it('returns a disposal event with correct loss', () => {
       const tracker = new LotTracker(rules.costBasisMethod);
       processTransaction(
-        makeTx({ id: 'buy-1', type: 'buy', date: '2024-01-15', toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(100000) }),
+        makeTx({ id: 'buy-1', type: 'buy', date: new Date('2024-01-15'), toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(100000) }),
         rules, tracker,
       );
 
       const event = processTransaction(
-        makeTx({ id: 'sell-1', type: 'sell', date: '2024-06-15', fromAsset: 'BTC', fromAmount: bn(1), fiatValue: bn(60000) }),
+        makeTx({ id: 'sell-1', type: 'sell', date: new Date('2024-06-15'), fromAsset: 'BTC', fromAmount: bn(1), fiatValue: bn(60000) }),
         rules, tracker,
       );
 
@@ -71,7 +71,7 @@ describe('processTransaction', () => {
     it('returns an income event and adds a lot for mining', () => {
       const tracker = new LotTracker(rules.costBasisMethod);
       const event = processTransaction(
-        makeTx({ id: 'mine-1', type: 'mining', date: '2024-03-01', toAsset: 'BTC', toAmount: bn(0.1), fiatValue: bn(50000) }),
+        makeTx({ id: 'mine-1', type: 'mining', date: new Date('2024-03-01'), toAsset: 'BTC', toAmount: bn(0.1), fiatValue: bn(50000) }),
         rules, tracker,
       );
 
@@ -86,11 +86,11 @@ describe('processTransaction', () => {
     it('returns income events for staking and airdrops', () => {
       const tracker = new LotTracker(rules.costBasisMethod);
       const stakeEvent = processTransaction(
-        makeTx({ id: 'stake-1', type: 'staking', date: '2024-03-01', toAsset: 'ETH', toAmount: bn(1), fiatValue: bn(20000) }),
+        makeTx({ id: 'stake-1', type: 'staking', date: new Date('2024-03-01'), toAsset: 'ETH', toAmount: bn(1), fiatValue: bn(20000) }),
         rules, tracker,
       );
       const airdropEvent = processTransaction(
-        makeTx({ id: 'airdrop-1', type: 'airdrop', date: '2024-04-01', toAsset: 'TOKEN', toAmount: bn(100), fiatValue: bn(5000) }),
+        makeTx({ id: 'airdrop-1', type: 'airdrop', date: new Date('2024-04-01'), toAsset: 'TOKEN', toAmount: bn(100), fiatValue: bn(5000) }),
         rules, tracker,
       );
 
@@ -105,12 +105,12 @@ describe('processTransaction', () => {
     it('creates a disposal and adds the received asset as a lot', () => {
       const tracker = new LotTracker(rules.costBasisMethod);
       processTransaction(
-        makeTx({ id: 'buy-1', type: 'buy', date: '2024-01-15', toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(100000) }),
+        makeTx({ id: 'buy-1', type: 'buy', date: new Date('2024-01-15'), toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(100000) }),
         rules, tracker,
       );
 
       const event = processTransaction(
-        makeTx({ id: 'trade-1', type: 'trade', date: '2024-06-15', fromAsset: 'BTC', fromAmount: bn(0.5), toAsset: 'ETH', toAmount: bn(8), fiatValue: bn(75000) }),
+        makeTx({ id: 'trade-1', type: 'trade', date: new Date('2024-06-15'), fromAsset: 'BTC', fromAmount: bn(0.5), toAsset: 'ETH', toAmount: bn(8), fiatValue: bn(75000) }),
         rules, tracker,
       );
 
@@ -123,12 +123,12 @@ describe('processTransaction', () => {
       const noTradeRules: TaxRules = { ...rules, cryptoToCryptoTaxable: false };
       const tracker = new LotTracker(rules.costBasisMethod);
       processTransaction(
-        makeTx({ id: 'buy-1', type: 'buy', date: '2024-01-15', toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(100000) }),
+        makeTx({ id: 'buy-1', type: 'buy', date: new Date('2024-01-15'), toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(100000) }),
         noTradeRules, tracker,
       );
 
       const event = processTransaction(
-        makeTx({ id: 'trade-1', type: 'trade', date: '2024-06-15', fromAsset: 'BTC', fromAmount: bn(0.5), toAsset: 'ETH', toAmount: bn(8), fiatValue: bn(75000) }),
+        makeTx({ id: 'trade-1', type: 'trade', date: new Date('2024-06-15'), fromAsset: 'BTC', fromAmount: bn(0.5), toAsset: 'ETH', toAmount: bn(8), fiatValue: bn(75000) }),
         noTradeRules, tracker,
       );
 
@@ -144,12 +144,12 @@ describe('processTransaction', () => {
       };
       const tracker = new LotTracker(rules.costBasisMethod);
       processTransaction(
-        makeTx({ id: 'buy-1', type: 'buy', date: '2023-01-01', toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(100000) }),
+        makeTx({ id: 'buy-1', type: 'buy', date: new Date('2023-01-01'), toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(100000) }),
         longTermRules, tracker,
       );
 
       const event = processTransaction(
-        makeTx({ id: 'sell-1', type: 'sell', date: '2024-06-15', fromAsset: 'BTC', fromAmount: bn(1), fiatValue: bn(150000) }),
+        makeTx({ id: 'sell-1', type: 'sell', date: new Date('2024-06-15'), fromAsset: 'BTC', fromAmount: bn(1), fiatValue: bn(150000) }),
         longTermRules, tracker,
       );
 
@@ -162,12 +162,12 @@ describe('processTransaction', () => {
     it('creates a disposal event for fees paid in crypto', () => {
       const tracker = new LotTracker(rules.costBasisMethod);
       processTransaction(
-        makeTx({ id: 'buy-1', type: 'buy', date: '2024-01-15', toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(100000) }),
+        makeTx({ id: 'buy-1', type: 'buy', date: new Date('2024-01-15'), toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(100000) }),
         rules, tracker,
       );
 
       const event = processTransaction(
-        makeTx({ id: 'fee-1', type: 'fee', date: '2024-06-15', fromAsset: 'BTC', fromAmount: bn(0.001), fiatValue: bn(150) }),
+        makeTx({ id: 'fee-1', type: 'fee', date: new Date('2024-06-15'), fromAsset: 'BTC', fromAmount: bn(0.001), fiatValue: bn(150) }),
         rules, tracker,
       );
 

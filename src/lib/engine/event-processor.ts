@@ -14,12 +14,12 @@ export const transactionTypeToTaxEvent: Partial<Record<TransactionType, TaxableE
   fee: 'fee',
 };
 
-const daysBetween = (from: string, to: string): number =>
-  Math.floor((new Date(to).getTime() - new Date(from).getTime()) / (1000 * 60 * 60 * 24));
+const daysBetween = (from: Date, to: Date): number =>
+  Math.floor((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24));
 
 const computeHoldingDays = (
-  disposedLots: { lot: { dateAcquired: string }; amountUsed: BigNumber }[],
-  disposalDate: string,
+  disposedLots: { lot: { dateAcquired: Date }; amountUsed: BigNumber }[],
+  disposalDate: Date,
   totalAmount: BigNumber,
 ): number => {
   if (disposedLots.length === 0) return 0;
@@ -54,7 +54,7 @@ const processDisposal = (
 
   return {
     transactionId: tx.id,
-    date: new Date(tx.date),
+    date: tx.date,
     asset,
     amount,
     proceeds,
@@ -73,7 +73,7 @@ const processIncome = (tx: Transaction): TaxableEvent | null => {
 
   return {
     transactionId: tx.id,
-    date: new Date(tx.date),
+    date: tx.date,
     asset,
     amount,
     proceeds: tx.fiatValue,

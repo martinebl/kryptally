@@ -3,7 +3,7 @@ import type { ICryptoToFiatConverter } from '$lib/types';
 
 /** Hardcoded rates for development and testing. Not for production use. */
 const MOCK_RATES: Record<string, Record<string, number>> = {
-  BTC: { USD: 60000, EUR: 55000, DKK: 410000 },
+  BTC: { USD: 60000, EUR: 55000, DKK: 433000 },
   ETH: { USD: 3000, EUR: 2750, DKK: 20500 },
   SOL: { USD: 150, EUR: 138, DKK: 1025 },
 };

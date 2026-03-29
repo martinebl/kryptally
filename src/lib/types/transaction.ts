@@ -12,7 +12,7 @@ export type TransactionType =
 
 export interface Transaction {
   id: string;
-  date: string; // ISO 8601
+  date: Date;
   type: TransactionType;
 
   // What you gave up

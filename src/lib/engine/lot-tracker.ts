@@ -65,13 +65,24 @@ export class LotTracker implements ILotTracker {
     return [...this.lots.keys()];
   }
 
+  /** Get all remaining holdings as a flat list of { asset, totalAmount } */
+  getHoldings(): { asset: string; totalAmount: BigNumber }[] {
+    return this.getAssets().map((asset) => ({
+      asset,
+      totalAmount: this.getLots(asset).reduce(
+        (sum, lot) => sum.plus(lot.amount),
+        new BigNumber(0),
+      ),
+    }));
+  }
+
   private sortLots(lots: LotRecord[]): void {
     switch (this.method) {
       case 'fifo':
-        lots.sort((a, b) => new Date(a.dateAcquired).getTime() - new Date(b.dateAcquired).getTime());
+        lots.sort((a, b) => a.dateAcquired.getTime() - b.dateAcquired.getTime());
         break;
       case 'lifo':
-        lots.sort((a, b) => new Date(b.dateAcquired).getTime() - new Date(a.dateAcquired).getTime());
+        lots.sort((a, b) => b.dateAcquired.getTime() - a.dateAcquired.getTime());
         break;
       case 'hifo':
         lots.sort((a, b) => b.costBasisPerUnit.comparedTo(a.costBasisPerUnit) ?? 0);

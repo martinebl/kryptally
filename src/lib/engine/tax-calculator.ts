@@ -18,7 +18,7 @@ export class TaxCalculator implements ITaxCalculator {
 
   process(transactions: Transaction[]): TaxSummary {
     const sorted = [...transactions].sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+      (a, b) => a.date.getTime() - b.date.getTime(),
     );
 
     // Phase 1: convert transactions → taxable events

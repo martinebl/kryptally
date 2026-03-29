@@ -35,7 +35,7 @@ export interface LotRecord {
   asset: string;
   amount: BigNumber;
   costBasisPerUnit: BigNumber;
-  dateAcquired: string;
+  dateAcquired: Date;
   source: string; // transaction id
 }
 
@@ -49,6 +49,7 @@ export interface ILotTracker {
   dispose(asset: string, amount: BigNumber): DisposalResult;
   getLots(asset: string): LotRecord[];
   getAssets(): string[];
+  getHoldings(): { asset: string; totalAmount: BigNumber }[];
 }
 
 export interface ITaxCalculator {

@@ -9,7 +9,7 @@
     {
       id: 'buy-1',
       type: 'buy',
-      date: '2024-01-10',
+      date: new Date('2024-01-10'),
       fromAsset: 'DKK',
       fromAmount: bn(150000),
       toAsset: 'BTC',
@@ -21,7 +21,7 @@
     {
       id: 'buy-2',
       type: 'buy',
-      date: '2024-02-20',
+      date: new Date('2024-02-20'),
       fromAsset: 'DKK',
       fromAmount: bn(30000),
       toAsset: 'ETH',
@@ -33,7 +33,7 @@
     {
       id: 'mine-1',
       type: 'mining',
-      date: '2024-03-15',
+      date: new Date('2024-03-15'),
       toAsset: 'BTC',
       toAmount: bn(0.05),
       fiatCurrency: 'DKK',
@@ -42,7 +42,7 @@
     {
       id: 'sell-1',
       type: 'sell',
-      date: '2024-06-01',
+      date: new Date('2024-06-01'),
       fromAsset: 'BTC',
       fromAmount: bn(0.8),
       fiatCurrency: 'DKK',
@@ -52,7 +52,7 @@
     {
       id: 'trade-1',
       type: 'trade',
-      date: '2024-07-10',
+      date: new Date('2024-07-10'),
       fromAsset: 'ETH',
       fromAmount: bn(2),
       toAsset: 'BTC',
@@ -64,7 +64,7 @@
     {
       id: 'sell-2',
       type: 'sell',
-      date: '2024-09-20',
+      date: new Date('2024-09-20'),
       fromAsset: 'BTC',
       fromAmount: bn(0.5),
       fiatCurrency: 'DKK',
@@ -74,7 +74,7 @@
     {
       id: 'stake-1',
       type: 'staking',
-      date: '2024-11-01',
+      date: new Date('2024-11-01'),
       toAsset: 'ETH',
       toAmount: bn(0.3),
       fiatCurrency: 'DKK',

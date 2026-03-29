@@ -22,9 +22,9 @@ describe('TaxCalculator (orchestration)', () => {
       const calc = new TaxCalculator(rules, tracker);
 
       const summary = calc.process([
-        makeTx({ id: 'buy-1', type: 'buy', date: '2024-01-15', toAsset: 'BTC', toAmount: bn(3), fiatValue: bn(300000) }),
-        makeTx({ id: 'sell-1', type: 'sell', date: '2024-04-15', fromAsset: 'BTC', fromAmount: bn(1), fiatValue: bn(150000) }),
-        makeTx({ id: 'sell-2', type: 'sell', date: '2024-07-15', fromAsset: 'BTC', fromAmount: bn(1), fiatValue: bn(80000) }),
+        makeTx({ id: 'buy-1', type: 'buy', date: new Date('2024-01-15'), toAsset: 'BTC', toAmount: bn(3), fiatValue: bn(300000) }),
+        makeTx({ id: 'sell-1', type: 'sell', date: new Date('2024-04-15'), fromAsset: 'BTC', fromAmount: bn(1), fiatValue: bn(150000) }),
+        makeTx({ id: 'sell-2', type: 'sell', date: new Date('2024-07-15'), fromAsset: 'BTC', fromAmount: bn(1), fiatValue: bn(80000) }),
       ]);
 
       expect(summary.totalProceeds.toNumber()).toBe(230000);
@@ -39,9 +39,9 @@ describe('TaxCalculator (orchestration)', () => {
       const calc = new TaxCalculator(rules, tracker);
 
       const summary = calc.process([
-        makeTx({ id: 'mine-1', type: 'mining', date: '2024-03-01', toAsset: 'BTC', toAmount: bn(0.1), fiatValue: bn(50000) }),
-        makeTx({ id: 'stake-1', type: 'staking', date: '2024-03-01', toAsset: 'ETH', toAmount: bn(1), fiatValue: bn(20000) }),
-        makeTx({ id: 'airdrop-1', type: 'airdrop', date: '2024-04-01', toAsset: 'TOKEN', toAmount: bn(100), fiatValue: bn(5000) }),
+        makeTx({ id: 'mine-1', type: 'mining', date: new Date('2024-03-01'), toAsset: 'BTC', toAmount: bn(0.1), fiatValue: bn(50000) }),
+        makeTx({ id: 'stake-1', type: 'staking', date: new Date('2024-03-01'), toAsset: 'ETH', toAmount: bn(1), fiatValue: bn(20000) }),
+        makeTx({ id: 'airdrop-1', type: 'airdrop', date: new Date('2024-04-01'), toAsset: 'TOKEN', toAmount: bn(100), fiatValue: bn(5000) }),
       ]);
 
       expect(summary.incomeFromMining.toNumber()).toBe(50000);
@@ -59,8 +59,8 @@ describe('TaxCalculator (orchestration)', () => {
       const calc = new TaxCalculator(exemptRules, tracker);
 
       const summary = calc.process([
-        makeTx({ id: 'buy-1', type: 'buy', date: '2023-01-01', toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(100000) }),
-        makeTx({ id: 'sell-1', type: 'sell', date: '2024-06-15', fromAsset: 'BTC', fromAmount: bn(1), fiatValue: bn(150000) }),
+        makeTx({ id: 'buy-1', type: 'buy', date: new Date('2023-01-01'), toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(100000) }),
+        makeTx({ id: 'sell-1', type: 'sell', date: new Date('2024-06-15'), fromAsset: 'BTC', fromAmount: bn(1), fiatValue: bn(150000) }),
       ]);
 
       expect(summary.events[0].isLongTerm).toBe(true);
@@ -74,9 +74,9 @@ describe('TaxCalculator (orchestration)', () => {
       const calc = new TaxCalculator(rules, tracker);
 
       const summary = calc.process([
-        makeTx({ id: 'buy-1', type: 'buy', date: '2024-01-15', toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(100000) }),
-        makeTx({ id: 'sell-1', type: 'sell', date: '2024-06-15', fromAsset: 'BTC', fromAmount: bn(1), fiatValue: bn(200000) }),
-        makeTx({ id: 'mine-1', type: 'mining', date: '2024-03-01', toAsset: 'ETH', toAmount: bn(1), fiatValue: bn(100000) }),
+        makeTx({ id: 'buy-1', type: 'buy', date: new Date('2024-01-15'), toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(100000) }),
+        makeTx({ id: 'sell-1', type: 'sell', date: new Date('2024-06-15'), fromAsset: 'BTC', fromAmount: bn(1), fiatValue: bn(200000) }),
+        makeTx({ id: 'mine-1', type: 'mining', date: new Date('2024-03-01'), toAsset: 'ETH', toAmount: bn(1), fiatValue: bn(100000) }),
       ]);
 
       // Disposal: gain 100000 → bracket tax 18611

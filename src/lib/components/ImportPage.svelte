@@ -285,7 +285,7 @@
                   />
                   <div class="flex flex-1 items-center justify-between text-xs">
                     <span class="font-medium text-text-heading">{formatTxSummary(tx)}</span>
-                    <span class="text-text">{tx.date.slice(0, 10)}</span>
+                    <span class="text-text">{tx.date.toISOString().slice(0, 10)}</span>
                   </div>
                   {#if tx.fiatCurrency && tx.fiatValue.gt(0)}
                     <span class="text-xs text-text">
