@@ -1,0 +1,130 @@
+import { describe, it, expect } from 'vitest';
+import BigNumber from 'bignumber.js';
+import { enrichFiatValues } from '$lib/engine/enrich-fiat-values';
+import type { Transaction } from '$lib/types/transaction';
+import type { ICryptoToFiatConverter } from '$lib/types/converters';
+
+const bn = (n: number | string) => new BigNumber(n);
+
+const makeTx = (overrides: Partial<Transaction> & Pick<Transaction, 'id' | 'type' | 'date'>): Transaction => ({
+  ...overrides,
+});
+
+const mockConverter: ICryptoToFiatConverter = {
+  getRate: async (asset: string, _fiatCurrency: string, _datetime: Date) => {
+    const rates: Record<string, BigNumber> = {
+      BTC: bn('60000'),
+      ETH: bn('3000'),
+    };
+    const rate = rates[asset];
+    if (!rate) throw new Error(`No rate for ${asset}`);
+    return rate;
+  },
+};
+
+describe('enrichFiatValues', () => {
+  it('enriches a buy transaction using toAsset', async () => {
+    const txs = [makeTx({
+      id: 'tx-1',
+      type: 'buy',
+      date: new Date('2024-01-15'),
+      toAsset: 'BTC',
+      toAmount: bn('0.5'),
+    })];
+
+    const result = await enrichFiatValues(txs, mockConverter, 'DKK');
+
+    expect(result[0].fiatCurrency).toBe('DKK');
+    expect(result[0].fiatValue!.isEqualTo(bn('30000'))).toBe(true);
+  });
+
+  it('enriches a sell transaction using fromAsset', async () => {
+    const txs = [makeTx({
+      id: 'tx-1',
+      type: 'sell',
+      date: new Date('2024-01-15'),
+      fromAsset: 'ETH',
+      fromAmount: bn('2'),
+    })];
+
+    const result = await enrichFiatValues(txs, mockConverter, 'DKK');
+
+    expect(result[0].fiatValue!.isEqualTo(bn('6000'))).toBe(true);
+  });
+
+  it('enriches a fee transaction using feeAsset', async () => {
+    const txs = [makeTx({
+      id: 'tx-1',
+      type: 'fee',
+      date: new Date('2024-01-15'),
+      feeAsset: 'BTC',
+      feeAmount: bn('0.001'),
+    })];
+
+    const result = await enrichFiatValues(txs, mockConverter, 'DKK');
+
+    expect(result[0].fiatValue!.isEqualTo(bn('60'))).toBe(true);
+  });
+
+  it('skips transactions that already have fiatValue', async () => {
+    const txs = [makeTx({
+      id: 'tx-1',
+      type: 'buy',
+      date: new Date('2024-01-15'),
+      toAsset: 'BTC',
+      toAmount: bn('0.5'),
+      fiatCurrency: 'USD',
+      fiatValue: bn('29000'),
+    })];
+
+    const result = await enrichFiatValues(txs, mockConverter, 'DKK');
+
+    expect(result[0].fiatCurrency).toBe('USD');
+    expect(result[0].fiatValue!.isEqualTo(bn('29000'))).toBe(true);
+  });
+
+  it('leaves fiatValue undefined when converter throws', async () => {
+    const txs = [makeTx({
+      id: 'tx-1',
+      type: 'buy',
+      date: new Date('2024-01-15'),
+      toAsset: 'UNKNOWN',
+      toAmount: bn('100'),
+    })];
+
+    const result = await enrichFiatValues(txs, mockConverter, 'DKK');
+
+    expect(result[0].fiatValue).toBeUndefined();
+  });
+
+  it('does not mutate the original transactions', async () => {
+    const original = makeTx({
+      id: 'tx-1',
+      type: 'buy',
+      date: new Date('2024-01-15'),
+      toAsset: 'BTC',
+      toAmount: bn('0.5'),
+    });
+
+    await enrichFiatValues([original], mockConverter, 'DKK');
+
+    expect(original.fiatValue).toBeUndefined();
+  });
+
+  it('enriches a trade using fromAsset for proceeds', async () => {
+    const txs = [makeTx({
+      id: 'tx-1',
+      type: 'trade',
+      date: new Date('2024-01-15'),
+      fromAsset: 'BTC',
+      fromAmount: bn('0.1'),
+      toAsset: 'ETH',
+      toAmount: bn('2'),
+    })];
+
+    const result = await enrichFiatValues(txs, mockConverter, 'DKK');
+
+    // Trade proceeds = value of what you gave up
+    expect(result[0].fiatValue!.isEqualTo(bn('6000'))).toBe(true);
+  });
+});

@@ -27,9 +27,9 @@ export interface Transaction {
   feeAsset?: string;
   feeAmount?: BigNumber;
 
-  // Market value in fiat at time of transaction
-  fiatCurrency: string; // e.g. 'DKK'
-  fiatValue: BigNumber;
+  // Market value in fiat at time of transaction (undefined = unknown)
+  fiatCurrency?: string; // e.g. 'DKK'
+  fiatValue?: BigNumber;
 
   exchange?: string;
   notes?: string;

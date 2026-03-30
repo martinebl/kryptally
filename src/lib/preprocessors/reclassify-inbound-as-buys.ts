@@ -4,14 +4,15 @@ const isInboundTransferWithFiatData = (tx: Transaction): boolean =>
   tx.type === 'transfer' &&
   tx.toAsset !== undefined &&
   tx.toAmount !== undefined &&
-  tx.fiatCurrency !== '' &&
+  tx.fiatCurrency !== undefined &&
+  tx.fiatValue !== undefined &&
   tx.fiatValue.gt(0);
 
 const reclassify = (tx: Transaction): Transaction => ({
   ...tx,
   type: 'buy',
-  fromAsset: tx.fiatCurrency,
-  fromAmount: tx.fiatValue,
+  fromAsset: tx.fiatCurrency!,
+  fromAmount: tx.fiatValue!,
 });
 
 export const reclassifyInboundAsBuys: IImportPreprocessor = {

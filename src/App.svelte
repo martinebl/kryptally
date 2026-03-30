@@ -19,7 +19,7 @@
   };
 
   const handleImport = (imported: Transaction[]) => {
-    transactions = imported;
+    transactions = [...transactions, ...imported];
     navigate('results');
   };
 </script>

@@ -36,7 +36,7 @@ describe('buildSimulatedSells', () => {
     expect(tx.type).toBe('sell');
     expect(tx.fromAsset).toBe('BTC');
     expect(tx.fromAmount?.toNumber()).toBe(0.5);
-    expect(tx.fiatValue.toNumber()).toBe(200000); // 0.5 * 400000
+    expect(tx.fiatValue!.toNumber()).toBe(200000); // 0.5 * 400000
     expect(tx.fiatCurrency).toBe('DKK');
     expect(tx.date).toEqual(date);
     expect(tx.id).toBe('sim-sell-BTC');
@@ -53,9 +53,9 @@ describe('buildSimulatedSells', () => {
 
     expect(result.transactions).toHaveLength(2);
     expect(result.transactions[0].fromAsset).toBe('BTC');
-    expect(result.transactions[0].fiatValue.toNumber()).toBe(400000);
+    expect(result.transactions[0].fiatValue!.toNumber()).toBe(400000);
     expect(result.transactions[1].fromAsset).toBe('ETH');
-    expect(result.transactions[1].fiatValue.toNumber()).toBe(40000);
+    expect(result.transactions[1].fiatValue!.toNumber()).toBe(40000);
   });
 
   it('adds asset to unpricedAssets when converter throws', async () => {

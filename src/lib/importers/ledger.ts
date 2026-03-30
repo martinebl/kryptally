@@ -36,17 +36,17 @@ const resolveType = (opType: string): TransactionType => {
 const isInbound = (opType: string): boolean =>
   INBOUND_TYPES.has(opType);
 
-const parseCountervalue = (row: LedgerRow): { fiatCurrency: string; fiatValue: BigNumber } => {
+const parseCountervalue = (row: LedgerRow): { fiatCurrency?: string; fiatValue?: BigNumber } => {
   const ticker = row['Countervalue Ticker']?.trim() ?? '';
   const rawValue = row['Countervalue at Operation Date']?.trim() ?? '';
 
   if (ticker === '' || rawValue === '') {
-    return { fiatCurrency: '', fiatValue: new BigNumber(0) };
+    return {};
   }
 
   const value = new BigNumber(rawValue);
   return value.isNaN() || value.isZero()
-    ? { fiatCurrency: '', fiatValue: new BigNumber(0) }
+    ? {}
     : { fiatCurrency: ticker, fiatValue: value };
 };
 

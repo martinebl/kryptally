@@ -1,7 +1,10 @@
 <script lang="ts">
   import type { Transaction, IExchangeImporter } from '$lib/types';
   import { LedgerImporter } from '$lib/importers/ledger';
+  import { BinanceImporter } from '$lib/importers/binance';
   import PreprocessorReview from '$lib/components/PreprocessorReview.svelte';
+  import { getCryptoConverter } from '$lib/context';
+  import { enrichFiatValues } from '$lib/engine/enrich-fiat-values';
 
   interface Props {
     onImport: (transactions: Transaction[]) => void;
@@ -11,6 +14,7 @@
 
   const importers: IExchangeImporter[] = [
     new LedgerImporter(),
+    new BinanceImporter(),
   ];
 
   let selectedImporter = $state<IExchangeImporter>(importers[0]);
@@ -82,10 +86,13 @@
     }
   };
 
-  const handleConfirm = (selectedTxIds: Map<string, Set<string>>) => {
-    const transactions = selectedImporter.preprocessors
+  const converter = getCryptoConverter();
+
+  const handleConfirm = async (selectedTxIds: Map<string, Set<string>>) => {
+    const preprocessed = selectedImporter.preprocessors
       .filter((p) => enabledPreprocessors.has(p.id))
       .reduce((txs, p) => p.apply(txs, selectedTxIds.get(p.id)), rawTransactions);
+    const transactions = await enrichFiatValues(preprocessed, converter, 'DKK');
     parsedCount = transactions.length;
     reviewing = false;
     onImport(transactions);

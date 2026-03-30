@@ -109,7 +109,7 @@
                 <span class="font-medium text-text-heading">{formatTxSummary(tx)}</span>
                 <span class="text-text">{tx.date.toISOString().slice(0, 10)}</span>
               </div>
-              {#if tx.fiatCurrency && tx.fiatValue.gt(0)}
+              {#if tx.fiatCurrency && tx.fiatValue?.gt(0)}
                 <span class="text-xs text-text">
                   {tx.fiatValue.toFixed(2)} {tx.fiatCurrency}
                 </span>

@@ -46,7 +46,7 @@ const processDisposal = (
   if (tx.type === 'trade' && !rules.cryptoToCryptoTaxable) return null;
 
   const disposal = lotTracker.dispose(asset, amount);
-  const proceeds = tx.fiatValue;
+  const proceeds = tx.fiatValue ?? ZERO;
   const costBasis = disposal.costBasis;
   const gainLoss = proceeds.minus(costBasis);
   const holdingDays = computeHoldingDays(disposal.lots, tx.date, amount);
@@ -76,9 +76,9 @@ const processIncome = (tx: Transaction): TaxableEvent | null => {
     date: tx.date,
     asset,
     amount,
-    proceeds: tx.fiatValue,
+    proceeds: tx.fiatValue ?? ZERO,
     costBasis: ZERO,
-    gainLoss: tx.fiatValue,
+    gainLoss: tx.fiatValue ?? ZERO,
     holdingDays: 0,
     isLongTerm: false,
     type: 'income',
@@ -93,7 +93,7 @@ const addLotFromTransaction = (tx: Transaction, lotTracker: ILotTracker): void =
   lotTracker.addLot({
     asset,
     amount,
-    costBasisPerUnit: tx.fiatValue.div(amount),
+    costBasisPerUnit: (tx.fiatValue ?? ZERO).div(amount),
     dateAcquired: tx.date,
     source: tx.id,
   });

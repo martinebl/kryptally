@@ -6,8 +6,6 @@ import type { Transaction, IImportPreprocessor } from '$lib/types';
 const bn = (n: number | string) => new BigNumber(n);
 
 const makeTx = (overrides: Partial<Transaction> & Pick<Transaction, 'id' | 'type' | 'date'>): Transaction => ({
-  fiatCurrency: '',
-  fiatValue: bn(0),
   ...overrides,
 });
 
@@ -39,7 +37,7 @@ describe('reclassifyInboundAsBuys', () => {
     expect(result[0].fromAsset).toBe('DKK');
     expect(result[0].fromAmount!.isEqualTo(bn('50000'))).toBe(true);
     expect(result[0].fiatCurrency).toBe('DKK');
-    expect(result[0].fiatValue.isEqualTo(bn('50000'))).toBe(true);
+    expect(result[0].fiatValue!.isEqualTo(bn('50000'))).toBe(true);
   });
 
   it('does not modify outbound transfers', () => {
