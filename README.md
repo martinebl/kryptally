@@ -1,15 +1,19 @@
 # Cryptax
 
-An open-source cryptocurrency tax calculator that runs entirely in your browser. No data leaves your machine.
+An open-source cryptocurrency tax reporting tool that runs entirely in your browser. No data leaves your machine.
 
-Cryptax uses community-contributed JSON files to define tax rules for each country, so it can support any jurisdiction without hardcoding country-specific logic.
+The core feature is **gains and losses tracking** — Cryptax computes your realized gains and losses across all your crypto transactions using industry-standard cost basis methods. This gives you the numbers you need to fill in your tax return.
+
+> **Disclaimer:** Any tax estimates shown by Cryptax are rough approximations for informational purposes only. They are **not** legal or financial advice. Accurate tax calculation depends on your full financial picture (salary, other income, deductions, etc.), which is outside the scope of this tool. Always consult a qualified tax professional for your specific situation.
 
 ## Features
 
-- **Local-first** — all computation happens in your browser, your data stays on your device
-- **Multi-country** — tax rules are defined as JSON, making it easy to add support for new countries
-- **CSV import** — bring your transaction exports from any exchange
+- **Gains & losses reporting** — tracks cost basis and computes realized gains/losses, the key output you need for tax reporting
+- **Local-first & privacy-first** — all computation happens in your browser, your data never leaves your device
+- **Multi-country tax rules** — rules are defined as JSON files, making it easy for the community to add support for new countries
+- **Exchange importers** — import transaction history from Binance, Ledger, and more
 - **Multiple cost basis methods** — FIFO, LIFO, HIFO, and average cost
+- **Currency normalization** — transaction amounts are converted to your local fiat currency at import time
 
 ## Getting started
 
@@ -37,7 +41,10 @@ npm run preview
 
 ## Contributing
 
-Contributions are welcome! In particular, adding tax rules for new countries is a great way to help. See the `src/lib/types/tax-rules.ts` file for the schema that country rule files follow.
+Contributions are welcome! There are two great ways to help:
+
+- **Add tax rules for new countries** — see `src/lib/types/tax-rules.ts` for the JSON schema that country rule files follow, and `src/lib/rules/` for existing examples.
+- **Add exchange importers** — see `src/lib/importers/` for existing importers (Binance, Ledger) to use as a reference.
 
 ## License
 
