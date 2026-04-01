@@ -34,8 +34,8 @@ describe('enrichFiatValues', () => {
 
     const result = await enrichFiatValues(txs, mockConverter, 'DKK');
 
-    expect(result[0].fiatCurrency).toBe('DKK');
-    expect(result[0].fiatValue!.isEqualTo(bn('30000'))).toBe(true);
+    expect(result.transactions[0].fiatCurrency).toBe('DKK');
+    expect(result.transactions[0].fiatValue!.isEqualTo(bn('30000'))).toBe(true);
   });
 
   it('enriches a sell transaction using fromAsset', async () => {
@@ -49,7 +49,7 @@ describe('enrichFiatValues', () => {
 
     const result = await enrichFiatValues(txs, mockConverter, 'DKK');
 
-    expect(result[0].fiatValue!.isEqualTo(bn('6000'))).toBe(true);
+    expect(result.transactions[0].fiatValue!.isEqualTo(bn('6000'))).toBe(true);
   });
 
   it('enriches a fee transaction using feeAsset', async () => {
@@ -63,7 +63,7 @@ describe('enrichFiatValues', () => {
 
     const result = await enrichFiatValues(txs, mockConverter, 'DKK');
 
-    expect(result[0].fiatValue!.isEqualTo(bn('60'))).toBe(true);
+    expect(result.transactions[0].fiatValue!.isEqualTo(bn('60'))).toBe(true);
   });
 
   it('skips transactions that already have fiatValue', async () => {
@@ -79,8 +79,8 @@ describe('enrichFiatValues', () => {
 
     const result = await enrichFiatValues(txs, mockConverter, 'DKK');
 
-    expect(result[0].fiatCurrency).toBe('USD');
-    expect(result[0].fiatValue!.isEqualTo(bn('29000'))).toBe(true);
+    expect(result.transactions[0].fiatCurrency).toBe('USD');
+    expect(result.transactions[0].fiatValue!.isEqualTo(bn('29000'))).toBe(true);
   });
 
   it('leaves fiatValue undefined when converter throws', async () => {
@@ -94,7 +94,8 @@ describe('enrichFiatValues', () => {
 
     const result = await enrichFiatValues(txs, mockConverter, 'DKK');
 
-    expect(result[0].fiatValue).toBeUndefined();
+    expect(result.transactions[0].fiatValue).toBeUndefined();
+    expect(result.failed).toBe(1);
   });
 
   it('does not mutate the original transactions', async () => {
@@ -106,9 +107,10 @@ describe('enrichFiatValues', () => {
       toAmount: bn('0.5'),
     });
 
-    await enrichFiatValues([original], mockConverter, 'DKK');
+    const result = await enrichFiatValues([original], mockConverter, 'DKK');
 
     expect(original.fiatValue).toBeUndefined();
+    expect(result.transactions[0].fiatValue).toBeDefined();
   });
 
   it('enriches a trade using fromAsset for proceeds', async () => {
@@ -125,6 +127,6 @@ describe('enrichFiatValues', () => {
     const result = await enrichFiatValues(txs, mockConverter, 'DKK');
 
     // Trade proceeds = value of what you gave up
-    expect(result[0].fiatValue!.isEqualTo(bn('6000'))).toBe(true);
+    expect(result.transactions[0].fiatValue!.isEqualTo(bn('6000'))).toBe(true);
   });
 });

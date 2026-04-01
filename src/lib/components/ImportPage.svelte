@@ -29,6 +29,7 @@
   let enriching = $state(false);
   let enrichProgress = $state(0);
   let enrichTotal = $state(0);
+  let enrichFailed = $state(0);
 
   const selectImporter = (name: string) => {
     const found = importers.find((i) => i.exchangeName === name);
@@ -100,15 +101,18 @@
     enriching = true;
     enrichProgress = 0;
     enrichTotal = preprocessed.length;
+    enrichFailed = 0;
 
-    const transactions = await enrichFiatValues(preprocessed, converter, 'DKK', (completed, total) => {
-      enrichProgress = completed;
-      enrichTotal = total;
+    const result = await enrichFiatValues(preprocessed, converter, 'DKK', (progress) => {
+      enrichProgress = progress.completed;
+      enrichTotal = progress.total;
+      enrichFailed = progress.failed;
     });
 
     enriching = false;
-    parsedCount = transactions.length;
-    onImport(transactions);
+    enrichFailed = result.failed;
+    parsedCount = result.transactions.length;
+    onImport(result.transactions);
   };
 </script>
 
@@ -223,7 +227,9 @@
     <div class="mx-auto mt-4 max-w-lg rounded-lg border border-border bg-bg-card p-4">
       <div class="mb-2 flex items-center justify-between text-sm">
         <span class="text-text-heading">Fetching market prices...</span>
-        <span class="text-text">{enrichProgress} / {enrichTotal}</span>
+        <span class="text-text">
+          {enrichProgress} / {enrichTotal}{#if enrichFailed > 0}<span class="text-amber-600"> ({enrichFailed} failed)</span>{/if}
+        </span>
       </div>
       <div class="h-2 overflow-hidden rounded-full bg-border">
         <div
@@ -231,6 +237,17 @@
           style="width: {enrichTotal > 0 ? (enrichProgress / enrichTotal) * 100 : 0}%"
         ></div>
       </div>
+    </div>
+  {/if}
+
+  <!-- Enrichment warning -->
+  {#if !enriching && enrichFailed > 0 && parsedCount > 0}
+    <div class="mx-auto mt-4 max-w-lg rounded-lg border border-amber-300 bg-amber-50 p-4">
+      <p class="text-sm text-amber-800">
+        Could not fetch market prices for {enrichFailed} of {parsedCount} transactions.
+        These will show a cost basis of 0. This typically happens for transactions older than 1 year
+        (CoinGecko free tier limitation) or for unrecognized assets.
+      </p>
     </div>
   {/if}
 

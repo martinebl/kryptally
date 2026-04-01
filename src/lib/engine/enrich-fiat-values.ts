@@ -12,6 +12,17 @@ const resolveAssetAndAmount = (tx: Transaction): { asset: string; amount: BigNum
   return undefined;
 };
 
+export interface EnrichmentProgress {
+  completed: number;
+  total: number;
+  failed: number;
+}
+
+export interface EnrichmentResult {
+  transactions: Transaction[];
+  failed: number;
+}
+
 /**
  * Fills in missing fiatValue/fiatCurrency on transactions by looking up
  * rates from the provided converter. Transactions that already have
@@ -23,24 +34,25 @@ export const enrichFiatValues = async (
   transactions: Transaction[],
   converter: ICryptoToFiatConverter,
   fiatCurrency: string,
-  onProgress?: (completed: number, total: number) => void,
-): Promise<Transaction[]> => {
+  onProgress?: (progress: EnrichmentProgress) => void,
+): Promise<EnrichmentResult> => {
   const total = transactions.length;
   const results: Transaction[] = [];
+  let failed = 0;
 
   for (let i = 0; i < transactions.length; i++) {
     const tx = transactions[i];
 
     if (tx.fiatValue !== undefined) {
       results.push(tx);
-      onProgress?.(i + 1, total);
+      onProgress?.({ completed: i + 1, total, failed });
       continue;
     }
 
     const resolved = resolveAssetAndAmount(tx);
     if (!resolved) {
       results.push(tx);
-      onProgress?.(i + 1, total);
+      onProgress?.({ completed: i + 1, total, failed });
       continue;
     }
 
@@ -49,10 +61,11 @@ export const enrichFiatValues = async (
       results.push({ ...tx, fiatCurrency, fiatValue: resolved.amount.times(rate) });
     } catch {
       results.push(tx);
+      failed++;
     }
 
-    onProgress?.(i + 1, total);
+    onProgress?.({ completed: i + 1, total, failed });
   }
 
-  return results;
+  return { transactions: results, failed };
 };

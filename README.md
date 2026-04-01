@@ -39,6 +39,12 @@ npm run build
 npm run preview
 ```
 
+## Data sources & accuracy
+
+Historical cryptocurrency prices are fetched from the [CoinGecko API](https://www.coingecko.com/en/api) (free tier, no API key required). Prices are **daily snapshots at midnight UTC** — intra-day price movements are not captured, so the values used may differ slightly from the exact price at the time of your transaction. This is generally acceptable for tax reporting purposes, but you should verify the results against your own records.
+
+Requests to CoinGecko are rate-limited (~28 requests/minute) and cached per asset per date, so importing large transaction files may take a moment while prices are fetched.
+
 ## Contributing
 
 Contributions are welcome! There are two great ways to help:

@@ -2,13 +2,19 @@
   import svelteLogo from './assets/svelte.svg'
   import type { Transaction } from '$lib/types';
   import { setCryptoConverter } from '$lib/context';
-  import { createMockCryptoToFiatConverter } from '$lib/converters/mock-crypto-to-fiat';
+  import { createCoinGeckoCryptoToFiatConverter } from '$lib/converters/coingecko';
+  import { createCsvCryptoToFiatConverter, loadCsvPrices } from '$lib/converters/csv-prices';
+  import { createLayeredCryptoToFiatConverter } from '$lib/converters/layered';
+  import { createFrankfurterFiatConverter } from '$lib/converters/frankfurter';
   import LandingPage from '$lib/components/LandingPage.svelte'
   import ImportPage from '$lib/components/ImportPage.svelte'
   import ResultsPage from '$lib/components/ResultsPage.svelte'
   import TestResultsPage from '$lib/components/TestResultsPage.svelte'
 
-  setCryptoConverter(createMockCryptoToFiatConverter());
+  setCryptoConverter(createLayeredCryptoToFiatConverter([
+    createCsvCryptoToFiatConverter(loadCsvPrices(), createFrankfurterFiatConverter()),
+    createCoinGeckoCryptoToFiatConverter(),
+  ]));
 
   let currentPage = $state('home');
   let transactions = $state<Transaction[]>([]);

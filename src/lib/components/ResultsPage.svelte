@@ -26,6 +26,14 @@
     return { summary, holdings };
   });
 
+  const sortedEvents = $derived(
+    [...summary.events].sort((a, b) => b.date.getTime() - a.date.getTime())
+  );
+
+  const sortedTransactions = $derived(
+    [...transactions].sort((a, b) => b.date.getTime() - a.date.getTime())
+  );
+
   const gainColor = (v: BigNumber) =>
     v.gt(0) ? 'text-green-600' : v.lt(0) ? 'text-red-500' : 'text-text';
 
@@ -153,7 +161,7 @@
             </tr>
           </thead>
           <tbody>
-            {#each summary.events as event}
+            {#each sortedEvents as event}
               <tr class="border-b border-border last:border-none hover:bg-bg-card/50">
                 <td class="px-4 py-3 font-mono text-text-heading">
                   {event.date.toISOString().slice(0, 10)}
@@ -195,7 +203,7 @@
           </tr>
         </thead>
         <tbody>
-          {#each transactions as tx}
+          {#each sortedTransactions as tx}
             {@const amount = txAmount(tx)}
             <tr class="border-b border-border last:border-none hover:bg-bg-card/50">
               <td class="px-4 py-3 font-mono text-text-heading">
