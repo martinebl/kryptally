@@ -1,6 +1,7 @@
-import Papa from 'papaparse';
 import BigNumber from 'bignumber.js';
 import type { ICryptoToFiatConverter, IFiatConverter } from '$lib/types';
+import { resolveCoinId } from '$lib/converters/coin-ids';
+import { parsePriceCSV } from '$lib/converters/price-csv-parser';
 
 /**
  * Fiat currencies supported by Frankfurter. These are never crypto assets,
@@ -21,58 +22,13 @@ const STABLECOINS = new Set([
   'LUSD', 'FDUSD', 'PYUSD', 'USDD',
 ]);
 
-/** Reuse the same ticker→coinId map as the CoinGecko converter */
-const COIN_IDS: Record<string, string> = {
-  BTC: 'bitcoin', ETH: 'ethereum', SOL: 'solana',
-  BNB: 'binancecoin', USDT: 'tether', USDC: 'usd-coin',
-  BUSD: 'binance-usd', TRX: 'tron', DOT: 'polkadot',
-  ADA: 'cardano', DOGE: 'dogecoin', XRP: 'ripple',
-  MATIC: 'matic-network', AVAX: 'avalanche-2', LINK: 'chainlink',
-  LUNA: 'terra-luna', SHIB: 'shiba-inu', LTC: 'litecoin',
-  UNI: 'uniswap', ATOM: 'cosmos', APT: 'aptos',
-  ARB: 'arbitrum', OP: 'optimism', NEAR: 'near',
-};
+/** Price data for a single asset: a date→price map plus the currency those prices are in */
+export interface PriceData {
+  prices: Map<string, number>;
+  currency: string;
+}
 
-const resolveCoinId = (ticker: string): string =>
-  COIN_IDS[ticker.toUpperCase()] ?? ticker.toLowerCase();
-
-/** Parse "Apr 1, 2026" → "2026-04-01" */
-const MONTHS: Record<string, string> = {
-  Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06',
-  Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12',
-};
-
-const parseDateKey = (raw: string): string => {
-  const match = raw.trim().match(/^(\w{3})\s+(\d{1,2}),\s+(\d{4})$/);
-  if (!match) throw new Error(`Cannot parse CSV date: "${raw}"`);
-  const [, mon, day, year] = match;
-  return `${year}-${MONTHS[mon]}-${day.padStart(2, '0')}`;
-};
-
-/** Strip thousand-separator commas and parse as float */
-const parsePrice = (raw: string): number => parseFloat(raw.replace(/,/g, ''));
-
-/**
- * Parse a Yahoo Finance–style CSV into a Map of YYYY-MM-DD → USD close price.
- * Exported for testing.
- */
-export const parsePriceCSV = (csv: string): Map<string, number> => {
-  const { data } = Papa.parse<string[]>(csv.trim(), { skipEmptyLines: 'greedy' });
-  const result = new Map<string, number>();
-
-  for (const row of data.slice(1)) { // skip header
-    if (row.length < 5) continue;
-    try {
-      const dateKey = parseDateKey(row[0]);
-      const price = parsePrice(row[4]); // Close price
-      if (!isNaN(price)) result.set(dateKey, price);
-    } catch {
-      // skip malformed rows
-    }
-  }
-
-  return result;
-};
+export type PricesByAsset = Map<string, PriceData>;
 
 /**
  * Look up price for a date key, falling back to the nearest prior date
@@ -96,68 +52,68 @@ const lookupPrice = (prices: Map<string, number>, dateKey: string): number | und
 };
 
 /**
- * Creates a converter backed by pre-parsed CSV price data (USD).
- * Uses `fiatConverter` to convert USD to other currencies.
+ * Creates a converter backed by pre-parsed CSV price data.
+ * Uses `fiatConverter` to convert between currencies when needed.
  * Throws for unknown assets or dates outside the dataset.
  *
- * Pass the result of `loadCsvPrices()` as `pricesByAsset`.
+ * The map is read by reference, so entries added after creation are visible immediately.
  */
 export const createCsvCryptoToFiatConverter = (
-  pricesByAsset: Map<string, Map<string, number>>,
+  pricesByAsset: PricesByAsset,
   fiatConverter: IFiatConverter,
 ): ICryptoToFiatConverter => ({
   getRate: async (asset: string, fiatCurrency: string, datetime: Date): Promise<BigNumber> => {
     const upper = asset.toUpperCase();
 
-    // Fiat currency (e.g. USD deposited on Binance): route directly to fiat converter
     if (FIAT_CURRENCIES.has(upper)) {
       return fiatConverter.getRate(upper, fiatCurrency, datetime);
     }
 
-    // USD-pegged stablecoin: treat as exactly 1 USD
     if (STABLECOINS.has(upper)) {
       if (fiatCurrency.toUpperCase() === 'USD') return new BigNumber(1);
       return fiatConverter.getRate('USD', fiatCurrency, datetime);
     }
 
-    // Crypto: look up in CSV data
     const coinId = resolveCoinId(asset);
-    const prices = pricesByAsset.get(coinId);
-    if (!prices) throw new Error(`No CSV price data for ${asset}`);
+    const priceData = pricesByAsset.get(coinId);
+    if (!priceData) throw new Error(`No CSV price data for ${asset}`);
 
     const dateKey = datetime.toISOString().slice(0, 10);
-    const usdPrice = lookupPrice(prices, dateKey);
-    if (usdPrice === undefined) {
+    const rawPrice = lookupPrice(priceData.prices, dateKey);
+    if (rawPrice === undefined) {
       throw new Error(`No CSV price for ${asset} on or before ${dateKey}`);
     }
 
-    if (fiatCurrency.toUpperCase() === 'USD') {
-      return new BigNumber(usdPrice);
+    const priceCurrency = priceData.currency.toUpperCase();
+    const targetCurrency = fiatCurrency.toUpperCase();
+
+    if (targetCurrency === priceCurrency) {
+      return new BigNumber(rawPrice);
     }
 
-    const fiatRate = await fiatConverter.getRate('USD', fiatCurrency, datetime);
-    return new BigNumber(usdPrice).times(fiatRate);
+    const fiatRate = await fiatConverter.getRate(priceCurrency, targetCurrency, datetime);
+    return new BigNumber(rawPrice).times(fiatRate);
   },
 });
 
 /**
  * Loads and parses all CSV files from the crypto_prices directory.
  * Uses Vite's import.meta.glob — only call this at app initialisation.
+ * All bundled files are assumed to contain USD prices.
  */
-export const loadCsvPrices = (): Map<string, Map<string, number>> => {
+export const loadCsvPrices = (): PricesByAsset => {
   const rawFiles = import.meta.glob<string>('/src/crypto_prices/*.csv', {
     query: '?raw',
     import: 'default',
     eager: true,
   });
 
-  const result = new Map<string, Map<string, number>>();
+  const result: PricesByAsset = new Map();
 
   for (const [path, content] of Object.entries(rawFiles)) {
-    // e.g. "../../crypto_prices/bitcoin_usd.csv" → "bitcoin"
     const filename = path.split('/').pop() ?? '';
     const coinId = filename.replace('_usd.csv', '');
-    result.set(coinId, parsePriceCSV(content));
+    result.set(coinId, { prices: parsePriceCSV(content), currency: 'USD' });
   }
 
   return result;

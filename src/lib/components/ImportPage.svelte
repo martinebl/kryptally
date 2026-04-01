@@ -3,14 +3,17 @@
   import { LedgerImporter } from '$lib/importers/ledger';
   import { BinanceImporter } from '$lib/importers/binance';
   import PreprocessorReview from '$lib/components/PreprocessorReview.svelte';
+  import CsvPriceUploader from '$lib/components/CsvPriceUploader.svelte';
   import { getCryptoConverter } from '$lib/context';
   import { enrichFiatValues } from '$lib/engine/enrich-fiat-values';
+  import type { PricesByAsset } from '$lib/converters/csv-prices';
 
   interface Props {
     onImport: (transactions: Transaction[]) => void;
+    pricesByAsset: PricesByAsset;
   }
 
-  const { onImport }: Props = $props();
+  const { onImport, pricesByAsset }: Props = $props();
 
   const importers: IExchangeImporter[] = [
     new LedgerImporter(),
@@ -117,153 +120,169 @@
 </script>
 
 <section class="py-16">
-  <h2 class="mb-4 text-center font-heading text-2xl font-medium text-text-heading">Import transactions</h2>
-  <p class="mx-auto mb-10 max-w-lg text-center text-sm leading-relaxed text-text">
-    Upload a CSV export from your exchange. Your data stays in your browser and is never sent anywhere.
-  </p>
+  <div class="grid grid-cols-1 gap-x-12 gap-y-10 lg:grid-cols-3 lg:items-start">
 
-  <!-- Importer selector -->
-  <div class="mx-auto mb-6 max-w-lg">
-    <label for="importer-select" class="mb-2 block text-sm font-medium text-text-heading">
-      Exchange format
-    </label>
-    <select
-      id="importer-select"
-      class="w-full rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-text-heading focus:border-accent focus:outline-none"
-      onchange={(e) => selectImporter((e.target as HTMLSelectElement).value)}
-    >
-      {#each importers as importer}
-        <option value={importer.exchangeName} selected={importer === selectedImporter}>
-          {importer.exchangeName}
-        </option>
-      {/each}
-    </select>
-  </div>
+    <!-- Transactions column -->
+    <div class="lg:col-span-2">
+      <h2 class="mb-2 font-heading text-2xl font-medium text-text-heading">Import transactions</h2>
+      <p class="mb-8 text-sm leading-relaxed text-text">
+        Upload a CSV export from your exchange. Your data stays in your browser and is never sent anywhere.
+      </p>
 
-  <!-- Preprocessor toggles -->
-  {#if selectedImporter.preprocessors.length > 0}
-    <div class="mx-auto mb-6 max-w-lg rounded-lg border border-border bg-bg-card p-4">
-      <p class="mb-3 text-sm font-medium text-text-heading">Options</p>
-      {#each selectedImporter.preprocessors as preprocessor}
-        <label class="flex cursor-pointer items-start gap-3 rounded-md p-2 hover:bg-bg-card/80">
-          <input
-            type="checkbox"
-            checked={enabledPreprocessors.has(preprocessor.id)}
-            onchange={() => togglePreprocessor(preprocessor.id)}
-            class="mt-0.5 accent-accent"
-          />
-          <div>
-            <p class="text-sm font-medium text-text-heading">{preprocessor.label}</p>
-            <p class="text-xs text-text">{preprocessor.description}</p>
-          </div>
+      <!-- Importer selector -->
+      <div class="mb-6">
+        <label for="importer-select" class="mb-2 block text-sm font-medium text-text-heading">
+          Exchange format
         </label>
-      {/each}
-    </div>
-  {/if}
+        <select
+          id="importer-select"
+          class="w-full rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-text-heading focus:border-accent focus:outline-none"
+          onchange={(e) => selectImporter((e.target as HTMLSelectElement).value)}
+        >
+          {#each importers as importer}
+            <option value={importer.exchangeName} selected={importer === selectedImporter}>
+              {importer.exchangeName}
+            </option>
+          {/each}
+        </select>
+      </div>
 
-  <!-- Drop zone (hidden during review) -->
-  {#if !reviewing}
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div
-      class="mx-auto max-w-lg cursor-pointer rounded-xl border-2 border-dashed p-12 text-center transition-colors
-        {dragOver ? 'border-accent bg-accent-bg' : 'border-border bg-bg-card hover:border-accent-border'}"
-      ondragover={(e) => { e.preventDefault(); dragOver = true; }}
-      ondragleave={() => { dragOver = false; }}
-      ondrop={handleDrop}
-      onclick={() => document.getElementById('csv-input')?.click()}
-      onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') document.getElementById('csv-input')?.click(); }}
-      role="button"
-      tabindex="0"
-    >
-      <svg class="mx-auto mb-4 size-10 text-text" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
-      </svg>
-      <p class="mb-1 text-sm font-medium text-text-heading">
-        Drop your CSV here or click to browse
-      </p>
-      <p class="text-xs text-text">Supports: {importers.map((i) => i.exchangeName).join(', ')}</p>
-      <input
-        id="csv-input"
-        type="file"
-        accept=".csv"
-        class="hidden"
-        onchange={handleFileInput}
-      />
-    </div>
-
-    <!-- File info + parse button -->
-    {#if files && files.length > 0}
-      <div class="mx-auto mt-6 max-w-lg rounded-lg border border-border bg-bg-card p-4">
-        <div class="flex items-center justify-between">
-          <p class="text-sm text-text-heading">
-            <span class="font-medium">{files[0].name}</span>
-            <span class="text-text"> ({(files[0].size / 1024).toFixed(1)} KB)</span>
-          </p>
-          <button
-            class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90"
-            onclick={handleParse}
-          >
-            Import
-          </button>
+      <!-- Preprocessor toggles -->
+      {#if selectedImporter.preprocessors.length > 0}
+        <div class="mb-6 rounded-lg border border-border bg-bg-card p-4">
+          <p class="mb-3 text-sm font-medium text-text-heading">Options</p>
+          {#each selectedImporter.preprocessors as preprocessor}
+            <label class="flex cursor-pointer items-start gap-3 rounded-md p-2 hover:bg-bg-card/80">
+              <input
+                type="checkbox"
+                checked={enabledPreprocessors.has(preprocessor.id)}
+                onchange={() => togglePreprocessor(preprocessor.id)}
+                class="mt-0.5 accent-accent"
+              />
+              <div>
+                <p class="text-sm font-medium text-text-heading">{preprocessor.label}</p>
+                <p class="text-xs text-text">{preprocessor.description}</p>
+              </div>
+            </label>
+          {/each}
         </div>
-      </div>
-    {/if}
-  {/if}
+      {/if}
 
-  <!-- Review step -->
-  {#if reviewing}
-    <PreprocessorReview
-      {rawTransactions}
-      preprocessors={selectedImporter.preprocessors}
-      {enabledPreprocessors}
-      fileName={files?.[0]?.name ?? ''}
-      onConfirm={handleConfirm}
-      onBack={resetReview}
-    />
-  {/if}
-
-  <!-- Enrichment progress -->
-  {#if enriching}
-    <div class="mx-auto mt-4 max-w-lg rounded-lg border border-border bg-bg-card p-4">
-      <div class="mb-2 flex items-center justify-between text-sm">
-        <span class="text-text-heading">Fetching market prices...</span>
-        <span class="text-text">
-          {enrichProgress} / {enrichTotal}{#if enrichFailed > 0}<span class="text-amber-600"> ({enrichFailed} failed)</span>{/if}
-        </span>
-      </div>
-      <div class="h-2 overflow-hidden rounded-full bg-border">
+      <!-- Drop zone (hidden during review) -->
+      {#if !reviewing}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
-          class="h-full rounded-full bg-accent transition-[width] duration-100 ease-linear"
-          style="width: {enrichTotal > 0 ? (enrichProgress / enrichTotal) * 100 : 0}%"
-        ></div>
-      </div>
-    </div>
-  {/if}
+          class="cursor-pointer rounded-xl border-2 border-dashed p-12 text-center transition-colors
+            {dragOver ? 'border-accent bg-accent-bg' : 'border-border bg-bg-card hover:border-accent-border'}"
+          ondragover={(e) => { e.preventDefault(); dragOver = true; }}
+          ondragleave={() => { dragOver = false; }}
+          ondrop={handleDrop}
+          onclick={() => document.getElementById('csv-input')?.click()}
+          onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') document.getElementById('csv-input')?.click(); }}
+          role="button"
+          tabindex="0"
+        >
+          <svg class="mx-auto mb-4 size-10 text-text" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+          </svg>
+          <p class="mb-1 text-sm font-medium text-text-heading">
+            Drop your CSV here or click to browse
+          </p>
+          <p class="text-xs text-text">Supports: {importers.map((i) => i.exchangeName).join(', ')}</p>
+          <input
+            id="csv-input"
+            type="file"
+            accept=".csv"
+            class="hidden"
+            onchange={handleFileInput}
+          />
+        </div>
 
-  <!-- Enrichment warning -->
-  {#if !enriching && enrichFailed > 0 && parsedCount > 0}
-    <div class="mx-auto mt-4 max-w-lg rounded-lg border border-amber-300 bg-amber-50 p-4">
-      <p class="text-sm text-amber-800">
-        Could not fetch market prices for {enrichFailed} of {parsedCount} transactions.
-        These will show a cost basis of 0. This typically happens for transactions older than 1 year
-        (CoinGecko free tier limitation) or for unrecognized assets.
+        <!-- File info + parse button -->
+        {#if files && files.length > 0}
+          <div class="mt-6 rounded-lg border border-border bg-bg-card p-4">
+            <div class="flex items-center justify-between">
+              <p class="text-sm text-text-heading">
+                <span class="font-medium">{files[0].name}</span>
+                <span class="text-text"> ({(files[0].size / 1024).toFixed(1)} KB)</span>
+              </p>
+              <button
+                class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90"
+                onclick={handleParse}
+              >
+                Import
+              </button>
+            </div>
+          </div>
+        {/if}
+      {/if}
+
+      <!-- Review step -->
+      {#if reviewing}
+        <PreprocessorReview
+          {rawTransactions}
+          preprocessors={selectedImporter.preprocessors}
+          {enabledPreprocessors}
+          fileName={files?.[0]?.name ?? ''}
+          onConfirm={handleConfirm}
+          onBack={resetReview}
+        />
+      {/if}
+
+      <!-- Enrichment progress -->
+      {#if enriching}
+        <div class="mt-4 rounded-lg border border-border bg-bg-card p-4">
+          <div class="mb-2 flex items-center justify-between text-sm">
+            <span class="text-text-heading">Fetching market prices...</span>
+            <span class="text-text">
+              {enrichProgress} / {enrichTotal}{#if enrichFailed > 0}<span class="text-amber-600"> ({enrichFailed} failed)</span>{/if}
+            </span>
+          </div>
+          <div class="h-2 overflow-hidden rounded-full bg-border">
+            <div
+              class="h-full rounded-full bg-accent transition-[width] duration-100 ease-linear"
+              style="width: {enrichTotal > 0 ? (enrichProgress / enrichTotal) * 100 : 0}%"
+            ></div>
+          </div>
+        </div>
+      {/if}
+
+      <!-- Enrichment warning -->
+      {#if !enriching && enrichFailed > 0 && parsedCount > 0}
+        <div class="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4">
+          <p class="text-sm text-amber-800">
+            Could not fetch market prices for {enrichFailed} of {parsedCount} transactions.
+            These will show a cost basis of 0. This typically happens for transactions older than 1 year
+            (CoinGecko free tier limitation) or for unrecognized assets.
+          </p>
+        </div>
+      {/if}
+
+      <!-- Error message -->
+      {#if error}
+        <div class="mt-4 rounded-lg border border-red-300 bg-red-50 p-4">
+          <p class="text-sm text-red-700">{error}</p>
+        </div>
+      {/if}
+
+      <!-- Success message -->
+      {#if parsedCount > 0 && !error && !reviewing}
+        <div class="mt-4 rounded-lg border border-green-300 bg-green-50 p-4">
+          <p class="text-sm text-green-700">
+            Parsed {parsedCount} transactions from {selectedImporter.exchangeName}. View your results on the Results page.
+          </p>
+        </div>
+      {/if}
+    </div>
+
+    <!-- Price data column -->
+    <div>
+      <h2 class="mb-2 font-heading text-2xl font-medium text-text-heading">Price data</h2>
+      <p class="mb-4 text-sm leading-relaxed text-text">
+        Upload a CSV with historical prices for assets or periods not covered by CoinGecko's free API.
       </p>
+      <CsvPriceUploader {pricesByAsset} />
     </div>
-  {/if}
 
-  <!-- Error message -->
-  {#if error}
-    <div class="mx-auto mt-4 max-w-lg rounded-lg border border-red-300 bg-red-50 p-4">
-      <p class="text-sm text-red-700">{error}</p>
-    </div>
-  {/if}
-
-  <!-- Success message -->
-  {#if parsedCount > 0 && !error && !reviewing}
-    <div class="mx-auto mt-4 max-w-lg rounded-lg border border-green-300 bg-green-50 p-4">
-      <p class="text-sm text-green-700">
-        Parsed {parsedCount} transactions from {selectedImporter.exchangeName}. View your results on the Results page.
-      </p>
-    </div>
-  {/if}
+  </div>
 </section>

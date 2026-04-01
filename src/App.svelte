@@ -11,8 +11,10 @@
   import ResultsPage from '$lib/components/ResultsPage.svelte'
   import TestResultsPage from '$lib/components/TestResultsPage.svelte'
 
+  const pricesByAsset = loadCsvPrices();
+
   setCryptoConverter(createLayeredCryptoToFiatConverter([
-    createCsvCryptoToFiatConverter(loadCsvPrices(), createFrankfurterFiatConverter()),
+    createCsvCryptoToFiatConverter(pricesByAsset, createFrankfurterFiatConverter()),
     createCoinGeckoCryptoToFiatConverter(),
   ]));
 
@@ -78,7 +80,7 @@
     {#if currentPage === 'home'}
       <LandingPage onNavigate={navigate} />
     {:else if currentPage === 'import'}
-      <ImportPage onImport={handleImport} />
+      <ImportPage onImport={handleImport} {pricesByAsset} />
     {:else if currentPage === 'results'}
       <ResultsPage {transactions} />
     {:else if currentPage === 'test-results'}
