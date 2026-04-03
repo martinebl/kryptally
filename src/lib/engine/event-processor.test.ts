@@ -19,13 +19,13 @@ describe('processTransaction', () => {
   describe('buy', () => {
     it('adds a lot and returns no event', () => {
       const tracker = new LotTracker(rules.costBasisMethod);
-      const event = processTransaction(
+      const events = processTransaction(
         makeTx({ id: 'buy-1', type: 'buy', date: new Date('2024-01-15'), toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(100000) }),
         rules,
         tracker,
       );
 
-      expect(event).toBeNull();
+      expect(events).toHaveLength(0);
       expect(tracker.getLots('BTC')).toHaveLength(1);
       expect(tracker.getLots('BTC')[0].costBasisPerUnit.toNumber()).toBe(100000);
     });
@@ -39,16 +39,16 @@ describe('processTransaction', () => {
         rules, tracker,
       );
 
-      const event = processTransaction(
+      const events = processTransaction(
         makeTx({ id: 'sell-1', type: 'sell', date: new Date('2024-06-15'), fromAsset: 'BTC', fromAmount: bn(1), fiatValue: bn(150000) }),
         rules, tracker,
       );
 
-      expect(event).not.toBeNull();
-      expect(event!.type).toBe('disposal');
-      expect(event!.proceeds.toNumber()).toBe(150000);
-      expect(event!.costBasis.toNumber()).toBe(100000);
-      expect(event!.gainLoss.toNumber()).toBe(50000);
+      expect(events).toHaveLength(1);
+      expect(events[0].type).toBe('disposal');
+      expect(events[0].proceeds.toNumber()).toBe(150000);
+      expect(events[0].costBasis.toNumber()).toBe(100000);
+      expect(events[0].gainLoss.toNumber()).toBe(50000);
     });
 
     it('returns a disposal event with correct loss', () => {
@@ -58,25 +58,25 @@ describe('processTransaction', () => {
         rules, tracker,
       );
 
-      const event = processTransaction(
+      const events = processTransaction(
         makeTx({ id: 'sell-1', type: 'sell', date: new Date('2024-06-15'), fromAsset: 'BTC', fromAmount: bn(1), fiatValue: bn(60000) }),
         rules, tracker,
       );
 
-      expect(event!.gainLoss.toNumber()).toBe(-40000);
+      expect(events[0].gainLoss.toNumber()).toBe(-40000);
     });
   });
 
   describe('income (mining, staking, airdrop)', () => {
     it('returns an income event and adds a lot for mining', () => {
       const tracker = new LotTracker(rules.costBasisMethod);
-      const event = processTransaction(
+      const events = processTransaction(
         makeTx({ id: 'mine-1', type: 'mining', date: new Date('2024-03-01'), toAsset: 'BTC', toAmount: bn(0.1), fiatValue: bn(50000) }),
         rules, tracker,
       );
 
-      expect(event!.type).toBe('income');
-      expect(event!.proceeds.toNumber()).toBe(50000);
+      expect(events[0].type).toBe('income');
+      expect(events[0].proceeds.toNumber()).toBe(50000);
 
       const lots = tracker.getLots('BTC');
       expect(lots).toHaveLength(1);
@@ -85,19 +85,19 @@ describe('processTransaction', () => {
 
     it('returns income events for staking and airdrops', () => {
       const tracker = new LotTracker(rules.costBasisMethod);
-      const stakeEvent = processTransaction(
+      const stakeEvents = processTransaction(
         makeTx({ id: 'stake-1', type: 'staking', date: new Date('2024-03-01'), toAsset: 'ETH', toAmount: bn(1), fiatValue: bn(20000) }),
         rules, tracker,
       );
-      const airdropEvent = processTransaction(
+      const airdropEvents = processTransaction(
         makeTx({ id: 'airdrop-1', type: 'airdrop', date: new Date('2024-04-01'), toAsset: 'TOKEN', toAmount: bn(100), fiatValue: bn(5000) }),
         rules, tracker,
       );
 
-      expect(stakeEvent!.type).toBe('income');
-      expect(airdropEvent!.type).toBe('income');
-      expect(stakeEvent!.proceeds.toNumber()).toBe(20000);
-      expect(airdropEvent!.proceeds.toNumber()).toBe(5000);
+      expect(stakeEvents[0].type).toBe('income');
+      expect(airdropEvents[0].type).toBe('income');
+      expect(stakeEvents[0].proceeds.toNumber()).toBe(20000);
+      expect(airdropEvents[0].proceeds.toNumber()).toBe(5000);
     });
   });
 
@@ -109,12 +109,12 @@ describe('processTransaction', () => {
         rules, tracker,
       );
 
-      const event = processTransaction(
+      const events = processTransaction(
         makeTx({ id: 'trade-1', type: 'trade', date: new Date('2024-06-15'), fromAsset: 'BTC', fromAmount: bn(0.5), toAsset: 'ETH', toAmount: bn(8), fiatValue: bn(75000) }),
         rules, tracker,
       );
 
-      expect(event!.gainLoss.toNumber()).toBe(25000);
+      expect(events[0].gainLoss.toNumber()).toBe(25000);
       expect(tracker.getLots('ETH')).toHaveLength(1);
       expect(tracker.getLots('ETH')[0].amount.toNumber()).toBe(8);
     });
@@ -127,12 +127,12 @@ describe('processTransaction', () => {
         noTradeRules, tracker,
       );
 
-      const event = processTransaction(
+      const events = processTransaction(
         makeTx({ id: 'trade-1', type: 'trade', date: new Date('2024-06-15'), fromAsset: 'BTC', fromAmount: bn(0.5), toAsset: 'ETH', toAmount: bn(8), fiatValue: bn(75000) }),
         noTradeRules, tracker,
       );
 
-      expect(event).toBeNull();
+      expect(events).toHaveLength(0);
     });
   });
 
@@ -148,13 +148,87 @@ describe('processTransaction', () => {
         longTermRules, tracker,
       );
 
-      const event = processTransaction(
+      const events = processTransaction(
         makeTx({ id: 'sell-1', type: 'sell', date: new Date('2024-06-15'), fromAsset: 'BTC', fromAmount: bn(1), fiatValue: bn(150000) }),
         longTermRules, tracker,
       );
 
-      expect(event!.isLongTerm).toBe(true);
-      expect(event!.holdingDays).toBeGreaterThanOrEqual(365);
+      expect(events[0].isLongTerm).toBe(true);
+      expect(events[0].holdingDays).toBeGreaterThanOrEqual(365);
+    });
+
+    it('splits a disposal into per-lot events when lots have mixed holding status', () => {
+      const longTermRules: TaxRules = {
+        ...rules,
+        holdingPeriod: { enabled: true, thresholdDays: 1095, exemptFromTax: true },
+      };
+      const tracker = new LotTracker(rules.costBasisMethod);
+
+      // Lot 1: bought 5 years ago (long-term, exceeds 3-year threshold)
+      processTransaction(
+        makeTx({ id: 'buy-1', type: 'buy', date: new Date('2019-06-15'), toAsset: 'BTC', toAmount: bn(0.5), fiatValue: bn(25000) }),
+        longTermRules, tracker,
+      );
+      // Lot 2: bought 1 year ago (short-term)
+      processTransaction(
+        makeTx({ id: 'buy-2', type: 'buy', date: new Date('2023-06-15'), toAsset: 'BTC', toAmount: bn(0.5), fiatValue: bn(75000) }),
+        longTermRules, tracker,
+      );
+
+      // Sell 1 BTC — spans both lots
+      const events = processTransaction(
+        makeTx({ id: 'sell-1', type: 'sell', date: new Date('2024-06-15'), fromAsset: 'BTC', fromAmount: bn(1), fiatValue: bn(200000) }),
+        longTermRules, tracker,
+      );
+
+      expect(events).toHaveLength(2);
+
+      // FIFO: old lot consumed first
+      const longTermEvent = events[0];
+      expect(longTermEvent.isLongTerm).toBe(true);
+      expect(longTermEvent.amount.toNumber()).toBe(0.5);
+      expect(longTermEvent.costBasis.toNumber()).toBe(25000);
+      // Proceeds allocated proportionally: 0.5/1 * 200000 = 100000
+      expect(longTermEvent.proceeds.toNumber()).toBe(100000);
+      expect(longTermEvent.gainLoss.toNumber()).toBe(75000);
+
+      const shortTermEvent = events[1];
+      expect(shortTermEvent.isLongTerm).toBe(false);
+      expect(shortTermEvent.amount.toNumber()).toBe(0.5);
+      expect(shortTermEvent.costBasis.toNumber()).toBe(75000);
+      expect(shortTermEvent.proceeds.toNumber()).toBe(100000);
+      expect(shortTermEvent.gainLoss.toNumber()).toBe(25000);
+    });
+
+    it('returns a per-lot event when all lots have the same holding status', () => {
+      const longTermRules: TaxRules = {
+        ...rules,
+        holdingPeriod: { enabled: true, thresholdDays: 365, exemptFromTax: false },
+      };
+      const tracker = new LotTracker(rules.costBasisMethod);
+
+      // Both lots are short-term
+      processTransaction(
+        makeTx({ id: 'buy-1', type: 'buy', date: new Date('2024-01-01'), toAsset: 'BTC', toAmount: bn(0.5), fiatValue: bn(25000) }),
+        longTermRules, tracker,
+      );
+      processTransaction(
+        makeTx({ id: 'buy-2', type: 'buy', date: new Date('2024-03-01'), toAsset: 'BTC', toAmount: bn(0.5), fiatValue: bn(35000) }),
+        longTermRules, tracker,
+      );
+
+      const events = processTransaction(
+        makeTx({ id: 'sell-1', type: 'sell', date: new Date('2024-06-15'), fromAsset: 'BTC', fromAmount: bn(1), fiatValue: bn(100000) }),
+        longTermRules, tracker,
+      );
+
+      expect(events).toHaveLength(2);
+      expect(events[0].isLongTerm).toBe(false);
+      expect(events[1].isLongTerm).toBe(false);
+      expect(events[0].costBasis.toNumber()).toBe(25000);
+      expect(events[1].costBasis.toNumber()).toBe(35000);
+      expect(events[0].proceeds.toNumber()).toBe(50000);
+      expect(events[1].proceeds.toNumber()).toBe(50000);
     });
   });
 
@@ -166,14 +240,14 @@ describe('processTransaction', () => {
         rules, tracker,
       );
 
-      const event = processTransaction(
+      const events = processTransaction(
         makeTx({ id: 'fee-1', type: 'fee', date: new Date('2024-06-15'), fromAsset: 'BTC', fromAmount: bn(0.001), fiatValue: bn(150) }),
         rules, tracker,
       );
 
-      expect(event!.type).toBe('disposal');
-      expect(event!.amount.toNumber()).toBe(0.001);
-      expect(event!.proceeds.toNumber()).toBe(150);
+      expect(events[0].type).toBe('disposal');
+      expect(events[0].amount.toNumber()).toBe(0.001);
+      expect(events[0].proceeds.toNumber()).toBe(150);
     });
   });
 });

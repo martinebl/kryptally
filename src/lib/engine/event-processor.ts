@@ -17,61 +17,70 @@ export const transactionTypeToTaxEvent: Partial<Record<TransactionType, TaxableE
 const daysBetween = (from: Date, to: Date): number =>
   Math.floor((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24));
 
-const computeHoldingDays = (
-  disposedLots: { lot: { dateAcquired: Date }; amountUsed: BigNumber }[],
-  disposalDate: Date,
-  totalAmount: BigNumber,
-): number => {
-  if (disposedLots.length === 0) return 0;
-
-  const weightedDays = disposedLots.reduce((sum, { lot, amountUsed }) => {
-    const days = daysBetween(lot.dateAcquired, disposalDate);
-    return sum.plus(amountUsed.times(days));
-  }, ZERO);
-
-  return totalAmount.gt(0)
-    ? weightedDays.div(totalAmount).integerValue(BigNumber.ROUND_FLOOR).toNumber()
-    : 0;
-};
-
 const processDisposal = (
   tx: Transaction,
   rules: TaxRules,
   lotTracker: ILotTracker,
-): TaxableEvent | null => {
+): TaxableEvent[] => {
   const asset = tx.fromAsset;
   const amount = tx.fromAmount;
-  if (!asset || !amount) return null;
+  if (!asset || !amount) return [];
 
-  if (tx.type === 'trade' && !rules.cryptoToCryptoTaxable) return null;
+  if (tx.type === 'trade' && !rules.cryptoToCryptoTaxable) return [];
 
   const disposal = lotTracker.dispose(asset, amount);
   const proceeds = tx.fiatValue ?? ZERO;
-  const costBasis = disposal.costBasis;
-  const gainLoss = proceeds.minus(costBasis);
-  const holdingDays = computeHoldingDays(disposal.lots, tx.date, amount);
-  const isLongTerm = rules.holdingPeriod.enabled && holdingDays >= rules.holdingPeriod.thresholdDays;
 
-  return {
-    transactionId: tx.id,
-    date: tx.date,
-    asset,
-    amount,
-    proceeds,
-    costBasis,
-    gainLoss,
-    holdingDays,
-    isLongTerm,
-    type: 'disposal',
-  };
+  if (!rules.holdingPeriod.enabled || disposal.lots.length <= 1) {
+    const costBasis = disposal.costBasis;
+    const gainLoss = proceeds.minus(costBasis);
+    const holdingDays = disposal.lots.length === 1
+      ? daysBetween(disposal.lots[0].lot.dateAcquired, tx.date)
+      : 0;
+    const isLongTerm = rules.holdingPeriod.enabled && holdingDays >= rules.holdingPeriod.thresholdDays;
+
+    return [{
+      transactionId: tx.id,
+      date: tx.date,
+      asset,
+      amount,
+      proceeds,
+      costBasis,
+      gainLoss,
+      holdingDays,
+      isLongTerm,
+      type: 'disposal',
+    }];
+  }
+
+  // Multiple lots — split into per-lot events with proportional proceeds
+  return disposal.lots.map(({ lot, amountUsed }) => {
+    const holdingDays = daysBetween(lot.dateAcquired, tx.date);
+    const isLongTerm = holdingDays >= rules.holdingPeriod.thresholdDays;
+    const proportion = amountUsed.div(amount);
+    const lotProceeds = proceeds.times(proportion);
+    const lotCostBasis = amountUsed.times(lot.costBasisPerUnit);
+    return {
+      transactionId: tx.id,
+      date: tx.date,
+      asset,
+      amount: amountUsed,
+      proceeds: lotProceeds,
+      costBasis: lotCostBasis,
+      gainLoss: lotProceeds.minus(lotCostBasis),
+      holdingDays,
+      isLongTerm,
+      type: 'disposal' as const,
+    };
+  });
 };
 
-const processIncome = (tx: Transaction): TaxableEvent | null => {
+const processIncome = (tx: Transaction): TaxableEvent[] => {
   const asset = tx.toAsset;
   const amount = tx.toAmount;
-  if (!asset || !amount) return null;
+  if (!asset || !amount) return [];
 
-  return {
+  return [{
     transactionId: tx.id,
     date: tx.date,
     asset,
@@ -82,7 +91,7 @@ const processIncome = (tx: Transaction): TaxableEvent | null => {
     holdingDays: 0,
     isLongTerm: false,
     type: 'income',
-  };
+  }];
 };
 
 const addLotFromTransaction = (tx: Transaction, lotTracker: ILotTracker): void => {
@@ -103,21 +112,21 @@ export const processTransaction = (
   tx: Transaction,
   rules: TaxRules,
   lotTracker: ILotTracker,
-): TaxableEvent | null => {
+): TaxableEvent[] => {
   switch (tx.type) {
     case 'buy':
     case 'transfer':
       addLotFromTransaction(tx, lotTracker);
-      return null;
+      return [];
 
     case 'sell':
     case 'fee':
       return processDisposal(tx, rules, lotTracker);
 
     case 'trade': {
-      const event = processDisposal(tx, rules, lotTracker);
+      const events = processDisposal(tx, rules, lotTracker);
       addLotFromTransaction(tx, lotTracker);
-      return event;
+      return events;
     }
 
     case 'mining':
@@ -128,6 +137,6 @@ export const processTransaction = (
     }
 
     default:
-      return null;
+      return [];
   }
 };

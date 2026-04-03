@@ -1,6 +1,4 @@
 <script lang="ts">
-  import svelteLogo from '../../assets/svelte.svg'
-  import viteLogo from '../../assets/vite.svg'
   import Card from '$lib/components/Card.svelte'
 
   interface Props {
@@ -12,10 +10,8 @@
 
 <!-- Hero -->
 <section class="py-20 text-center max-md:py-12">
-  <div class="mb-6 flex items-center justify-center gap-3">
-    <img src={svelteLogo} alt="Svelte" class="size-9" />
-    <span class="text-xl font-light text-text">+</span>
-    <img src={viteLogo} alt="Vite" class="size-9" />
+  <div class="mb-6 flex items-center justify-center">
+    <img src="/cryptax.png" alt="Cryptax logo" class="size-16 rounded-full" />
   </div>
   <h1 class="mb-4 font-heading text-6xl font-medium tracking-tight text-text-heading max-md:text-4xl">
     Cryptax

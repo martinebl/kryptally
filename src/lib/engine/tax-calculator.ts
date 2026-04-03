@@ -28,8 +28,8 @@ export class TaxCalculator implements ITaxCalculator {
     let incomeFromAirdrops = ZERO;
 
     for (const tx of sorted) {
-      const event = processTransaction(tx, this.rules, this.lotTracker);
-      if (event) {
+      const txEvents = processTransaction(tx, this.rules, this.lotTracker);
+      for (const event of txEvents) {
         events.push(event);
 
         if (event.type === 'income') {

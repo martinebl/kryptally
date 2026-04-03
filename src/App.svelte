@@ -1,5 +1,4 @@
 <script lang="ts">
-  import svelteLogo from './assets/svelte.svg'
   import type { Transaction } from '$lib/types';
   import { setCryptoConverter } from '$lib/context';
   import { createCoinGeckoCryptoToFiatConverter } from '$lib/converters/coingecko';
@@ -40,7 +39,7 @@
         class="flex cursor-pointer items-center gap-2.5 border-none bg-transparent text-xl font-semibold text-text-heading"
         onclick={() => navigate('home')}
       >
-        <img src={svelteLogo} alt="Cryptax logo" class="size-7" />
+        <img src="/cryptax.png" alt="Cryptax logo" class="size-7 rounded-full" />
         <span>Cryptax</span>
       </button>
       <div class="flex gap-6 max-md:hidden">

@@ -2,6 +2,7 @@
   import type { Transaction, IExchangeImporter } from '$lib/types';
   import { LedgerImporter } from '$lib/importers/ledger';
   import { BinanceImporter } from '$lib/importers/binance';
+  import { RevolutXImporter } from '$lib/importers/revolut-x';
   import PreprocessorReview from '$lib/components/PreprocessorReview.svelte';
   import CsvPriceUploader from '$lib/components/CsvPriceUploader.svelte';
   import { getCryptoConverter } from '$lib/context';
@@ -18,6 +19,7 @@
   const importers: IExchangeImporter[] = [
     new LedgerImporter(),
     new BinanceImporter(),
+    new RevolutXImporter(),
   ];
 
   let selectedImporter = $state<IExchangeImporter>(importers[0]);
