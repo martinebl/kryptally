@@ -1,7 +1,7 @@
 import BigNumber from 'bignumber.js';
 import type { IFiatConverter } from '$lib/types';
 
-const API_BASE = 'https://api.frankfurter.app';
+const API_BASE = 'https://api.frankfurter.dev/v1';
 
 const toDateKey = (date: Date): string => date.toISOString().slice(0, 10);
 
@@ -29,7 +29,7 @@ export const createFrankfurterFiatConverter = (): IFiatConverter => {
 
       if (cache.has(key)) return cache.get(key)!;
 
-      const url = `${API_BASE}/${dateKey}?from=${from}&to=${to}`;
+      const url = `${API_BASE}/${dateKey}?base=${from}&symbols=${to}`;
       const response = await fetch(url);
 
       if (!response.ok) {

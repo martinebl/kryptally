@@ -29,10 +29,10 @@ describe('createFrankfurterFiatConverter', () => {
     await converter.getRate('USD', 'DKK', new Date('2024-03-05'));
 
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining('api.frankfurter.app/2024-03-05'),
+      expect.stringContaining('api.frankfurter.dev/v1/2024-03-05'),
     );
-    expect(fetch).toHaveBeenCalledWith(expect.stringContaining('from=USD'));
-    expect(fetch).toHaveBeenCalledWith(expect.stringContaining('to=DKK'));
+    expect(fetch).toHaveBeenCalledWith(expect.stringContaining('base=USD'));
+    expect(fetch).toHaveBeenCalledWith(expect.stringContaining('symbols=DKK'));
   });
 
   it('returns 1 for same-currency conversion without fetching', async () => {
