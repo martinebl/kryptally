@@ -1,5 +1,6 @@
 <script lang="ts">
   import Card from '$lib/components/Card.svelte'
+  import logoUrl from '/cryptax.png'
 
   interface Props {
     onNavigate: (page: string) => void;
@@ -11,7 +12,7 @@
 <!-- Hero -->
 <section class="py-20 text-center max-md:py-12">
   <div class="mb-6 flex items-center justify-center">
-    <img src="/cryptax.png" alt="Cryptax logo" class="size-16 rounded-full" />
+    <img src={logoUrl} alt="Cryptax logo" class="size-16 rounded-full" />
   </div>
   <h1 class="mb-4 font-heading text-6xl font-medium tracking-tight text-text-heading max-md:text-4xl">
     Cryptax

@@ -11,6 +11,7 @@
   import ResultsPage from '$lib/components/ResultsPage.svelte'
   import TestResultsPage from '$lib/components/TestResultsPage.svelte'
   import dkRules from '$lib/rules/dk/dk-2024.json';
+  import logoUrl from '/cryptax.png'
 
   const taxRules: TaxRules = dkRules as TaxRules;
 
@@ -43,7 +44,7 @@
         class="flex cursor-pointer items-center gap-2.5 border-none bg-transparent text-xl font-semibold text-text-heading"
         onclick={() => navigate('home')}
       >
-        <img src="/cryptax.png" alt="Cryptax logo" class="size-7 rounded-full" />
+        <img src={logoUrl} alt="Cryptax logo" class="size-7 rounded-full" />
         <span>Cryptax</span>
       </button>
       <div class="flex gap-6 max-md:hidden">
