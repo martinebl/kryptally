@@ -10,6 +10,10 @@
   const { pricesByAsset }: Props = $props();
 
   const KNOWN_TICKERS = Object.keys(COIN_IDS);
+  // Map from uppercase primary coin name to ticker (e.g. "BITCOIN" → "BTC", "MATIC" from "matic-network" → "MATIC")
+  const COIN_NAME_TO_TICKER: Array<[string, string]> = Object.entries(COIN_IDS).map(
+    ([ticker, coinId]) => [coinId.split('-')[0].toUpperCase(), ticker]
+  );
 
   const FIAT_CURRENCIES = [
     'USD', 'EUR', 'GBP', 'DKK', 'SEK', 'NOK', 'CHF', 'JPY',
@@ -59,7 +63,12 @@
     // Try to infer asset from filename, e.g. "bitcoin_usd.csv" or "BTC-USD.csv"
     const base = file.name.replace(/\.[^.]+$/, '').toUpperCase();
     const tickerMatch = KNOWN_TICKERS.find(t => base.startsWith(t) || base.includes(`-${t}`) || base.includes(`_${t}`));
-    if (tickerMatch) asset = tickerMatch;
+    if (tickerMatch) {
+      asset = tickerMatch;
+    } else {
+      const nameMatch = COIN_NAME_TO_TICKER.find(([name]) => base.startsWith(name));
+      if (nameMatch) asset = nameMatch[1];
+    }
   };
 
   const handleDrop = (e: DragEvent) => {

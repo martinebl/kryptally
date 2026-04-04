@@ -10,9 +10,9 @@
   --color-text: #6b6375;
   --color-text-heading: #08060d;
   --color-border: #e5e4e7;
-  --color-accent: #aa3bff;
-  --color-accent-bg: rgba(170, 59, 255, 0.1);
-  --color-accent-border: rgba(170, 59, 255, 0.5);
+  --color-accent: #f7931a;
+  --color-accent-bg: rgba(247, 147, 26, 0.1);
+  --color-accent-border: rgba(247, 147, 26, 0.5);
 }
 
 @layer base {

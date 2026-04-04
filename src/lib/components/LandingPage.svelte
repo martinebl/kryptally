@@ -52,6 +52,12 @@
     <Card title="Precise calculations">
       <p class="text-sm leading-relaxed text-text">Arbitrary-precision arithmetic ensures your tax figures are accurate down to the last satoshi.</p>
     </Card>
+    <Card title="Offline price data">
+      <p class="text-sm leading-relaxed text-text">
+        Upload daily crypto price CSVs (e.g. from Yahoo Finance or Investing.com) to resolve historical prices fully offline.
+        Cryptax uses these first, and only falls back to the CoinGecko API for any asset not covered.
+      </p>
+    </Card>
   </div>
 </section>
 
@@ -60,7 +66,7 @@
   <h2 class="mb-10 text-center font-heading text-2xl font-medium text-text-heading">How it works</h2>
   <div class="flex gap-6 max-md:flex-col">
     {#each [
-      { num: '1', title: 'Import', desc: 'Upload your exchange CSV exports or enter transactions manually.' },
+      { num: '1', title: 'Import', desc: 'Upload your exchange CSV exports. Optionally add daily crypto price CSVs to keep all price lookups fully offline.' },
       { num: '2', title: 'Configure', desc: 'Select your country and tax year. Rules are applied automatically.' },
       { num: '3', title: 'Calculate', desc: 'Get a full breakdown of gains, losses, and estimated tax per income type.' },
     ] as step}

@@ -28,7 +28,7 @@
   <div class="flex items-center gap-3">
     <label class="flex items-center gap-2 text-sm text-text">
       <input type="checkbox" bind:checked={hideDust}
-        class="h-4 w-4 rounded border-border accent-purple-600" />
+        class="h-4 w-4 rounded border-border accent-orange-500" />
       Hide dust below
     </label>
     <div class="flex items-center gap-1">
