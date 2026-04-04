@@ -2,12 +2,15 @@
   import BigNumber from 'bignumber.js';
   import Card from '$lib/components/Card.svelte';
   import SimulationPanel from '$lib/components/SimulationPanel.svelte';
+  import HoldingsTable from '$lib/components/HoldingsTable.svelte';
+  import TaxEventsTable from '$lib/components/TaxEventsTable.svelte';
   import { TaxCalculator } from '$lib/engine/tax-calculator';
   import { LotTracker } from '$lib/engine/lot-tracker';
   import type { Transaction } from '$lib/types/transaction';
   import type { TaxRules } from '$lib/types/tax-rules';
-  import type { TaxSummary, TaxableEvent } from '$lib/types/results';
+  import { filterDustHoldings } from '$lib/engine/dust-filter';
   import dkRules from '$lib/rules/dk/dk-2024.json';
+    import ActivitiesTable from './ActivitiesTable.svelte';
 
   interface Props {
     transactions: Transaction[];
@@ -26,38 +29,19 @@
     return { summary, holdings };
   });
 
-  const sortedEvents = $derived(
-    [...summary.events].sort((a, b) => b.date.getTime() - a.date.getTime())
-  );
+  let hideDust = $state(false);
+  let dustThresholdInput = $state('10');
+  const dustThreshold = $derived(new BigNumber(dustThresholdInput || '0'));
 
-  const sortedTransactions = $derived(
-    [...transactions].sort((a, b) => b.date.getTime() - a.date.getTime())
+  const { visible: visibleHoldings, dust: dustHoldings } = $derived.by(() =>
+    hideDust
+      ? filterDustHoldings(holdings, dustThreshold)
+      : { visible: holdings, dust: [] as typeof holdings },
   );
 
   const gainColor = (v: BigNumber) =>
     v.gt(0) ? 'text-green-600' : v.lt(0) ? 'text-red-500' : 'text-text';
 
-  const eventTypeLabel = (e: TaxableEvent) =>
-    e.type === 'income' ? 'Income' : 'Disposal';
-
-  const txAsset = (tx: Transaction) => tx.toAsset ?? tx.fromAsset ?? tx.feeAsset ?? '—';
-  const txAmount = (tx: Transaction) => tx.toAmount ?? tx.fromAmount ?? tx.feeAmount;
-  const txDirection = (tx: Transaction) => tx.toAmount ? '+' : tx.fromAmount ? '-' : '';
-  const isTrade = (tx: Transaction) => tx.type === 'trade' && tx.fromAsset && tx.toAsset;
-
-  const typeBadgeClass = (type: string) => {
-    const map: Record<string, string> = {
-      transfer: 'bg-gray-100 text-gray-700',
-      buy: 'bg-green-100 text-green-700',
-      sell: 'bg-red-100 text-red-700',
-      trade: 'bg-purple-100 text-purple-700',
-      fee: 'bg-amber-100 text-amber-700',
-      mining: 'bg-blue-100 text-blue-700',
-      staking: 'bg-blue-100 text-blue-700',
-      airdrop: 'bg-teal-100 text-teal-700',
-    };
-    return map[type] ?? 'bg-gray-100 text-gray-700';
-  };
 </script>
 
 <section class="py-16">
@@ -142,141 +126,27 @@
 
     <!-- Current holdings table -->
     {#if holdings.length > 0}
-      <h3 class="mb-4 font-heading text-lg font-medium text-text-heading">Current Holdings</h3>
-      <div class="mb-10 overflow-x-auto rounded-xl border border-border">
-        <table class="w-full text-left text-sm">
-          <thead>
-            <tr class="border-b border-border bg-bg-card text-xs uppercase tracking-wide text-text">
-              <th class="px-4 py-3">Asset</th>
-              <th class="px-4 py-3 text-right">Amount</th>
-              <th class="px-4 py-3 text-right">Total Cost Basis</th>
-              <th class="px-4 py-3 text-right">Avg Cost / Unit</th>
-            </tr>
-          </thead>
-          <tbody>
-            {#each holdings.filter((h) => h.totalAmount.gt(0)) as holding}
-              {@const avgCost = holding.totalCostBasis.div(holding.totalAmount)}
-              <tr class="border-b border-border last:border-none hover:bg-bg-card/50">
-                <td class="px-4 py-3 font-medium text-text-heading">{holding.asset}</td>
-                <td class="px-4 py-3 text-right font-mono text-text-heading">{holding.totalAmount.toFormat(8)}</td>
-                <td class="px-4 py-3 text-right font-mono text-text-heading">{fmt(holding.totalCostBasis)} {rules.currency}</td>
-                <td class="px-4 py-3 text-right font-mono text-text">{fmt(avgCost)} {rules.currency}</td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      </div>
+      <HoldingsTable
+        {visibleHoldings}
+        {dustHoldings}
+        bind:hideDust
+        bind:dustThresholdInput
+        currency={rules.currency}
+      />
     {/if}
 
     <!-- Simulate full sell -->
-    {#if holdings.length > 0}
-      <SimulationPanel {transactions} {holdings} {summary} {rules} />
+    {#if visibleHoldings.length > 0}
+      <SimulationPanel {transactions} holdings={visibleHoldings} {summary} {rules} />
     {/if}
 
     <!-- Tax events table -->
     {#if summary.events.length > 0}
-      <h3 class="mb-4 font-heading text-lg font-medium text-text-heading">Tax Events</h3>
-      <div class="mb-10 overflow-x-auto rounded-xl border border-border">
-        <table class="w-full text-left text-sm">
-          <thead>
-            <tr class="border-b border-border bg-bg-card text-xs uppercase tracking-wide text-text">
-              <th class="px-4 py-3">Date</th>
-              <th class="px-4 py-3">Type</th>
-              <th class="px-4 py-3">Asset</th>
-              <th class="px-4 py-3 text-right">Amount</th>
-              <th class="px-4 py-3 text-right">Proceeds</th>
-              <th class="px-4 py-3 text-right">Cost Basis</th>
-              <th class="px-4 py-3 text-right">Gain / Loss</th>
-            </tr>
-          </thead>
-          <tbody>
-            {#each sortedEvents as event}
-              <tr class="border-b border-border last:border-none hover:bg-bg-card/50">
-                <td class="px-4 py-3 font-mono text-text-heading">
-                  {event.date.toISOString().slice(0, 10)}
-                </td>
-                <td class="px-4 py-3">
-                  <span class="inline-block rounded-full px-2 py-0.5 text-xs font-medium
-                    {event.type === 'income'
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'bg-amber-100 text-amber-700'}">
-                    {eventTypeLabel(event)}
-                  </span>
-                </td>
-                <td class="px-4 py-3 font-medium text-text-heading">{event.asset}</td>
-                <td class="px-4 py-3 text-right font-mono text-text-heading">{event.amount.toFormat(6)}</td>
-                <td class="px-4 py-3 text-right font-mono text-text-heading">{fmt(event.proceeds)}</td>
-                <td class="px-4 py-3 text-right font-mono text-text-heading">{fmt(event.costBasis)}</td>
-                <td class="px-4 py-3 text-right font-mono font-medium {gainColor(event.gainLoss)}">
-                  {event.gainLoss.gt(0) ? '+' : ''}{fmt(event.gainLoss)}
-                </td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      </div>
+      <TaxEventsTable events={summary.events} />
     {/if}
 
     <!-- All activity table -->
-    <h3 class="mb-4 font-heading text-lg font-medium text-text-heading">All Activity</h3>
-    <div class="overflow-x-auto rounded-xl border border-border">
-      <table class="w-full text-left text-sm">
-        <thead>
-          <tr class="border-b border-border bg-bg-card text-xs uppercase tracking-wide text-text">
-            <th class="px-4 py-3">Date</th>
-            <th class="px-4 py-3">Type</th>
-            <th class="px-4 py-3">Asset</th>
-            <th class="px-4 py-3 text-right">Amount</th>
-            <th class="px-4 py-3 text-right">Fee</th>
-            <th class="px-4 py-3">Source</th>
-          </tr>
-        </thead>
-        <tbody>
-          {#each sortedTransactions as tx}
-            {@const amount = txAmount(tx)}
-            <tr class="border-b border-border last:border-none hover:bg-bg-card/50">
-              <td class="px-4 py-3 font-mono text-text-heading">
-                {tx.date.toISOString().slice(0, 10)}
-              </td>
-              <td class="px-4 py-3">
-                <span class="inline-block rounded-full px-2 py-0.5 text-xs font-medium {typeBadgeClass(tx.type)}">
-                  {tx.type}
-                </span>
-              </td>
-              <td class="px-4 py-3 font-medium text-text-heading">
-                {#if isTrade(tx)}
-                  <span class="text-red-500">{tx.fromAsset}</span>
-                  <span class="text-text mx-1">→</span>
-                  <span class="text-green-600">{tx.toAsset}</span>
-                {:else}
-                  {txAsset(tx)}
-                {/if}
-              </td>
-              <td class="px-4 py-3 text-right font-mono text-text-heading">
-                {#if isTrade(tx)}
-                  <span class="text-red-500">-{tx.fromAmount?.toFormat(8)}</span>
-                  <span class="text-text mx-1">/</span>
-                  <span class="text-green-600">+{tx.toAmount?.toFormat(8)}</span>
-                {:else if amount}
-                  <span class={txDirection(tx) === '+' ? 'text-green-600' : txDirection(tx) === '-' ? 'text-red-500' : ''}>
-                    {txDirection(tx)}{amount.toFormat(8)}
-                  </span>
-                {:else}
-                  —
-                {/if}
-              </td>
-              <td class="px-4 py-3 text-right font-mono text-text">
-                {#if tx.feeAmount && tx.feeAmount.gt(0)}
-                  {tx.feeAmount.toFormat(8)} {tx.feeAsset}
-                {:else}
-                  —
-                {/if}
-              </td>
-              <td class="px-4 py-3 text-text">{tx.exchange ?? '—'}</td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
-    </div>
+     <ActivitiesTable transactions={transactions} />
+    
   {/if}
 </section>
