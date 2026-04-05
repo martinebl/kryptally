@@ -40,23 +40,21 @@
 <!-- Features -->
 <section id="features" class="border-t border-border py-16">
   <h2 class="mb-10 text-center font-heading text-2xl font-medium text-text-heading">Features</h2>
-  <div class="grid grid-cols-2 gap-5 max-md:grid-cols-1">
-    <Card title="Privacy first">
-      <p class="text-sm leading-relaxed text-text">All calculations run locally in your browser. Your transaction data never leaves your device.</p>
-    </Card>
-    <Card title="Multi-jurisdiction">
-      <p class="text-sm leading-relaxed text-text">Country-specific tax rules with support for different income types, brackets, and loss deductions.</p>
+  <div class="grid grid-cols-3 gap-5 max-md:grid-cols-1">
+    <Card title="Your data stays local">
+      <p class="text-sm leading-relaxed text-text">
+        All calculations run in your browser. Your transaction data never leaves your device.
+        The only network requests are to fetch historical exchange rates for the days you traded.
+      </p>
     </Card>
     <Card title="Exchange imports">
       <p class="text-sm leading-relaxed text-text">Import transaction history from major exchanges. Custom importers handle each format automatically.</p>
     </Card>
-    <Card title="Precise calculations">
-      <p class="text-sm leading-relaxed text-text">Arbitrary-precision arithmetic ensures your tax figures are accurate down to the last satoshi.</p>
-    </Card>
-    <Card title="Offline price data">
+    <Card title="Offline crypto prices">
       <p class="text-sm leading-relaxed text-text">
-        Upload daily crypto price CSVs (e.g. from Yahoo Finance or Investing.com) to resolve historical prices fully offline.
-        Cryptax uses these first, and only falls back to the CoinGecko API for any asset not covered.
+        Upload daily crypto price CSVs to resolve historical crypto prices offline.
+        For any asset not covered, Cryptax falls back to the CoinGecko API.
+        Fiat exchange rates are always fetched from Frankfurter.
       </p>
     </Card>
   </div>
@@ -67,9 +65,9 @@
   <h2 class="mb-10 text-center font-heading text-2xl font-medium text-text-heading">How it works</h2>
   <div class="flex gap-6 max-md:flex-col">
     {#each [
-      { num: '1', title: 'Import', desc: 'Upload your exchange CSV exports. Optionally add daily crypto price CSVs to keep all price lookups fully offline.' },
-      { num: '2', title: 'Configure', desc: 'Select your country and tax year. Rules are applied automatically.' },
-      { num: '3', title: 'Calculate', desc: 'Get a full breakdown of gains, losses, and estimated tax per income type.' },
+      { num: '1', title: 'Import', desc: 'Upload your exchange CSV exports. Optionally add price CSVs to keep crypto price lookups offline.' },
+      { num: '2', title: 'Configure', desc: 'Select your country.' },
+      { num: '3', title: 'Calculate', desc: 'Get a breakdown of gains and losses.' },
     ] as step}
       <div class="flex-1 p-6 text-center">
         <span class="mb-4 inline-flex size-9 items-center justify-center rounded-full border border-accent-border bg-accent-bg text-sm font-semibold text-accent">
