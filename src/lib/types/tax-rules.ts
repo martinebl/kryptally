@@ -1,5 +1,10 @@
 export type CostBasisMethod = 'fifo' | 'lifo' | 'hifo' | 'average';
 
+export interface CostBasisConfig {
+  allowed: CostBasisMethod[];
+  default: CostBasisMethod;
+}
+
 /** Crypto-relevant event types that map to income categories */
 export type TaxableEventType =
   | 'sell'          // sell crypto for fiat
@@ -53,7 +58,7 @@ export interface TaxRules {
   taxYear: number;
   lastUpdated: string;       // ISO 8601
 
-  costBasisMethod: CostBasisMethod;
+  costBasis: CostBasisConfig;
   cryptoToCryptoTaxable: boolean;
 
   holdingPeriod: HoldingPeriodRule;

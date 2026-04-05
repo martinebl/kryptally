@@ -18,7 +18,7 @@ const makeTx = (overrides: Partial<Transaction> & Pick<Transaction, 'id' | 'type
 describe('TaxCalculator (orchestration)', () => {
   describe('summary aggregation', () => {
     it('aggregates totals across multiple events', () => {
-      const tracker = new LotTracker(rules.costBasisMethod);
+      const tracker = new LotTracker(rules.costBasis.default);
       const calc = new TaxCalculator(rules, tracker);
 
       const summary = calc.process([
@@ -35,7 +35,7 @@ describe('TaxCalculator (orchestration)', () => {
     });
 
     it('tracks income by source', () => {
-      const tracker = new LotTracker(rules.costBasisMethod);
+      const tracker = new LotTracker(rules.costBasis.default);
       const calc = new TaxCalculator(rules, tracker);
 
       const summary = calc.process([
@@ -55,7 +55,7 @@ describe('TaxCalculator (orchestration)', () => {
         ...rules,
         holdingPeriod: { enabled: true, thresholdDays: 365, exemptFromTax: true },
       };
-      const tracker = new LotTracker(rules.costBasisMethod);
+      const tracker = new LotTracker(rules.costBasis.default);
       const calc = new TaxCalculator(exemptRules, tracker);
 
       const summary = calc.process([
@@ -70,7 +70,7 @@ describe('TaxCalculator (orchestration)', () => {
 
   describe('tax estimation wiring', () => {
     it('combines disposal tax and income tax', () => {
-      const tracker = new LotTracker(rules.costBasisMethod);
+      const tracker = new LotTracker(rules.costBasis.default);
       const calc = new TaxCalculator(rules, tracker);
 
       const summary = calc.process([

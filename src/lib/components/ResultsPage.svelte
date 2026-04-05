@@ -22,7 +22,7 @@
   const fmt = (v: BigNumber) => v.toFormat(2);
 
   const { summary, holdings } = $derived.by(() => {
-    const tracker = new LotTracker(rules.costBasisMethod);
+    const tracker = new LotTracker(rules.costBasis.default);
     const calculator = new TaxCalculator(rules, tracker);
     const summary = calculator.process(transactions);
     const holdings = tracker.getHoldings().filter((h) => h.totalAmount.gt(0));
@@ -55,7 +55,7 @@
       Tax Report — {rules.country} {rules.taxYear}
     </h2>
     <p class="mx-auto mb-10 max-w-lg text-center text-sm text-text">
-      {rules.currency} · {rules.costBasisMethod.toUpperCase()} method · {transactions.length} transactions
+      {rules.currency} · {rules.costBasis.default.toUpperCase()} method · {transactions.length} transactions
     </p>
 
     <!-- Summary cards -->
