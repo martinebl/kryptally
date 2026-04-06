@@ -1,10 +1,10 @@
-# Cryptax
+# Kryptax
 
 An open-source cryptocurrency tax reporting tool that runs in your browser. Your transaction data stays on your machine — the only external requests are for historical exchange rates (crypto and fiat prices) needed to compute gains and losses.
 
-The core feature is **gains and losses tracking** — Cryptax computes your realized gains and losses across all your crypto transactions using industry-standard cost basis methods. This gives you the numbers you need to fill in your tax return.
+The core feature is **gains and losses tracking** — Kryptax computes your realized gains and losses across all your crypto transactions using industry-standard cost basis methods. This gives you the numbers you need to fill in your tax return.
 
-> **Disclaimer:** Any tax estimates shown by Cryptax are rough approximations for informational purposes only. They are **not** legal or financial advice. Accurate tax calculation depends on your full financial picture (salary, other income, deductions, etc.), which is outside the scope of this tool. Always consult a qualified tax professional for your specific situation.
+> **Disclaimer:** Any tax estimates shown by Kryptax are rough approximations for informational purposes only. They are **not** legal or financial advice. Accurate tax calculation depends on your full financial picture (salary, other income, deductions, etc.), which is outside the scope of this tool. Always consult a qualified tax professional for your specific situation.
 
 ## Features
 
@@ -24,8 +24,8 @@ The core feature is **gains and losses tracking** — Cryptax computes your real
 ### Running locally
 
 ```bash
-git clone https://github.com/martinebl/cryptax.git
-cd cryptax
+git clone https://github.com/martinebl/kryptax.git
+cd kryptax
 npm install
 npm run dev
 ```
@@ -41,11 +41,11 @@ npm run preview
 
 ## Data sources & accuracy
 
-Cryptax resolves historical prices through two sources, tried in order:
+Kryptax resolves historical prices through two sources, tried in order:
 
-1. **Local CSV files** — you can import daily crypto price csv's in the UI, Cryptax will use those first. This is the fastest and most reliable option, and it keeps all matching crypto price lookups fully offline. These files can be constructed with data from Yahoo Finance or Investing dot com.
+1. **Local CSV files** — you can import daily crypto price csv's in the UI, Kryptax will use those first. This is the fastest and most reliable option, and it keeps all matching crypto price lookups fully offline. These files can be constructed with data from Yahoo Finance or Investing dot com.
 
-2. **CoinGecko API** — for any asset not covered by a local CSV, Cryptax falls back to the [CoinGecko API](https://www.coingecko.com/en/api) (free tier, no API key required). Requests are rate-limited and cached per asset per date, so importing large files may take a moment. Note that the free tier is limited to one year of historical data, so any asset prices from > 1 year ago, that are not found in csv price files, will result in a failed call to CoinGecko and a 0 cost basis.
+2. **CoinGecko API** — for any asset not covered by a local CSV, Kryptax falls back to the [CoinGecko API](https://www.coingecko.com/en/api) (free tier, no API key required). Requests are rate-limited and cached per asset per date, so importing large files may take a moment. Note that the free tier is limited to one year of historical data, so any asset prices from > 1 year ago, that are not found in csv price files, will result in a failed call to CoinGecko and a 0 cost basis.
 
 Fiat-to-fiat conversions (e.g. USD → DKK) are handled by the [Frankfurter API](https://www.frankfurter.app), backed by European Central Bank data — free and no API key required.
 
