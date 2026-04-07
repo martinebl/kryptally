@@ -25,9 +25,16 @@
         return map[type] ?? 'bg-gray-100 text-gray-700';
     };
 
-    const txAsset = (tx: Transaction) => tx.toAsset ?? tx.fromAsset ?? tx.feeAsset ?? '—';
-    const txAmount = (tx: Transaction) => tx.toAmount ?? tx.fromAmount ?? tx.feeAmount;
-    const txDirection = (tx: Transaction) => tx.toAmount ? '+' : tx.fromAmount ? '-' : '';
+    const txAsset = (tx: Transaction) =>
+        tx.type === 'sell'
+            ? (tx.fromAsset ?? tx.toAsset ?? tx.feeAsset ?? '—')
+            : (tx.toAsset ?? tx.fromAsset ?? tx.feeAsset ?? '—');
+    const txAmount = (tx: Transaction) =>
+        tx.type === 'sell'
+            ? (tx.fromAmount ?? tx.toAmount ?? tx.feeAmount)
+            : (tx.toAmount ?? tx.fromAmount ?? tx.feeAmount);
+    const txDirection = (tx: Transaction) =>
+        tx.type === 'sell' ? '-' : tx.toAmount ? '+' : tx.fromAmount ? '-' : '';
     const isTrade = (tx: Transaction) => tx.type === 'trade' && tx.fromAsset && tx.toAsset;
 
     const filterFn = (tx: Transaction, q: string) =>

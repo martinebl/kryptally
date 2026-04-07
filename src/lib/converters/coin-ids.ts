@@ -8,6 +8,7 @@ export const COIN_IDS: Record<string, string> = {
   LUNA: 'terra-luna', SHIB: 'shiba-inu', LTC: 'litecoin',
   UNI: 'uniswap', ATOM: 'cosmos', FIL: 'filecoin',
   APT: 'aptos', ARB: 'arbitrum', OP: 'optimism', NEAR: 'near',
+  FLR: 'flare'
 };
 
 export const resolveCoinId = (ticker: string): string =>
