@@ -2,7 +2,7 @@
   import type { Transaction } from '$lib/types';
   import type { TaxRules } from '$lib/types/tax-rules';
   import { setCryptoConverter } from '$lib/context';
-  import { createCoinGeckoCryptoToFiatConverter } from '$lib/converters/coingecko';
+  import { createCoinGeckoCryptoToFiatConverter, preflightResolve, setUserResolutions, type CoinListEntry } from '$lib/converters/coingecko';
   import { createCsvCryptoToFiatConverter, loadCsvPrices } from '$lib/converters/csv-prices';
   import { createLayeredCryptoToFiatConverter } from '$lib/converters/layered';
   import { createFrankfurterFiatConverter } from '$lib/converters/frankfurter';
@@ -10,8 +10,9 @@
   import ImportPage from '$lib/components/ImportPage.svelte'
   import ResultsPage from '$lib/components/ResultsPage.svelte'
   import TestResultsPage from '$lib/components/TestResultsPage.svelte'
+  import CoinDisambiguator from '$lib/components/CoinDisambiguator.svelte'
   import dkRules from '$lib/rules/dk/dk-2024.json';
-  import logoUrl from '/cryptax.png'
+  import logoUrl from '/kryptax.png'
 
   const taxRules: TaxRules = dkRules as TaxRules;
 
@@ -24,14 +25,35 @@
 
   let currentPage = $state('home');
   let transactions = $state<Transaction[]>([]);
+  let pendingTransactions = $state<Transaction[]>([]);
+  let ambiguousCoins = $state<Record<string, CoinListEntry[]>>({});
 
   const navigate = (page: string) => {
     currentPage = page;
     window.scrollTo(0, 0);
   };
 
-  const handleImport = (imported: Transaction[]) => {
+  const handleImport = async (imported: Transaction[]) => {
+    const allTickers = [
+      ...imported.map((t) => t.toAsset),
+      ...imported.map((t) => t.fromAsset),
+      ...imported.map((t) => t.feeAsset),
+    ].filter((t): t is string => !!t);
+    const uniqueTickers = [...new Set(allTickers)];
+
+    const ambiguous = await preflightResolve(uniqueTickers);
+    pendingTransactions = imported;
+    ambiguousCoins = ambiguous;
+
     transactions = [...transactions, ...imported];
+    pendingTransactions = [];
+  };
+
+  const handleDisambiguate = (resolutions: Record<string, string>) => {
+    setUserResolutions(resolutions);
+    transactions = [...transactions, ...pendingTransactions];
+    pendingTransactions = [];
+    ambiguousCoins = {};
     navigate('results');
   };
 </script>
@@ -44,8 +66,8 @@
         class="flex cursor-pointer items-center gap-2.5 border-none bg-transparent text-xl font-semibold text-text-heading"
         onclick={() => navigate('home')}
       >
-        <img src={logoUrl} alt="Cryptax logo" class="size-7 rounded-full" />
-        <span>Cryptax</span>
+        <img src={logoUrl} alt="Kryptax logo" class="size-7 rounded-full" />
+        <span>Kryptax</span>
       </button>
       <div class="flex gap-6 max-md:hidden">
         <button
@@ -90,10 +112,16 @@
     {:else if currentPage === 'test-results'}
       <TestResultsPage />
     {/if}
+
+    <CoinDisambiguator
+      ambiguous={ambiguousCoins}
+      onConfirm={handleDisambiguate}
+      onClose={() => { pendingTransactions = []; ambiguousCoins = {}; }}
+    />
   </main>
 
   <!-- Footer -->
   <footer class="mt-auto border-t border-border px-8 py-6 text-center text-sm text-text">
-    <p>Cryptax — open-source crypto tax calculator</p>
+    <p>Kryptax — open-source crypto tax calculator</p>
   </footer>
 </div>
