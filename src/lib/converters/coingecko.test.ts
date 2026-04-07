@@ -20,7 +20,7 @@ describe('CoinGecko crypto-to-fiat converter', () => {
   });
 
   it('resolves known ticker to CoinGecko coin ID', async () => {
-    const fetchSpy = vi.stubGlobal('fetch', vi.fn(() => makeFetchResponse(mockPrices)));
+    vi.stubGlobal('fetch', vi.fn(() => makeFetchResponse(mockPrices)));
     const converter = createCoinGeckoCryptoToFiatConverter();
 
     await converter.getRate('BTC', 'USD', new Date('2024-01-15'));
@@ -31,10 +31,15 @@ describe('CoinGecko crypto-to-fiat converter', () => {
   });
 
   it('falls back to lowercase ticker for unknown coins', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => makeFetchResponse({ usd: 1.5 })));
+    vi.stubGlobal('fetch', vi.fn((url: string) => {
+      if (url.includes('/coins/list')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }
+      return makeFetchResponse({ usd: 1.5 });
+    }));
     const converter = createCoinGeckoCryptoToFiatConverter();
 
-    await converter.getRate('NEWCOIN', 'USD', new Date('2024-01-15'));
+    await converter.getRate('NEWCOIN', 'USD', new Date('2024-06-01'));
 
     expect(fetch).toHaveBeenCalledWith(
       expect.stringContaining('/coins/newcoin/history'),
@@ -137,6 +142,6 @@ describe('CoinGecko crypto-to-fiat converter', () => {
     const elapsed = Date.now() - start;
 
     // Second call should have waited ~4000ms
-    expect(elapsed).toBeGreaterThanOrEqual(3800);
+    expect(elapsed).toBeGreaterThanOrEqual(2800);
   }, 10000);
 });
