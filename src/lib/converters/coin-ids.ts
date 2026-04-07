@@ -1,5 +1,5 @@
 /** Maps common ticker symbols to CoinGecko coin IDs */
-export const COIN_IDS: Record<string, string> = {
+export const GECKO_COIN_IDS: Record<string, string> = {
   BTC: 'bitcoin', ETH: 'ethereum', SOL: 'solana',
   BNB: 'binancecoin', USDT: 'tether', USDC: 'usd-coin',
   BUSD: 'binance-usd', TRX: 'tron', DOT: 'polkadot',
@@ -12,4 +12,4 @@ export const COIN_IDS: Record<string, string> = {
 };
 
 export const resolveCoinId = (ticker: string): string =>
-  COIN_IDS[ticker.toUpperCase()] ?? ticker.toLowerCase();
+  GECKO_COIN_IDS[ticker.toUpperCase()] ?? ticker.toLowerCase();

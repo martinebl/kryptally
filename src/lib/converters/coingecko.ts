@@ -1,6 +1,6 @@
 import BigNumber from 'bignumber.js';
 import type { ICryptoToFiatConverter } from '$lib/types';
-import { COIN_IDS } from '$lib/converters/coin-ids';
+import { GECKO_COIN_IDS } from '$lib/converters/coin-ids';
 
 const formatDate = (date: Date): string => {
   const dd = String(date.getUTCDate()).padStart(2, '0');
@@ -39,7 +39,7 @@ const fetchCoinList = (): Promise<CoinListEntry[]> => {
 const resolveCoinId = async (ticker: string): Promise<string> => {
   const upper = ticker.toUpperCase();
   if (userResolutions[upper]) return userResolutions[upper];
-  if (COIN_IDS[upper]) return COIN_IDS[upper];
+  if (GECKO_COIN_IDS[upper]) return GECKO_COIN_IDS[upper];
 
   const list = await fetchCoinList();
   const matches = list.filter((c) => c.symbol.toUpperCase() === upper);
@@ -62,7 +62,7 @@ export const preflightResolve = async (
   tickers: string[],
 ): Promise<Record<string, CoinListEntry[]>> => {
   const needsLookup = tickers.filter(
-    (t) => !userResolutions[t.toUpperCase()] && !COIN_IDS[t.toUpperCase()],
+    (t) => !userResolutions[t.toUpperCase()] && !GECKO_COIN_IDS[t.toUpperCase()],
   );
   if (needsLookup.length === 0) return {};
 

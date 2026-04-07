@@ -1,6 +1,6 @@
 <script lang="ts">
   import { readCsvHeaders, detectColumns, parsePriceCSV, type ColumnMapping } from '$lib/converters/price-csv-parser';
-  import { resolveCoinId, COIN_IDS } from '$lib/converters/coin-ids';
+  import { resolveCoinId, GECKO_COIN_IDS } from '$lib/converters/coin-ids';
   import type { PricesByAsset } from '$lib/converters/csv-prices';
 
   interface Props {
@@ -9,9 +9,9 @@
 
   const { pricesByAsset }: Props = $props();
 
-  const KNOWN_TICKERS = Object.keys(COIN_IDS);
+  const KNOWN_TICKERS = Object.keys(GECKO_COIN_IDS);
   // Map from uppercase primary coin name to ticker (e.g. "BITCOIN" → "BTC", "MATIC" from "matic-network" → "MATIC")
-  const COIN_NAME_TO_TICKER: Array<[string, string]> = Object.entries(COIN_IDS).map(
+  const COIN_NAME_TO_TICKER: Array<[string, string]> = Object.entries(GECKO_COIN_IDS).map(
     ([ticker, coinId]) => [coinId.split('-')[0].toUpperCase(), ticker]
   );
 
