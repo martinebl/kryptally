@@ -1,0 +1,99 @@
+{
+  "country": "Czechia",
+  "countryCode": "CZ",
+  "currency": "CZK",
+  "taxYear": 2025,
+  "lastUpdated": "2026-04-09",
+  "costBasis": {
+    "allowed": [
+      "fifo",
+      "average"
+    ],
+    "default": "fifo"
+  },
+  "cryptoToCryptoTaxable": true,
+  "holdingPeriod": {
+    "enabled": true,
+    "thresholdDays": 1095,
+    "exemptFromTax": true
+  },
+  "incomeTypes": [
+    {
+      "label": "Ostatní příjmy §10 (spekulace)",
+      "description": "Capital gains/losses from selling or swapping crypto as a non-business individual. Taxed under §10 of the Income Tax Act (zákon o daních z příjmů). Not subject to social or health insurance contributions.",
+      "events": [
+        "sell",
+        "trade"
+      ],
+      "brackets": [
+        {
+          "min": 0,
+          "max": 1676052,
+          "rate": 0.15,
+          "label": "Základní sazba (basic rate)"
+        },
+        {
+          "min": 1676052,
+          "max": null,
+          "rate": 0.23,
+          "label": "Zvýšená sazba (solidární přirážka – 36× průměrná mzda)"
+        }
+      ],
+      "lossRules": {
+        "deductible": true,
+        "offsetAgainstGains": true,
+        "offsetAgainstIncome": false,
+        "carryForward": false,
+        "carryForwardYears": null,
+        "effectiveRate": null
+      },
+      "contributions": []
+    },
+    {
+      "label": "Ostatní příjmy §10 (těžba/staking)",
+      "description": "Income from mining, staking, and airdrops received by a non-business individual. Market value at receipt is taxable income and becomes the cost basis. Taxed under §10. Not subject to social or health insurance.",
+      "events": [
+        "mining",
+        "staking",
+        "airdrop"
+      ],
+      "brackets": [
+        {
+          "min": 0,
+          "max": 1676052,
+          "rate": 0.15,
+          "label": "Základní sazba (basic rate)"
+        },
+        {
+          "min": 1676052,
+          "max": null,
+          "rate": 0.23,
+          "label": "Zvýšená sazba (solidární přirážka – 36× průměrná mzda)"
+        }
+      ],
+      "lossRules": {
+        "deductible": false,
+        "offsetAgainstGains": false,
+        "offsetAgainstIncome": false,
+        "carryForward": false,
+        "carryForwardYears": null,
+        "effectiveRate": null
+      },
+      "contributions": []
+    }
+  ],
+  "notes": [
+    "The 3-year holding period exemption (§4 odst. 1 písm. ze) took effect 15 Feb 2025 under the Digital Finance Act (zákon o digitálních financích).",
+    "The 3-year time test applies retroactively: no transitional provisions exist, so assets acquired before 15 Feb 2025 also qualify if held 3+ years at the time of disposal.",
+    "Two independent exemption paths exist: (1) Time test (§4(1)(zj)) — held 3+ years, exempt up to a CZK 40,000,000 annual cap shared with securities/shares; (2) Value test (§4(1)(zk)) — total annual gross proceeds from crypto disposals ≤ CZK 100,000, exempt regardless of holding period. Neither test is currently modeled — apply manually.",
+    "The 23% rate threshold is CZK 1,676,052 for 2025 (36× average wage of CZK 46,557).",
+    "Crypto is classified as 'other income' (ostatní příjmy) under §10 of the Czech Income Tax Act (zákon o daních z příjmů č. 586/1992 Sb.).",
+    "Both FIFO and weighted arithmetic average are accepted cost basis methods. Once chosen per asset, the method must be used consistently.",
+    "Crypto-to-crypto swaps are taxable disposal events.",
+    "Income under §10 is NOT subject to social or health insurance contributions.",
+    "Losses from crypto under §10 can offset crypto gains in the same tax year but CANNOT be carried forward. They also cannot offset income from other §10 sub-categories (e.g. securities).",
+    "The basic taxpayer allowance (sleva na poplatníka) of CZK 30,840 is a TAX CREDIT, not a deduction — it reduces computed tax, not taxable income. It is NOT modeled in the brackets above.",
+    "If mining/staking/airdrops are conducted at commercial scale, they fall under §7 (business income) instead, which IS subject to social and health insurance.",
+    "Market value at the time of receipt becomes the cost basis for mining, staking, and airdrop income."
+  ]
+}

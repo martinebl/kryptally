@@ -2,8 +2,7 @@
   import BigNumber from 'bignumber.js';
   import ResultsPage from '$lib/components/ResultsPage.svelte';
   import type { Transaction } from '$lib/types/transaction';
-  import type { TaxRules } from '$lib/types/tax-rules';
-  import dkRules from '$lib/rules/dk/dk-2024.json';
+  import { findCountry } from '$lib/rules';
 
   const bn = (n: number) => new BigNumber(n);
 
@@ -85,4 +84,4 @@
   ];
 </script>
 
-<ResultsPage transactions={hardcodedTransactions} taxRules={dkRules as TaxRules} />
+<ResultsPage transactions={hardcodedTransactions} countryConfig={findCountry('DK')!} />

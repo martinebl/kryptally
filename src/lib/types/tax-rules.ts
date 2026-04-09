@@ -67,3 +67,14 @@ export interface TaxRules {
   /** Free-form notes for users about this jurisdiction */
   notes: string[];
 }
+
+/** Returns the most applicable TaxRules for a given transaction date. */
+export type RulesResolver = (date: Date) => TaxRules;
+
+export interface CountryConfig {
+  countryCode: string;
+  country: string;
+  currency: string;
+  defaultCostBasisMethod: CostBasisMethod;
+  resolve: RulesResolver;
+}

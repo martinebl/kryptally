@@ -1,0 +1,141 @@
+{
+  "country": "Denmark",
+  "countryCode": "DK",
+  "currency": "DKK",
+  "taxYear": 2026,
+  "lastUpdated": "2026-04-09",
+  "costBasis": {
+    "allowed": [
+      "fifo"
+    ],
+    "default": "fifo"
+  },
+  "cryptoToCryptoTaxable": true,
+  "holdingPeriod": {
+    "enabled": false,
+    "thresholdDays": 0,
+    "exemptFromTax": false
+  },
+  "incomeTypes": [
+    {
+      "label": "Personlig indkomst (spekulation)",
+      "description": "Speculation gains/losses from selling or trading crypto (Statsskatteloven §§ 4-5). Not subject to AM-bidrag.",
+      "events": [
+        "sell",
+        "trade"
+      ],
+      "brackets": [
+        {
+          "min": 0,
+          "max": 54100,
+          "rate": 0,
+          "label": "Personfradrag (personal allowance)"
+        },
+        {
+          "min": 54100,
+          "max": 641200,
+          "rate": 0.37,
+          "label": "Bundskat + kommuneskat"
+        },
+        {
+          "min": 641200,
+          "max": 777900,
+          "rate": 0.445,
+          "label": "Bundskat + kommuneskat + mellemskat"
+        },
+        {
+          "min": 777900,
+          "max": 2592700,
+          "rate": 0.52,
+          "label": "Bundskat + kommuneskat + mellemskat + topskat (skatteloft)"
+        },
+        {
+          "min": 2592700,
+          "max": null,
+          "rate": 0.57,
+          "label": "Bundskat + kommuneskat + mellemskat + topskat + toptopskat"
+        }
+      ],
+      "lossRules": {
+        "deductible": true,
+        "offsetAgainstGains": true,
+        "offsetAgainstIncome": true,
+        "carryForward": false,
+        "carryForwardYears": null,
+        "effectiveRate": 0.26
+      },
+      "contributions": []
+    },
+    {
+      "label": "Personlig indkomst (erhverv)",
+      "description": "Business income from crypto activities (mining, staking, airdrops at commercial scale). Subject to AM-bidrag.",
+      "events": [
+        "mining",
+        "staking",
+        "airdrop"
+      ],
+      "brackets": [
+        {
+          "min": 0,
+          "max": 54100,
+          "rate": 0,
+          "label": "Personfradrag (personal allowance)"
+        },
+        {
+          "min": 54100,
+          "max": 641200,
+          "rate": 0.37,
+          "label": "Bundskat + kommuneskat"
+        },
+        {
+          "min": 641200,
+          "max": 777900,
+          "rate": 0.445,
+          "label": "Bundskat + kommuneskat + mellemskat"
+        },
+        {
+          "min": 777900,
+          "max": 2592700,
+          "rate": 0.52,
+          "label": "Bundskat + kommuneskat + mellemskat + topskat (skatteloft)"
+        },
+        {
+          "min": 2592700,
+          "max": null,
+          "rate": 0.57,
+          "label": "Bundskat + kommuneskat + mellemskat + topskat + toptopskat"
+        }
+      ],
+      "lossRules": {
+        "deductible": false,
+        "offsetAgainstGains": false,
+        "offsetAgainstIncome": false,
+        "carryForward": false,
+        "carryForwardYears": null,
+        "effectiveRate": null
+      },
+      "contributions": [
+        {
+          "name": "AM-bidrag",
+          "rate": 0.08,
+          "appliesToGross": true
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "2026 tax reform: Denmark moved from a 2-bracket to a 4-bracket income tax system (bundskat, mellemskat, topskat, toptopskat).",
+    "Crypto speculation gains are taxed as personlig indkomst under Statsskatteloven §§ 4-5.",
+    "FIFO is applied per asset (BTC and ETH are separate queues).",
+    "AM-bidrag (8%) does NOT apply to speculation gains — only to business (erhverv) income.",
+    "If mining/staking is at commercial scale (erhvervsmæssig virksomhed), AM-bidrag applies.",
+    "Losses are deductible but only at the municipal tax rate (~26%), not the full marginal rate.",
+    "Crypto-to-crypto swaps are taxable disposal events.",
+    "No holding period exemption exists in Denmark.",
+    "The personfradrag is shared across all income — if salary uses it, crypto gains are taxed from the first krone.",
+    "Bracket thresholds: mellemskat kicks in above 641,200 DKK, topskat above 777,900 DKK, toptopskat above 2,592,700 DKK. The skatteloft caps bundskat + mellemskat + topskat + kommuneskat at ~52%. Toptopskat (5%) is added on top of the skatteloft.",
+    "Combined marginal rates (approx.): ~37% base, ~44.5% with mellemskat, ~52% with topskat (skatteloft), ~57% with toptopskat.",
+    "From 2026, EU DAC8 directive requires crypto-asset service providers to report user transactions directly to Skattestyrelsen.",
+    "Market value at receipt becomes cost basis for mining/staking/airdrop income."
+  ]
+}

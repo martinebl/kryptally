@@ -1,16 +1,16 @@
 <script lang="ts">
   import Card from '$lib/components/Card.svelte'
-  import type { TaxRules } from '$lib/types/tax-rules';
+  import type { CountryConfig } from '$lib/types/tax-rules';
   import logoUrl from '/kryptax.png'
 
   interface Props {
     onNavigate: (page: string) => void;
-    availableRules: TaxRules[];
-    selectedCountry: TaxRules | null;
+    availableCountries: CountryConfig[];
+    selectedCountry: CountryConfig | null;
     onSelectCountry: (countryCode: string) => void;
   }
 
-  const { onNavigate, availableRules, selectedCountry, onSelectCountry }: Props = $props();
+  const { onNavigate, availableCountries, selectedCountry, onSelectCountry }: Props = $props();
 </script>
 
 <!-- Hero -->
@@ -33,8 +33,8 @@
         onchange={(e) => onSelectCountry((e.target as HTMLSelectElement).value)}
       >
         <option value="" disabled>Select your country…</option>
-        {#each availableRules as rule}
-          <option value={rule.countryCode}>{rule.country} ({rule.taxYear})</option>
+        {#each availableCountries as c}
+          <option value={c.countryCode}>{c.country}</option>
         {/each}
       </select>
       <button

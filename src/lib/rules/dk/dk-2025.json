@@ -1,0 +1,115 @@
+{
+  "country": "Denmark",
+  "countryCode": "DK",
+  "currency": "DKK",
+  "taxYear": 2025,
+  "lastUpdated": "2026-04-09",
+  "costBasis": {
+    "allowed": [
+      "fifo"
+    ],
+    "default": "fifo"
+  },
+  "cryptoToCryptoTaxable": true,
+  "holdingPeriod": {
+    "enabled": false,
+    "thresholdDays": 0,
+    "exemptFromTax": false
+  },
+  "incomeTypes": [
+    {
+      "label": "Personlig indkomst (spekulation)",
+      "description": "Speculation gains/losses from selling or trading crypto (Statsskatteloven §§ 4-5). Not subject to AM-bidrag.",
+      "events": [
+        "sell",
+        "trade"
+      ],
+      "brackets": [
+        {
+          "min": 0,
+          "max": 51600,
+          "rate": 0,
+          "label": "Personfradrag (personal allowance)"
+        },
+        {
+          "min": 51600,
+          "max": 611800,
+          "rate": 0.37,
+          "label": "Bundskat + kommuneskat"
+        },
+        {
+          "min": 611800,
+          "max": null,
+          "rate": 0.52,
+          "label": "Bundskat + kommuneskat + topskat (skatteloft)"
+        }
+      ],
+      "lossRules": {
+        "deductible": true,
+        "offsetAgainstGains": true,
+        "offsetAgainstIncome": true,
+        "carryForward": false,
+        "carryForwardYears": null,
+        "effectiveRate": 0.26
+      },
+      "contributions": []
+    },
+    {
+      "label": "Personlig indkomst (erhverv)",
+      "description": "Business income from crypto activities (mining, staking, airdrops at commercial scale). Subject to AM-bidrag.",
+      "events": [
+        "mining",
+        "staking",
+        "airdrop"
+      ],
+      "brackets": [
+        {
+          "min": 0,
+          "max": 51600,
+          "rate": 0,
+          "label": "Personfradrag (personal allowance)"
+        },
+        {
+          "min": 51600,
+          "max": 611800,
+          "rate": 0.37,
+          "label": "Bundskat + kommuneskat"
+        },
+        {
+          "min": 611800,
+          "max": null,
+          "rate": 0.52,
+          "label": "Bundskat + kommuneskat + topskat (skatteloft)"
+        }
+      ],
+      "lossRules": {
+        "deductible": false,
+        "offsetAgainstGains": false,
+        "offsetAgainstIncome": false,
+        "carryForward": false,
+        "carryForwardYears": null,
+        "effectiveRate": null
+      },
+      "contributions": [
+        {
+          "name": "AM-bidrag",
+          "rate": 0.08,
+          "appliesToGross": true
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "Crypto speculation gains are taxed as personlig indkomst under Statsskatteloven §§ 4-5.",
+    "FIFO is applied per asset (BTC and ETH are separate queues).",
+    "AM-bidrag (8%) does NOT apply to speculation gains — only to business (erhverv) income.",
+    "If mining/staking is at commercial scale (erhvervsmæssig virksomhed), AM-bidrag applies.",
+    "Losses are deductible but only at the municipal tax rate (~26%), not the full marginal rate.",
+    "Crypto-to-crypto swaps are taxable disposal events.",
+    "No holding period exemption exists in Denmark.",
+    "The personfradrag is shared across all income — if salary uses it, crypto gains are taxed from the first krone.",
+    "Topskat threshold for 2025 is 611,800 DKK (raised from 588,900 in 2024, partly due to the Grøn trepart reform agreement). Skatteloft caps combined marginal rate at ~52%.",
+    "Market value at receipt becomes cost basis for mining/staking/airdrop income.",
+    "From 2026 Denmark introduces a 4-bracket system (bundskat, mellemskat, topskat, toptopskat). The 2025 year is the last with the traditional 2-bracket structure."
+  ]
+}

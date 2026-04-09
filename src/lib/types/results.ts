@@ -53,5 +53,5 @@ export interface ILotTracker {
 }
 
 export interface ITaxCalculator {
-  process(transactions: Transaction[]): TaxSummary;
+  process(transactions: Transaction[]): Map<number, TaxSummary>;
 }

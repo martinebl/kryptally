@@ -6,17 +6,17 @@
   import { buildSimulatedSells } from '$lib/engine/simulation';
   import { getCryptoConverter } from '$lib/context';
   import type { Transaction } from '$lib/types/transaction';
-  import type { TaxRules } from '$lib/types/tax-rules';
+  import type { CountryConfig } from '$lib/types/tax-rules';
   import type { TaxSummary } from '$lib/types/results';
 
   interface Props {
     transactions: Transaction[];
     holdings: { asset: string; totalAmount: BigNumber }[];
     summary: TaxSummary;
-    rules: TaxRules;
+    countryConfig: CountryConfig;
   }
 
-  const { transactions, holdings, summary, rules }: Props = $props();
+  const { transactions, holdings, summary, countryConfig }: Props = $props();
 
   const fmt = (v: BigNumber) => v.toFormat(2);
   const gainColor = (v: BigNumber) =>
@@ -30,12 +30,14 @@
   async function runSimulation() {
     simulationLoading = true;
     const { transactions: syntheticSells, unpricedAssets } = await buildSimulatedSells(
-      holdings, converter, new Date(), rules.currency,
+      holdings, converter, new Date(), countryConfig.currency,
     );
     simulationUnpricedAssets = unpricedAssets;
-    const tracker = new LotTracker(rules.costBasis.default);
-    const calculator = new TaxCalculator(rules, tracker);
-    simulationSummary = calculator.process([...transactions, ...syntheticSells]);
+    const tracker = new LotTracker(countryConfig.defaultCostBasisMethod);
+    const calculator = new TaxCalculator(countryConfig.resolve, countryConfig.currency, tracker);
+    const summaries = calculator.process([...transactions, ...syntheticSells]);
+    const currentYear = new Date().getFullYear();
+    simulationSummary = summaries.get(currentYear) ?? [...summaries.values()].at(-1) ?? null;
     simulationLoading = false;
   }
 
@@ -127,7 +129,7 @@
         <p class="text-center font-mono text-3xl font-semibold {gainColor(simulationSummary.estimatedTax.negated())}">
           {fmt(simulationSummary.estimatedTax)}
         </p>
-        <p class="mt-1 text-center text-xs text-text">{rules.currency}</p>
+        <p class="mt-1 text-center text-xs text-text">{countryConfig.currency}</p>
         <p class="mt-2 text-center text-xs font-mono {gainColor(taxDelta.negated())}">
           {taxDelta.gt(0) ? '+' : ''}{fmt(taxDelta)} vs. actual
         </p>
