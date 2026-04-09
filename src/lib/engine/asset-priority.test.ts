@@ -29,8 +29,9 @@ describe('resolvePriorityAsset', () => {
     expect(result).toBeNull();
   });
 
-  it('returns null when no priority list is provided', () => {
-    expect(resolvePriorityAsset('BTC', 'ETH', undefined)).toBeNull();
+  it('uses the default priority list when none is provided', () => {
+    const result = resolvePriorityAsset('BTC', 'SMALLCOIN');
+    expect(result).toEqual({ priorityAsset: 'BTC', prioritySide: 'from' });
   });
 
   it('returns null for an empty priority list', () => {

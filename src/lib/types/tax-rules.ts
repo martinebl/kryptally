@@ -1,5 +1,10 @@
 export type CostBasisMethod = 'fifo' | 'lifo' | 'hifo' | 'average';
 
+export interface CostBasisConfig {
+  allowed: CostBasisMethod[];
+  default: CostBasisMethod;
+}
+
 /** Crypto-relevant event types that map to income categories */
 export type TaxableEventType =
   | 'sell'          // sell crypto for fiat
@@ -53,16 +58,11 @@ export interface TaxRules {
   taxYear: number;
   lastUpdated: string;       // ISO 8601
 
-  costBasisMethod: CostBasisMethod;
+  costBasis: CostBasisConfig;
   cryptoToCryptoTaxable: boolean;
 
   holdingPeriod: HoldingPeriodRule;
   incomeTypes: IncomeType[];
-
-  /** Ordered list of asset symbols for determining which asset's rate to use
-   *  in crypto-to-crypto trades. Lower index = higher priority.
-   *  E.g. ["USDT", "USDC", "BUSD", "BTC", "ETH", ...] */
-  assetPriorityList?: string[];
 
   /** Free-form notes for users about this jurisdiction */
   notes: string[];

@@ -114,7 +114,7 @@
       enrichProgress = progress.completed;
       enrichTotal = progress.total;
       enrichFailed = progress.failed;
-    }, taxRules.assetPriorityList);
+    });
 
     enriching = false;
     enrichFailed = result.failed;
@@ -129,8 +129,11 @@
     <!-- Transactions column -->
     <div class="lg:col-span-2">
       <h2 class="mb-2 font-heading text-2xl font-medium text-text-heading">Import transactions</h2>
-      <p class="mb-8 text-sm leading-relaxed text-text">
+      <p class="mb-4 text-sm leading-relaxed text-text">
         Upload a CSV export from your exchange. Your data stays in your browser and is never sent anywhere.
+      </p>
+      <p class="mb-8 rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-text">
+        {taxRules.country} {taxRules.taxYear} · {taxRules.currency} · {taxRules.costBasis.default.toUpperCase()}
       </p>
 
       <!-- Importer selector -->

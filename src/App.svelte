@@ -11,10 +11,27 @@
   import ResultsPage from '$lib/components/ResultsPage.svelte'
   import TestResultsPage from '$lib/components/TestResultsPage.svelte'
   import CoinDisambiguator from '$lib/components/CoinDisambiguator.svelte'
-  import dkRules from '$lib/rules/dk/dk-2024.json';
+  import { availableRules, findRules } from '$lib/rules';
   import logoUrl from '/kryptax.png'
 
-  const taxRules: TaxRules = dkRules as TaxRules;
+  const saved = localStorage.getItem('kryptax-country');
+  let taxRules = $state<TaxRules | null>(saved ? findRules(saved) ?? null : null);
+
+  const selectCountry = (countryCode: string) => {
+    const found = findRules(countryCode);
+    if (!found) return;
+
+    if (transactions.length > 0) {
+      const ok = confirm(
+        `Switching country will clear your imported transactions, as they were enriched in ${taxRules?.currency}. Continue?`
+      );
+      if (!ok) return;
+      transactions = [];
+    }
+
+    taxRules = found;
+    localStorage.setItem('kryptax-country', countryCode);
+  };
 
   let pricesByAsset = $state(loadCsvPrices());
 
@@ -78,22 +95,28 @@
           Home
         </button>
         <button
-          class="cursor-pointer border-none bg-transparent text-sm transition-colors hover:text-text-heading
+          class="border-none bg-transparent text-sm transition-colors
+            {taxRules ? 'cursor-pointer hover:text-text-heading' : 'cursor-not-allowed opacity-40'}
             {currentPage === 'import' ? 'text-accent' : 'text-text'}"
+          disabled={!taxRules}
           onclick={() => navigate('import')}
         >
           Import
         </button>
         <button
-          class="cursor-pointer border-none bg-transparent text-sm transition-colors hover:text-text-heading
+          class="border-none bg-transparent text-sm transition-colors
+            {taxRules ? 'cursor-pointer hover:text-text-heading' : 'cursor-not-allowed opacity-40'}
             {currentPage === 'results' ? 'text-accent' : 'text-text'}"
+          disabled={!taxRules}
           onclick={() => navigate('results')}
         >
           Results
         </button>
         <button
-          class="cursor-pointer border-none bg-transparent text-sm transition-colors hover:text-text-heading
+          class="border-none bg-transparent text-sm transition-colors
+            {taxRules ? 'cursor-pointer hover:text-text-heading' : 'cursor-not-allowed opacity-40'}
             {currentPage === 'test-results' ? 'text-accent' : 'text-text'}"
+          disabled={!taxRules}
           onclick={() => navigate('test-results')}
         >
           Test Results
@@ -104,11 +127,11 @@
 
   <main class="mx-auto w-full max-w-5xl px-8">
     {#if currentPage === 'home'}
-      <LandingPage onNavigate={navigate} />
-    {:else if currentPage === 'import'}
+      <LandingPage onNavigate={navigate} {availableRules} selectedCountry={taxRules} onSelectCountry={selectCountry} />
+    {:else if currentPage === 'import' && taxRules}
       <ImportPage onImport={handleImport} {pricesByAsset} {taxRules} />
-    {:else if currentPage === 'results'}
-      <ResultsPage {transactions} />
+    {:else if currentPage === 'results' && taxRules}
+      <ResultsPage {transactions} {taxRules} />
     {:else if currentPage === 'test-results'}
       <TestResultsPage />
     {/if}

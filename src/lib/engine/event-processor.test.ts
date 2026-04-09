@@ -18,7 +18,7 @@ const makeTx = (overrides: Partial<Transaction> & Pick<Transaction, 'id' | 'type
 describe('processTransaction', () => {
   describe('buy', () => {
     it('adds a lot and returns no event', () => {
-      const tracker = new LotTracker(rules.costBasisMethod);
+      const tracker = new LotTracker(rules.costBasis.default);
       const events = processTransaction(
         makeTx({ id: 'buy-1', type: 'buy', date: new Date('2024-01-15'), toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(100000) }),
         rules,
@@ -33,7 +33,7 @@ describe('processTransaction', () => {
 
   describe('sell', () => {
     it('returns a disposal event with correct gain', () => {
-      const tracker = new LotTracker(rules.costBasisMethod);
+      const tracker = new LotTracker(rules.costBasis.default);
       processTransaction(
         makeTx({ id: 'buy-1', type: 'buy', date: new Date('2024-01-15'), toAsset: 'BTC', toAmount: bn(2), fiatValue: bn(200000) }),
         rules, tracker,
@@ -52,7 +52,7 @@ describe('processTransaction', () => {
     });
 
     it('returns a disposal event with correct loss', () => {
-      const tracker = new LotTracker(rules.costBasisMethod);
+      const tracker = new LotTracker(rules.costBasis.default);
       processTransaction(
         makeTx({ id: 'buy-1', type: 'buy', date: new Date('2024-01-15'), toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(100000) }),
         rules, tracker,
@@ -69,7 +69,7 @@ describe('processTransaction', () => {
 
   describe('income (mining, staking, airdrop)', () => {
     it('returns an income event and adds a lot for mining', () => {
-      const tracker = new LotTracker(rules.costBasisMethod);
+      const tracker = new LotTracker(rules.costBasis.default);
       const events = processTransaction(
         makeTx({ id: 'mine-1', type: 'mining', date: new Date('2024-03-01'), toAsset: 'BTC', toAmount: bn(0.1), fiatValue: bn(50000) }),
         rules, tracker,
@@ -84,7 +84,7 @@ describe('processTransaction', () => {
     });
 
     it('returns income events for staking and airdrops', () => {
-      const tracker = new LotTracker(rules.costBasisMethod);
+      const tracker = new LotTracker(rules.costBasis.default);
       const stakeEvents = processTransaction(
         makeTx({ id: 'stake-1', type: 'staking', date: new Date('2024-03-01'), toAsset: 'ETH', toAmount: bn(1), fiatValue: bn(20000) }),
         rules, tracker,
@@ -103,7 +103,7 @@ describe('processTransaction', () => {
 
   describe('trade', () => {
     it('creates a disposal and adds the received asset as a lot', () => {
-      const tracker = new LotTracker(rules.costBasisMethod);
+      const tracker = new LotTracker(rules.costBasis.default);
       processTransaction(
         makeTx({ id: 'buy-1', type: 'buy', date: new Date('2024-01-15'), toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(100000) }),
         rules, tracker,
@@ -121,7 +121,7 @@ describe('processTransaction', () => {
 
     it('skips disposal when cryptoToCryptoTaxable is false', () => {
       const noTradeRules: TaxRules = { ...rules, cryptoToCryptoTaxable: false };
-      const tracker = new LotTracker(rules.costBasisMethod);
+      const tracker = new LotTracker(rules.costBasis.default);
       processTransaction(
         makeTx({ id: 'buy-1', type: 'buy', date: new Date('2024-01-15'), toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(100000) }),
         noTradeRules, tracker,
@@ -142,7 +142,7 @@ describe('processTransaction', () => {
         ...rules,
         holdingPeriod: { enabled: true, thresholdDays: 365, exemptFromTax: false },
       };
-      const tracker = new LotTracker(rules.costBasisMethod);
+      const tracker = new LotTracker(rules.costBasis.default);
       processTransaction(
         makeTx({ id: 'buy-1', type: 'buy', date: new Date('2023-01-01'), toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(100000) }),
         longTermRules, tracker,
@@ -162,7 +162,7 @@ describe('processTransaction', () => {
         ...rules,
         holdingPeriod: { enabled: true, thresholdDays: 1095, exemptFromTax: true },
       };
-      const tracker = new LotTracker(rules.costBasisMethod);
+      const tracker = new LotTracker(rules.costBasis.default);
 
       // Lot 1: bought 5 years ago (long-term, exceeds 3-year threshold)
       processTransaction(
@@ -205,7 +205,7 @@ describe('processTransaction', () => {
         ...rules,
         holdingPeriod: { enabled: true, thresholdDays: 365, exemptFromTax: false },
       };
-      const tracker = new LotTracker(rules.costBasisMethod);
+      const tracker = new LotTracker(rules.costBasis.default);
 
       // Both lots are short-term
       processTransaction(
@@ -234,7 +234,7 @@ describe('processTransaction', () => {
 
   describe('transfer', () => {
     it('is a no-op for lot tracking — inbound transfers do not add a new lot', () => {
-      const tracker = new LotTracker(rules.costBasisMethod);
+      const tracker = new LotTracker(rules.costBasis.default);
 
       // Buy TRX
       processTransaction(
@@ -260,7 +260,7 @@ describe('processTransaction', () => {
     });
 
     it('returns no tax events for transfers', () => {
-      const tracker = new LotTracker(rules.costBasisMethod);
+      const tracker = new LotTracker(rules.costBasis.default);
       const outEvents = processTransaction(
         makeTx({ id: 'send-1', type: 'transfer', date: new Date('2024-01-01'), fromAsset: 'BTC', fromAmount: bn(1) }),
         rules, tracker,
@@ -277,7 +277,7 @@ describe('processTransaction', () => {
 
   describe('fee', () => {
     it('creates a disposal event for fees paid in crypto', () => {
-      const tracker = new LotTracker(rules.costBasisMethod);
+      const tracker = new LotTracker(rules.costBasis.default);
       processTransaction(
         makeTx({ id: 'buy-1', type: 'buy', date: new Date('2024-01-15'), toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(100000) }),
         rules, tracker,

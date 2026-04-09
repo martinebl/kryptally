@@ -1,12 +1,16 @@
 <script lang="ts">
   import Card from '$lib/components/Card.svelte'
+  import type { TaxRules } from '$lib/types/tax-rules';
   import logoUrl from '/kryptax.png'
 
   interface Props {
     onNavigate: (page: string) => void;
+    availableRules: TaxRules[];
+    selectedCountry: TaxRules | null;
+    onSelectCountry: (countryCode: string) => void;
   }
 
-  const { onNavigate }: Props = $props();
+  const { onNavigate, availableRules, selectedCountry, onSelectCountry }: Props = $props();
 </script>
 
 <!-- Hero -->
@@ -21,13 +25,27 @@
     Local-first cryptocurrency tax calculator.<br />
     Your keys, your data, your taxes — computed entirely in your browser.
   </p>
-  <div class="flex justify-center gap-3">
-    <button
-      class="cursor-pointer rounded-lg bg-accent px-6 py-2.5 text-sm text-white transition-shadow hover:shadow-lg"
-      onclick={() => onNavigate('import')}
-    >
-      Get started
-    </button>
+  <div class="flex flex-col items-center gap-4">
+    <div class="flex items-center gap-3">
+      <select
+        value={selectedCountry?.countryCode ?? ''}
+        class="rounded-lg border border-border bg-bg-card px-3 py-2.5 text-sm text-text-heading focus:border-accent focus:outline-none"
+        onchange={(e) => onSelectCountry((e.target as HTMLSelectElement).value)}
+      >
+        <option value="" disabled>Select your country…</option>
+        {#each availableRules as rule}
+          <option value={rule.countryCode}>{rule.country} ({rule.taxYear})</option>
+        {/each}
+      </select>
+      <button
+        class="rounded-lg bg-accent px-6 py-2.5 text-sm text-white transition-shadow
+          {selectedCountry ? 'cursor-pointer hover:shadow-lg' : 'cursor-not-allowed opacity-50'}"
+        disabled={!selectedCountry}
+        onclick={() => onNavigate('import')}
+      >
+        Get started
+      </button>
+    </div>
     <a
       href="#features"
       class="cursor-pointer rounded-lg border border-border bg-transparent px-6 py-2.5 text-sm text-text-heading transition-colors hover:bg-bg-card"

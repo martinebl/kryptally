@@ -33,7 +33,7 @@
       holdings, converter, new Date(), rules.currency,
     );
     simulationUnpricedAssets = unpricedAssets;
-    const tracker = new LotTracker(rules.costBasisMethod);
+    const tracker = new LotTracker(rules.costBasis.default);
     const calculator = new TaxCalculator(rules, tracker);
     simulationSummary = calculator.process([...transactions, ...syntheticSells]);
     simulationLoading = false;
