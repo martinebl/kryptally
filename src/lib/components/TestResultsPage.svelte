@@ -2,6 +2,7 @@
   import BigNumber from 'bignumber.js';
   import ResultsPage from '$lib/components/ResultsPage.svelte';
   import type { Transaction } from '$lib/types/transaction';
+  import { findCountry } from '$lib/rules';
 
   const bn = (n: number) => new BigNumber(n);
 
@@ -83,4 +84,4 @@
   ];
 </script>
 
-<ResultsPage transactions={hardcodedTransactions} />
+<ResultsPage transactions={hardcodedTransactions} countryConfig={findCountry('DK')!} />

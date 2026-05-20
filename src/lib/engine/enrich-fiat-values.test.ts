@@ -11,13 +11,23 @@ const makeTx = (overrides: Partial<Transaction> & Pick<Transaction, 'id' | 'type
 });
 
 const mockConverter: ICryptoToFiatConverter = {
-  getRate: async (asset: string, _fiatCurrency: string, _datetime: Date) => {
-    const rates: Record<string, BigNumber> = {
+  getRate: async (asset: string, fiatCurrency: string, _datetime: Date) => {
+    // Crypto rates (returned as-is regardless of target currency for simplicity)
+    const cryptoRates: Record<string, BigNumber> = {
       BTC: bn('60000'),
       ETH: bn('3000'),
     };
-    const rate = rates[asset];
-    if (!rate) throw new Error(`No rate for ${asset}`);
+    if (cryptoRates[asset]) return cryptoRates[asset];
+
+    // Fiat-to-fiat rates (from → to)
+    const fiatKey = `${asset}-${fiatCurrency}`;
+    const fiatRates: Record<string, BigNumber> = {
+      'USD-DKK': bn('7'),
+      'EUR-DKK': bn('7.5'),
+      'EUR-CZK': bn('25'),
+    };
+    const rate = fiatRates[fiatKey];
+    if (!rate) throw new Error(`No rate for ${asset}/${fiatCurrency}`);
     return rate;
   },
 };
@@ -66,21 +76,40 @@ describe('enrichFiatValues', () => {
     expect(result.transactions[0].fiatValue!.isEqualTo(bn('60'))).toBe(true);
   });
 
-  it('skips transactions that already have fiatValue', async () => {
+  it('passes through transactions already in the target currency', async () => {
     const txs = [makeTx({
       id: 'tx-1',
       type: 'buy',
       date: new Date('2024-01-15'),
       toAsset: 'BTC',
       toAmount: bn('0.5'),
-      fiatCurrency: 'USD',
+      fiatCurrency: 'DKK',
       fiatValue: bn('29000'),
     })];
 
     const result = await enrichFiatValues(txs, mockConverter, 'DKK');
 
-    expect(result.transactions[0].fiatCurrency).toBe('USD');
+    expect(result.transactions[0].fiatCurrency).toBe('DKK');
     expect(result.transactions[0].fiatValue!.isEqualTo(bn('29000'))).toBe(true);
+  });
+
+  it('converts fiatValue when it is in a different currency than the target', async () => {
+    const txs = [makeTx({
+      id: 'tx-1',
+      type: 'buy',
+      date: new Date('2024-06-15'),
+      toAsset: 'BTC',
+      toAmount: bn('0.1'),
+      fiatCurrency: 'EUR',
+      fiatValue: bn('4000'),
+    })];
+
+    const result = await enrichFiatValues(txs, mockConverter, 'DKK');
+
+    // 4000 EUR * 7.5 EUR→DKK = 30000 DKK
+    expect(result.transactions[0].fiatCurrency).toBe('DKK');
+    expect(result.transactions[0].fiatValue!.isEqualTo(bn('30000'))).toBe(true);
+    expect(result.failed).toBe(0);
   });
 
   it('leaves fiatValue undefined when converter throws', async () => {
@@ -130,7 +159,7 @@ describe('enrichFiatValues', () => {
     expect(result.transactions[0].fiatValue!.isEqualTo(bn('6000'))).toBe(true);
   });
 
-  it('uses the priority list to pick toAsset when it ranks higher', async () => {
+  it('uses the default priority list to pick toAsset when it ranks higher', async () => {
     const txs = [makeTx({
       id: 'tx-1',
       type: 'trade',
@@ -141,9 +170,8 @@ describe('enrichFiatValues', () => {
       toAmount: bn('0.1'),
     })];
 
-    // BTC is on the priority list, SMALLCOIN is not — so BTC's rate × toAmount should be used
-    const result = await enrichFiatValues(txs, mockConverter, 'DKK', undefined, ['BTC', 'ETH']);
+    const result = await enrichFiatValues(txs, mockConverter, 'DKK');
 
-    expect(result.transactions[0].fiatValue!.isEqualTo(bn('6000'))).toBe(true); // 0.1 BTC × 60000
+    expect(result.transactions[0].fiatValue!.isEqualTo(bn('6000'))).toBe(true);
   });
 });

@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Transaction, IExchangeImporter } from '$lib/types';
-  import type { TaxRules } from '$lib/types/tax-rules';
+  import type { CountryConfig } from '$lib/types/tax-rules';
   import { LedgerImporter } from '$lib/importers/ledger';
   import { BinanceImporter } from '$lib/importers/binance';
   import { RevolutXImporter } from '$lib/importers/revolut-x';
@@ -13,10 +13,10 @@
   interface Props {
     onImport: (transactions: Transaction[]) => void;
     pricesByAsset: PricesByAsset;
-    taxRules: TaxRules;
+    countryConfig: CountryConfig;
   }
 
-  const { onImport, pricesByAsset, taxRules }: Props = $props();
+  const { onImport, pricesByAsset, countryConfig }: Props = $props();
 
   const importers: IExchangeImporter[] = [
     new LedgerImporter(),
@@ -110,11 +110,11 @@
     enrichTotal = preprocessed.length;
     enrichFailed = 0;
 
-    const result = await enrichFiatValues(preprocessed, converter, taxRules.currency, (progress) => {
+    const result = await enrichFiatValues(preprocessed, converter, countryConfig.currency, (progress) => {
       enrichProgress = progress.completed;
       enrichTotal = progress.total;
       enrichFailed = progress.failed;
-    }, taxRules.assetPriorityList);
+    });
 
     enriching = false;
     enrichFailed = result.failed;
@@ -129,8 +129,11 @@
     <!-- Transactions column -->
     <div class="lg:col-span-2">
       <h2 class="mb-2 font-heading text-2xl font-medium text-text-heading">Import transactions</h2>
-      <p class="mb-8 text-sm leading-relaxed text-text">
+      <p class="mb-4 text-sm leading-relaxed text-text">
         Upload a CSV export from your exchange. Your data stays in your browser and is never sent anywhere.
+      </p>
+      <p class="mb-8 rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-text">
+        {countryConfig.country} · {countryConfig.currency} · {countryConfig.defaultCostBasisMethod.toUpperCase()}
       </p>
 
       <!-- Importer selector -->

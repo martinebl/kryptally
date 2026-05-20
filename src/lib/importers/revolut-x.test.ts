@@ -143,6 +143,23 @@ describe('RevolutXImporter', () => {
     expect(txs[1].type).toBe('transfer');
   });
 
+  it('parses a Learn reward as an airdrop', () => {
+    const csv = makeCsv(
+      'FLR,Learn reward,42.123456789,,,,"3 Mar 2022, 11:20:00"',
+    );
+    const txs = importer.parse(csv);
+    expect(txs).toHaveLength(1);
+
+    const tx = txs[0];
+    expect(tx.type).toBe('airdrop');
+    expect(tx.toAsset).toBe('FLR');
+    expect(tx.toAmount).toEqual(new BigNumber('42.123456789'));
+    expect(tx.fromAsset).toBeUndefined();
+    expect(tx.fromAmount).toBeUndefined();
+    expect(tx.fiatValue).toBeUndefined();
+    expect(tx.exchange).toBe('Revolut X');
+  });
+
   it('generates unique IDs per transaction', () => {
     const csv = makeCsv(
       'BTC,Buy - Revolut X,0.01,$50000.00,$500.00,$0.00,"5 Mar 2021, 09:05"',

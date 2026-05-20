@@ -56,6 +56,7 @@ const resolveType = (rowType: string): TransactionType | 'skip' => {
   if (normalized.startsWith('sell')) return 'sell';
   if (normalized === 'send') return 'transfer';
   if (normalized === 'receive') return 'transfer';
+  if (normalized === 'learn reward') return 'airdrop';
   return 'transfer';
 };
 
@@ -100,6 +101,18 @@ const rowToTransaction = (row: RevolutXRow, index: number): Transaction | undefi
       ...(value ? { toAsset: value.currency, toAmount: value.amount } : {}),
       ...(value ? { fiatCurrency: value.currency, fiatValue: value.amount } : {}),
       ...(!zeroFee ? { feeAsset: fees!.currency, feeAmount: fees!.amount } : {}),
+      exchange: 'Revolut X',
+    };
+  }
+
+  if (type === 'airdrop') {
+    return {
+      id: `revolut-x-${date.getTime()}-${index}`,
+      date,
+      type: 'airdrop',
+      toAsset: symbol,
+      toAmount: quantity,
+      ...(value ? { fiatCurrency: value.currency, fiatValue: value.amount } : {}),
       exchange: 'Revolut X',
     };
   }
