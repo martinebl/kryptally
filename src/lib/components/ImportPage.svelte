@@ -14,9 +14,11 @@
     onImport: (transactions: Transaction[]) => void;
     pricesByAsset: PricesByAsset;
     countryConfig: CountryConfig;
+    storedTransactionCount: number;
+    onClearHistory: () => void;
   }
 
-  const { onImport, pricesByAsset, countryConfig }: Props = $props();
+  const { onImport, pricesByAsset, countryConfig, storedTransactionCount, onClearHistory }: Props = $props();
 
   const importers: IExchangeImporter[] = [
     new LedgerImporter(),
@@ -135,6 +137,21 @@
       <p class="mb-8 rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-text">
         {countryConfig.country} · {countryConfig.currency} · {countryConfig.defaultCostBasisMethod.toUpperCase()}
       </p>
+
+      <!-- Stored transaction history -->
+      {#if storedTransactionCount > 0}
+        <div class="mb-6 flex items-center justify-between rounded-lg border border-border bg-bg-card px-3 py-2">
+          <p class="text-sm text-text">
+            {storedTransactionCount} transaction{storedTransactionCount === 1 ? '' : 's'} stored in your browser
+          </p>
+          <button
+            class="cursor-pointer rounded-lg border border-border bg-transparent px-3 py-1.5 text-sm text-text transition-colors hover:border-red-300 hover:text-red-600"
+            onclick={onClearHistory}
+          >
+            Clear history
+          </button>
+        </div>
+      {/if}
 
       <!-- Importer selector -->
       <div class="mb-6">
