@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Transaction } from '$lib/types';
   import type { CountryConfig } from '$lib/types/tax-rules';
-  import { setCryptoConverter } from '$lib/context';
+  import { setCryptoConverter, setPersistPriceEntry } from '$lib/context';
   import { createCoinGeckoCryptoToFiatConverter, preflightResolve, setUserResolutions, type CoinListEntry } from '$lib/converters/coingecko';
   import { createCsvCryptoToFiatConverter, loadCsvPrices } from '$lib/converters/csv-prices';
   import { createLayeredCryptoToFiatConverter } from '$lib/converters/layered';
@@ -12,10 +12,15 @@
   import TestResultsPage from '$lib/components/TestResultsPage.svelte'
   import CoinDisambiguator from '$lib/components/CoinDisambiguator.svelte'
   import { availableCountries, findCountry } from '$lib/rules';
+  import { createLocalStorageStorage, createPriceRepository } from '$lib/storage';
   import logoUrl from '/kryptax.png'
 
-  const saved = localStorage.getItem('kryptax-country');
-  let countryConfig = $state<CountryConfig | null>(saved ? findCountry(saved) ?? null : null);
+  const storage = createLocalStorageStorage();
+
+  let countryConfig = $state<CountryConfig | null>(null);
+  storage.get('kryptax-country').then((saved) => {
+    if (saved && !countryConfig) countryConfig = findCountry(saved) ?? null;
+  });
 
   const selectCountry = (countryCode: string) => {
     const found = findCountry(countryCode);
@@ -30,10 +35,17 @@
     }
 
     countryConfig = found;
-    localStorage.setItem('kryptax-country', countryCode);
+    storage.set('kryptax-country', countryCode).catch((e) => console.error('Failed to save country selection', e));
   };
 
+  const priceRepo = createPriceRepository(storage);
+
   let pricesByAsset = $state(loadCsvPrices());
+
+  // Merge user-uploaded prices (stored) over bundled defaults
+  priceRepo.mergeInto(pricesByAsset).catch((e) => console.error('Failed to load stored prices', e));
+
+  setPersistPriceEntry(priceRepo.save);
 
   setCryptoConverter(createLayeredCryptoToFiatConverter([
     createCsvCryptoToFiatConverter(pricesByAsset, createFrankfurterFiatConverter()),

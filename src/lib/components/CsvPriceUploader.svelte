@@ -1,13 +1,16 @@
 <script lang="ts">
   import { readCsvHeaders, detectColumns, parsePriceCSV, type ColumnMapping } from '$lib/converters/price-csv-parser';
   import { resolveCoinId, GECKO_COIN_IDS } from '$lib/converters/coin-ids';
-  import type { PricesByAsset } from '$lib/converters/csv-prices';
+  import { getPersistPriceEntry } from '$lib/context';
+  import type { PricesByAsset, PriceData } from '$lib/converters/csv-prices';
 
   interface Props {
     pricesByAsset: PricesByAsset;
   }
 
   const { pricesByAsset }: Props = $props();
+
+  const persistPriceEntry = getPersistPriceEntry();
 
   const KNOWN_TICKERS = Object.keys(GECKO_COIN_IDS);
   // Map from uppercase primary coin name to ticker (e.g. "BITCOIN" → "BTC", "MATIC" from "matic-network" → "MATIC")
@@ -82,7 +85,7 @@
     if (file) handleFile(file);
   };
 
-  const handleLoad = () => {
+  const handleLoad = async () => {
     error = '';
     successMessage = '';
 
@@ -100,9 +103,16 @@
     }
 
     const coinId = resolveCoinId(asset.trim());
-    pricesByAsset.set(coinId, { prices, currency });
+    const priceData: PriceData = { prices, currency };
+    pricesByAsset.set(coinId, priceData);
     loadedEntries = [...loadedEntries.filter(e => e.coinId !== coinId), { coinId, count: prices.size, currency }];
-    successMessage = `Loaded ${prices.size} dates for ${asset.toUpperCase()} (${coinId}) in ${currency}.`;
+
+    try {
+      await persistPriceEntry(coinId, priceData);
+      successMessage = `Loaded ${prices.size} dates for ${asset.toUpperCase()} (${coinId}) in ${currency}.`;
+    } catch (e) {
+      error = `Prices loaded for this session, but saving them for future sessions failed: ${e instanceof Error ? e.message : e}`;
+    }
 
     // Reset file state so another file can be loaded
     csvText = '';
