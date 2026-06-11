@@ -1,9 +1,10 @@
 <script lang="ts">
-  import type { Transaction, IExchangeImporter } from '$lib/types';
+  import type { Transaction, IExchangeImporter, ILiveSource } from '$lib/types';
   import type { CountryConfig } from '$lib/types/tax-rules';
   import { LedgerImporter } from '$lib/importers/ledger';
   import { BinanceImporter } from '$lib/importers/binance';
   import { RevolutXImporter } from '$lib/importers/revolut-x';
+  import { BinanceLiveSource } from '$lib/sources';
   import PreprocessorReview from '$lib/components/PreprocessorReview.svelte';
   import CsvPriceUploader from '$lib/components/CsvPriceUploader.svelte';
   import { getCryptoConverter } from '$lib/context';
@@ -24,6 +25,8 @@
     new RevolutXImporter(),
   ];
 
+  const liveSources: ILiveSource[] = [new BinanceLiveSource()];
+
   let selectedImporter = $state<IExchangeImporter>(importers[0]);
   let enabledPreprocessors = $state<Set<string>>(new Set());
   let files: FileList | null = $state(null);
@@ -37,6 +40,26 @@
   let enrichProgress = $state(0);
   let enrichTotal = $state(0);
   let enrichFailed = $state(0);
+
+  // Live source UI state
+  let liveSourceOpen = $state<string | null>(null);
+  let liveCredsKey = $state('');
+  let liveCredsSecret = $state('');
+  let liveCredsSaved = $state<Record<string, boolean>>({});
+  let liveSymbols = $state('');
+  let liveFromDate = $state('');
+  let liveToDate = $state('');
+  let liveFetching = $state(false);
+  let liveError = $state('');
+
+  $effect(() => {
+    liveSources.forEach(async (s) => {
+      if (s.isAvailable() && liveCredsSaved[s.exchangeName] === undefined) {
+        const has = await s.hasCredentials();
+        liveCredsSaved = { ...liveCredsSaved, [s.exchangeName]: has };
+      }
+    });
+  });
 
   const selectImporter = (name: string) => {
     const found = importers.find((i) => i.exchangeName === name);
@@ -99,6 +122,58 @@
 
   const converter = getCryptoConverter();
 
+  const openLiveSource = (name: string) => {
+    liveSourceOpen = liveSourceOpen === name ? null : name;
+    liveCredsKey = '';
+    liveCredsSecret = '';
+    liveError = '';
+  };
+
+  const handleSaveCredentials = async (source: ILiveSource) => {
+    try {
+      await source.saveCredentials(liveCredsKey.trim(), liveCredsSecret.trim());
+      liveCredsSaved = { ...liveCredsSaved, [source.exchangeName]: true };
+      liveCredsKey = '';
+      liveCredsSecret = '';
+      liveError = '';
+    } catch (e) {
+      liveError = e instanceof Error ? e.message : String(e);
+    }
+  };
+
+  const handleClearCredentials = async (source: ILiveSource) => {
+    try {
+      await source.clearCredentials();
+      liveCredsSaved = { ...liveCredsSaved, [source.exchangeName]: false };
+    } catch (e) {
+      liveError = e instanceof Error ? e.message : String(e);
+    }
+  };
+
+  const handleLiveFetch = async (source: ILiveSource) => {
+    liveFetching = true;
+    liveError = '';
+    resetReview();
+    try {
+      const symbols = liveSymbols
+        .split(',')
+        .map((s) => s.trim().toUpperCase())
+        .filter((s) => s.length > 0);
+      const fetched = await source.fetch({
+        symbols,
+        from: liveFromDate ? new Date(liveFromDate) : undefined,
+        to: liveToDate ? new Date(`${liveToDate}T23:59:59Z`) : undefined,
+      });
+      rawTransactions = fetched;
+      liveFetching = false;
+      enabledPreprocessors = new Set();
+      await handleConfirm(new Map());
+    } catch (e) {
+      liveFetching = false;
+      liveError = e instanceof Error ? e.message : String(e);
+    }
+  };
+
   const handleConfirm = async (selectedTxIds: Map<string, Set<string>>) => {
     const preprocessed = selectedImporter.preprocessors
       .filter((p) => enabledPreprocessors.has(p.id))
@@ -135,6 +210,118 @@
       <p class="mb-8 rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-text">
         {countryConfig.country} · {countryConfig.currency} · {countryConfig.defaultCostBasisMethod.toUpperCase()}
       </p>
+
+      <!-- Live sources -->
+      <div class="mb-8">
+        <h3 class="mb-2 text-sm font-medium text-text-heading">Connect an exchange directly</h3>
+        <p class="mb-3 text-xs text-text">
+          Pull transactions straight from the exchange API instead of uploading a CSV. Requires the
+          desktop app so credentials can be stored in your OS keychain and requests can bypass browser CORS.
+        </p>
+        {#each liveSources as source}
+          {@const available = source.isAvailable()}
+          {@const open = liveSourceOpen === source.exchangeName}
+          {@const saved = liveCredsSaved[source.exchangeName] ?? false}
+          <div class="mb-3 rounded-lg border border-border bg-bg-card p-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-sm font-medium text-text-heading">{source.exchangeName}</p>
+                {#if !available}
+                  <p class="text-xs text-text">Available in the desktop app — see the project README for the download link.</p>
+                {:else if saved}
+                  <p class="text-xs text-text">Credentials saved in OS keychain.</p>
+                {:else}
+                  <p class="text-xs text-text">No credentials saved yet.</p>
+                {/if}
+              </div>
+              <button
+                class="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-text-heading transition-colors hover:bg-bg-card disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!available}
+                onclick={() => openLiveSource(source.exchangeName)}
+              >
+                {open ? 'Close' : saved ? 'Manage' : 'Connect'}
+              </button>
+            </div>
+
+            {#if available && open}
+              <div class="mt-4 space-y-3 border-t border-border pt-4">
+                {#if !saved}
+                  <div>
+                    <label for="live-key-{source.exchangeName}" class="mb-1 block text-xs font-medium text-text-heading">API key (read-only)</label>
+                    <input
+                      id="live-key-{source.exchangeName}"
+                      type="password"
+                      bind:value={liveCredsKey}
+                      class="w-full rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-text-heading focus:border-accent focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label for="live-secret-{source.exchangeName}" class="mb-1 block text-xs font-medium text-text-heading">API secret</label>
+                    <input
+                      id="live-secret-{source.exchangeName}"
+                      type="password"
+                      bind:value={liveCredsSecret}
+                      class="w-full rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-text-heading focus:border-accent focus:outline-none"
+                    />
+                  </div>
+                  <button
+                    class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90 disabled:opacity-50"
+                    disabled={!liveCredsKey || !liveCredsSecret}
+                    onclick={() => handleSaveCredentials(source)}
+                  >
+                    Save credentials
+                  </button>
+                {:else}
+                  <div>
+                    <label for="live-symbols-{source.exchangeName}" class="mb-1 block text-xs font-medium text-text-heading">Pair symbols (comma-separated)</label>
+                    <input
+                      id="live-symbols-{source.exchangeName}"
+                      type="text"
+                      placeholder="BTCUSDT, ETHUSDT, SOLUSDT"
+                      bind:value={liveSymbols}
+                      class="w-full rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-text-heading focus:border-accent focus:outline-none"
+                    />
+                    <p class="mt-1 text-xs text-text">Deposits and withdrawals are fetched automatically.</p>
+                  </div>
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label for="live-from-{source.exchangeName}" class="mb-1 block text-xs font-medium text-text-heading">From (optional)</label>
+                      <input id="live-from-{source.exchangeName}" type="date" bind:value={liveFromDate}
+                        class="w-full rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-text-heading focus:border-accent focus:outline-none" />
+                    </div>
+                    <div>
+                      <label for="live-to-{source.exchangeName}" class="mb-1 block text-xs font-medium text-text-heading">To (optional)</label>
+                      <input id="live-to-{source.exchangeName}" type="date" bind:value={liveToDate}
+                        class="w-full rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-text-heading focus:border-accent focus:outline-none" />
+                    </div>
+                  </div>
+                  <div class="flex gap-2">
+                    <button
+                      class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90 disabled:opacity-50"
+                      disabled={liveFetching}
+                      onclick={() => handleLiveFetch(source)}
+                    >
+                      {liveFetching ? 'Fetching…' : 'Fetch transactions'}
+                    </button>
+                    <button
+                      class="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-heading transition-colors hover:bg-bg-card"
+                      onclick={() => handleClearCredentials(source)}
+                    >
+                      Remove credentials
+                    </button>
+                  </div>
+                {/if}
+
+                {#if liveError}
+                  <div class="rounded-lg border border-red-300 bg-red-50 p-3">
+                    <p class="text-xs text-red-700">{liveError}</p>
+                  </div>
+                {/if}
+              </div>
+            {/if}
+          </div>
+        {/each}
+      </div>
 
       <!-- Importer selector -->
       <div class="mb-6">
