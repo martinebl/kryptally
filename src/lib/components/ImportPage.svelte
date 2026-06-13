@@ -4,7 +4,7 @@
   import { LedgerImporter } from '$lib/importers/ledger';
   import { BinanceImporter } from '$lib/importers/binance';
   import { RevolutXImporter } from '$lib/importers/revolut-x';
-  import { BinanceLiveSource } from '$lib/sources';
+  import { BinanceLiveSource, RevolutXLiveSource } from '$lib/sources';
   import PreprocessorReview from '$lib/components/PreprocessorReview.svelte';
   import CsvPriceUploader from '$lib/components/CsvPriceUploader.svelte';
   import { getCryptoConverter } from '$lib/context';
@@ -27,7 +27,7 @@
     new RevolutXImporter(),
   ];
 
-  const liveSources: ILiveSource[] = [new BinanceLiveSource()];
+  const liveSources: ILiveSource[] = [new BinanceLiveSource(), new RevolutXLiveSource()];
 
   let selectedImporter = $state<IExchangeImporter>(importers[0]);
   let enabledPreprocessors = $state<Set<string>>(new Set());
@@ -52,7 +52,9 @@
   let liveFromDate = $state('');
   let liveToDate = $state('');
   let liveFetching = $state(false);
+  let liveDiscovering = $state(false);
   let liveError = $state('');
+  let liveInfo = $state('');
 
   $effect(() => {
     liveSources.forEach(async (s) => {
@@ -129,6 +131,25 @@
     liveCredsKey = '';
     liveCredsSecret = '';
     liveError = '';
+
+    // Auto-suggest pair symbols for a connected source that supports discovery.
+    const source = liveSources.find((s) => s.exchangeName === name);
+    if (liveSourceOpen === name && source && liveCredsSaved[name] && source.discoverSymbols) {
+      discoverSymbols(source);
+    }
+  };
+
+  const discoverSymbols = async (source: ILiveSource) => {
+    if (!source.discoverSymbols) return;
+    liveDiscovering = true;
+    liveError = '';
+    try {
+      liveSymbols = (await source.discoverSymbols()).join(', ');
+    } catch (e) {
+      liveError = e instanceof Error ? e.message : String(e);
+    } finally {
+      liveDiscovering = false;
+    }
   };
 
   const handleSaveCredentials = async (source: ILiveSource) => {
@@ -138,6 +159,7 @@
       liveCredsKey = '';
       liveCredsSecret = '';
       liveError = '';
+      if (source.discoverSymbols) discoverSymbols(source);
     } catch (e) {
       liveError = e instanceof Error ? e.message : String(e);
     }
@@ -155,12 +177,18 @@
   const handleLiveFetch = async (source: ILiveSource) => {
     liveFetching = true;
     liveError = '';
+    liveInfo = '';
     resetReview();
     try {
       const symbols = liveSymbols
         .split(',')
         .map((s) => s.trim().toUpperCase())
         .filter((s) => s.length > 0);
+      if ((source.requiresSymbols ?? true) && symbols.length === 0) {
+        liveFetching = false;
+        liveError = 'No pair symbols to fetch. Enter at least one pair (e.g. BTC-USD) or use Re-detect pairs.';
+        return;
+      }
       const fetched = await source.fetch({
         symbols,
         from: liveFromDate ? new Date(liveFromDate) : undefined,
@@ -168,6 +196,12 @@
       });
       rawTransactions = fetched;
       liveFetching = false;
+      if (fetched.length === 0) {
+        liveInfo = (source.requiresSymbols ?? true)
+          ? `No transactions found for: ${symbols.join(', ')}. Check the pair symbols and date range.`
+          : `No ${source.exchangeName} exchange activity found. If you bought or sold via the main app rather than the exchange order book, that isn't exposed by the API — export a CSV and import it below instead.`;
+        return;
+      }
       enabledPreprocessors = new Set();
       await handleConfirm(new Map());
     } catch (e) {
@@ -249,7 +283,7 @@
               <div class="mt-4 space-y-3 border-t border-border pt-4">
                 {#if !saved}
                   <div>
-                    <label for="live-key-{source.exchangeName}" class="mb-1 block text-xs font-medium text-text-heading">API key (read-only)</label>
+                    <label for="live-key-{source.exchangeName}" class="mb-1 block text-xs font-medium text-text-heading">{source.keyLabel ?? 'API key'}</label>
                     <input
                       id="live-key-{source.exchangeName}"
                       type="password"
@@ -258,13 +292,13 @@
                     />
                   </div>
                   <div>
-                    <label for="live-secret-{source.exchangeName}" class="mb-1 block text-xs font-medium text-text-heading">API secret</label>
-                    <input
+                    <label for="live-secret-{source.exchangeName}" class="mb-1 block text-xs font-medium text-text-heading">{source.secretLabel ?? 'API secret'}</label>
+                    <textarea
                       id="live-secret-{source.exchangeName}"
-                      type="password"
+                      rows="3"
                       bind:value={liveCredsSecret}
-                      class="w-full rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-text-heading focus:border-accent focus:outline-none"
-                    />
+                      class="w-full rounded-lg border border-border bg-bg-card px-3 py-2 font-mono text-xs text-text-heading focus:border-accent focus:outline-none"
+                    ></textarea>
                   </div>
                   <button
                     class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90 disabled:opacity-50"
@@ -274,27 +308,57 @@
                     Save credentials
                   </button>
                 {:else}
-                  <div>
-                    <label for="live-symbols-{source.exchangeName}" class="mb-1 block text-xs font-medium text-text-heading">Pair symbols (comma-separated)</label>
-                    <input
-                      id="live-symbols-{source.exchangeName}"
-                      type="text"
-                      placeholder="BTCUSDT, ETHUSDT, SOLUSDT"
-                      bind:value={liveSymbols}
-                      class="w-full rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-text-heading focus:border-accent focus:outline-none"
-                    />
-                    <p class="mt-1 text-xs text-text">Deposits and withdrawals are fetched automatically.</p>
-                  </div>
-                  <div class="grid grid-cols-2 gap-3">
+                  {#if source.requiresSymbols ?? true}
                     <div>
-                      <label for="live-from-{source.exchangeName}" class="mb-1 block text-xs font-medium text-text-heading">From (optional)</label>
-                      <input id="live-from-{source.exchangeName}" type="date" bind:value={liveFromDate}
-                        class="w-full rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-text-heading focus:border-accent focus:outline-none" />
+                      <div class="mb-1 flex items-center justify-between">
+                        <label for="live-symbols-{source.exchangeName}" class="block text-xs font-medium text-text-heading">Pair symbols (comma-separated)</label>
+                        {#if source.discoverSymbols}
+                          <button
+                            type="button"
+                            class="text-xs font-medium text-accent hover:underline disabled:opacity-50"
+                            disabled={liveDiscovering}
+                            onclick={() => discoverSymbols(source)}
+                          >
+                            {liveDiscovering ? 'Detecting…' : 'Re-detect pairs'}
+                          </button>
+                        {/if}
+                      </div>
+                      <input
+                        id="live-symbols-{source.exchangeName}"
+                        type="text"
+                        placeholder={source.symbolPlaceholder ?? ''}
+                        bind:value={liveSymbols}
+                        class="w-full rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-text-heading focus:border-accent focus:outline-none"
+                      />
                     </div>
-                    <div>
-                      <label for="live-to-{source.exchangeName}" class="mb-1 block text-xs font-medium text-text-heading">To (optional)</label>
-                      <input id="live-to-{source.exchangeName}" type="date" bind:value={liveToDate}
-                        class="w-full rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-text-heading focus:border-accent focus:outline-none" />
+                  {/if}
+                  {#if source.symbolsNote}
+                    <p class="text-xs text-text">{source.symbolsNote}</p>
+                  {/if}
+                  <div>
+                    <div class="mb-1 flex items-center justify-between">
+                      <span class="text-xs font-medium text-text-heading">Date range (optional)</span>
+                      {#if liveFromDate || liveToDate}
+                        <button
+                          type="button"
+                          class="text-xs font-medium text-accent hover:underline"
+                          onclick={() => { liveFromDate = ''; liveToDate = ''; }}
+                        >
+                          Clear dates
+                        </button>
+                      {/if}
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                      <div>
+                        <label for="live-from-{source.exchangeName}" class="mb-1 block text-xs text-text">From</label>
+                        <input id="live-from-{source.exchangeName}" type="date" bind:value={liveFromDate}
+                          class="w-full rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-text-heading focus:border-accent focus:outline-none" />
+                      </div>
+                      <div>
+                        <label for="live-to-{source.exchangeName}" class="mb-1 block text-xs text-text">To</label>
+                        <input id="live-to-{source.exchangeName}" type="date" bind:value={liveToDate}
+                          class="w-full rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-text-heading focus:border-accent focus:outline-none" />
+                      </div>
                     </div>
                   </div>
                   <div class="flex gap-2">
@@ -317,6 +381,11 @@
                 {#if liveError}
                   <div class="rounded-lg border border-red-300 bg-red-50 p-3">
                     <p class="text-xs text-red-700">{liveError}</p>
+                  </div>
+                {/if}
+                {#if liveInfo}
+                  <div class="rounded-lg border border-amber-300 bg-amber-50 p-3">
+                    <p class="text-xs text-amber-800">{liveInfo}</p>
                   </div>
                 {/if}
               </div>

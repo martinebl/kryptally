@@ -1,4 +1,5 @@
 mod binance;
+mod revolut_x;
 mod secrets;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -22,6 +23,13 @@ pub fn run() {
       binance::binance_save_credentials,
       binance::binance_clear_credentials,
       binance::binance_has_credentials,
+      revolut_x::revolut_x_fetch_trades,
+      revolut_x::revolut_x_fetch_orders,
+      revolut_x::revolut_x_fetch_balances,
+      revolut_x::revolut_x_fetch_pairs,
+      revolut_x::revolut_x_save_credentials,
+      revolut_x::revolut_x_clear_credentials,
+      revolut_x::revolut_x_has_credentials,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

@@ -7,6 +7,7 @@ use crate::secrets;
 
 const BASE_URL: &str = "https://api.binance.com";
 const RECV_WINDOW_MS: u64 = 10_000;
+const SERVICE: &str = "cryptax-binance";
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -33,7 +34,7 @@ fn build_query(params: &[(&str, String)]) -> String {
 }
 
 async fn signed_get(path: &str, mut params: Vec<(&str, String)>) -> Result<Value, String> {
-    let creds = secrets::load()?;
+    let creds = secrets::load(SERVICE)?;
     let timestamp = now_ms()?;
 
     params.push(("recvWindow", RECV_WINDOW_MS.to_string()));
@@ -117,15 +118,15 @@ pub async fn binance_fetch_withdrawals(
 
 #[tauri::command]
 pub fn binance_save_credentials(api_key: String, secret: String) -> Result<(), String> {
-    secrets::save(&secrets::BinanceCredentials { api_key, secret })
+    secrets::save(SERVICE, &secrets::Credentials { api_key, secret })
 }
 
 #[tauri::command]
 pub fn binance_clear_credentials() -> Result<(), String> {
-    secrets::clear()
+    secrets::clear(SERVICE)
 }
 
 #[tauri::command]
 pub fn binance_has_credentials() -> bool {
-    secrets::has()
+    secrets::has(SERVICE)
 }

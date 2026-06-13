@@ -115,6 +115,10 @@ const withinWindow = (date: Date, from?: Date, to?: Date): boolean =>
 export class BinanceLiveSource implements ILiveSource {
   readonly exchangeName = 'Binance';
   readonly preprocessors: IImportPreprocessor[] = [];
+  readonly symbolPlaceholder = 'BTCUSDT, ETHUSDT, SOLUSDT';
+  readonly symbolsNote = 'Deposits and withdrawals are fetched automatically.';
+  readonly keyLabel = 'API key (read-only)';
+  readonly secretLabel = 'API secret';
 
   isAvailable(): boolean {
     return isTauri();

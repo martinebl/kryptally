@@ -24,6 +24,25 @@ export interface ILiveSource {
   /** Preprocessors that are relevant for this source's output. */
   readonly preprocessors: IImportPreprocessor[];
 
+  /**
+   * Whether the user must supply pair symbols to fetch. Defaults to true.
+   * Sources that pull account-wide (e.g. Revolut X orders) set this false so
+   * the UI hides the symbols input.
+   */
+  readonly requiresSymbols?: boolean;
+
+  /** Placeholder for the pair-symbols input (exchanges format symbols differently). */
+  readonly symbolPlaceholder?: string;
+
+  /** Help text shown under the symbols input (e.g. what is/isn't fetched). */
+  readonly symbolsNote?: string;
+
+  /** Label for the API key credential field. */
+  readonly keyLabel?: string;
+
+  /** Label for the secret credential field (e.g. "API secret" or "Private key"). */
+  readonly secretLabel?: string;
+
   /** True when the current runtime supports this source (e.g. desktop app only). */
   isAvailable(): boolean;
 
@@ -35,6 +54,12 @@ export interface ILiveSource {
 
   /** Remove any persisted credentials. */
   clearCredentials(): Promise<void>;
+
+  /**
+   * Suggest pair symbols to fetch, derived from the account (e.g. held assets).
+   * Optional: sources that can't or needn't auto-discover omit this.
+   */
+  discoverSymbols?(): Promise<string[]>;
 
   /** Fetch and map remote transactions for the given window. */
   fetch(params: LiveSourceFetchParams): Promise<Transaction[]>;

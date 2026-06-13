@@ -1,44 +1,46 @@
 use keyring::Entry;
 
-const SERVICE: &str = "cryptax-binance";
 const ACCOUNT_KEY: &str = "api-key";
 const ACCOUNT_SECRET: &str = "api-secret";
 
-pub struct BinanceCredentials {
+/// API credentials for an exchange. For HMAC-style exchanges (Binance) `secret`
+/// is the shared secret; for Ed25519-style exchanges (Revolut X) it holds the
+/// PEM-encoded private key.
+pub struct Credentials {
     pub api_key: String,
     pub secret: String,
 }
 
-fn entry(account: &str) -> Result<Entry, String> {
-    Entry::new(SERVICE, account).map_err(|e| format!("keyring entry: {e}"))
+fn entry(service: &str, account: &str) -> Result<Entry, String> {
+    Entry::new(service, account).map_err(|e| format!("keyring entry: {e}"))
 }
 
-pub fn save(creds: &BinanceCredentials) -> Result<(), String> {
-    entry(ACCOUNT_KEY)?
+pub fn save(service: &str, creds: &Credentials) -> Result<(), String> {
+    entry(service, ACCOUNT_KEY)?
         .set_password(&creds.api_key)
         .map_err(|e| format!("save api key: {e}"))?;
-    entry(ACCOUNT_SECRET)?
+    entry(service, ACCOUNT_SECRET)?
         .set_password(&creds.secret)
         .map_err(|e| format!("save secret: {e}"))?;
     Ok(())
 }
 
-pub fn load() -> Result<BinanceCredentials, String> {
-    let api_key = entry(ACCOUNT_KEY)?
+pub fn load(service: &str) -> Result<Credentials, String> {
+    let api_key = entry(service, ACCOUNT_KEY)?
         .get_password()
         .map_err(|e| format!("load api key: {e}"))?;
-    let secret = entry(ACCOUNT_SECRET)?
+    let secret = entry(service, ACCOUNT_SECRET)?
         .get_password()
         .map_err(|e| format!("load secret: {e}"))?;
-    Ok(BinanceCredentials { api_key, secret })
+    Ok(Credentials { api_key, secret })
 }
 
-pub fn clear() -> Result<(), String> {
-    let _ = entry(ACCOUNT_KEY)?.delete_credential();
-    let _ = entry(ACCOUNT_SECRET)?.delete_credential();
+pub fn clear(service: &str) -> Result<(), String> {
+    let _ = entry(service, ACCOUNT_KEY)?.delete_credential();
+    let _ = entry(service, ACCOUNT_SECRET)?.delete_credential();
     Ok(())
 }
 
-pub fn has() -> bool {
-    load().is_ok()
+pub fn has(service: &str) -> bool {
+    load(service).is_ok()
 }
