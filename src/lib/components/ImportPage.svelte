@@ -1,16 +1,17 @@
 <script lang="ts">
-  import type { Transaction, IExchangeImporter, ILiveSource } from '$lib/types';
+  import type { Transaction } from '$lib/types';
   import type { CountryConfig } from '$lib/types/tax-rules';
   import { LedgerImporter } from '$lib/importers/ledger';
   import { BinanceImporter } from '$lib/importers/binance';
   import { RevolutXImporter } from '$lib/importers/revolut-x';
   import { BinanceLiveSource, RevolutXLiveSource } from '$lib/sources';
-  import PreprocessorReview from '$lib/components/PreprocessorReview.svelte';
+  import CsvImporter from '$lib/components/CsvImporter.svelte';
+  import LiveImporter from '$lib/components/LiveImporter.svelte';
   import CsvPriceUploader from '$lib/components/CsvPriceUploader.svelte';
-  import DateField from '$lib/components/DateField.svelte';
   import { getCryptoConverter } from '$lib/context';
   import { enrichFiatValues } from '$lib/engine/enrich-fiat-values';
   import type { PricesByAsset } from '$lib/converters/csv-prices';
+  import { isTauri } from '$lib/runtime';
 
   interface Props {
     onImport: (transactions: Transaction[]) => void;
@@ -22,249 +23,33 @@
 
   const { onImport, pricesByAsset, countryConfig, storedTransactionCount, onClearHistory }: Props = $props();
 
-  const importers: IExchangeImporter[] = [
+  const importers = [
     new LedgerImporter(),
     new BinanceImporter(),
     new RevolutXImporter(),
   ];
 
-  const liveSources: ILiveSource[] = [new BinanceLiveSource(), new RevolutXLiveSource()];
+  const liveSources = [new BinanceLiveSource(), new RevolutXLiveSource()];
 
-  let selectedImporter = $state<IExchangeImporter>(importers[0]);
-  let enabledPreprocessors = $state<Set<string>>(new Set());
-  let files: FileList | null = $state(null);
-  let dragOver = $state(false);
-  let error = $state('');
-  let parsedCount = $state(0);
+  let activeTab = $state<'csv' | 'live'>('csv');
   let importSourceName = $state('');
-
-  let rawTransactions = $state<Transaction[]>([]);
-  let reviewing = $state(false);
+  let parsedCount = $state(0);
   let enriching = $state(false);
   let enrichProgress = $state(0);
   let enrichTotal = $state(0);
   let enrichFailed = $state(0);
 
-  // Live source UI state
-  let liveSourceOpen = $state<string | null>(null);
-  let liveCredsKey = $state('');
-  let liveCredsSecret = $state('');
-  let liveCredsSaved = $state<Record<string, boolean>>({});
-  const today = new Date().toISOString().slice(0, 10);
-  let liveSymbols = $state('');
-  let liveFromDate = $state('');
-  let liveToDate = $state(today);
-  let liveFetching = $state(false);
-  let liveFetchProgress = $state(0);
-  let liveFetchTotal = $state(0);
-  let liveDiscovering = $state(false);
-  let liveError = $state('');
-  let liveInfo = $state('');
-  let liveRateLimitSeconds = $state(0);
-  let rateLimitTimer: ReturnType<typeof setInterval> | undefined;
-
-  const stopRateLimitCountdown = () => {
-    if (rateLimitTimer) clearInterval(rateLimitTimer);
-    rateLimitTimer = undefined;
-    liveRateLimitSeconds = 0;
-  };
-
-  // The backend hit a rate limit and is waiting `waitMs` before retrying; count
-  // down so the wait looks intentional rather than frozen.
-  const startRateLimitCountdown = (waitMs: number) => {
-    stopRateLimitCountdown();
-    liveRateLimitSeconds = Math.max(1, Math.ceil(waitMs / 1000));
-    rateLimitTimer = setInterval(() => {
-      liveRateLimitSeconds -= 1;
-      if (liveRateLimitSeconds <= 0) stopRateLimitCountdown();
-    }, 1000);
-  };
-
-  $effect(() => {
-    liveSources.forEach(async (s) => {
-      if (s.isAvailable() && liveCredsSaved[s.exchangeName] === undefined) {
-        const has = await s.hasCredentials();
-        liveCredsSaved = { ...liveCredsSaved, [s.exchangeName]: has };
-      }
-    });
-  });
-
-  const selectImporter = (name: string) => {
-    const found = importers.find((i) => i.exchangeName === name);
-    if (found) {
-      selectedImporter = found;
-      enabledPreprocessors = new Set();
-      resetReview();
-    }
-  };
-
-  const togglePreprocessor = (id: string) => {
-    const next = new Set(enabledPreprocessors);
-    next.has(id) ? next.delete(id) : next.add(id);
-    enabledPreprocessors = next;
-  };
-
-  const resetReview = () => {
-    rawTransactions = [];
-    reviewing = false;
-  };
-
-  const handleDrop = (e: DragEvent) => {
-    e.preventDefault();
-    dragOver = false;
-    files = e.dataTransfer?.files ?? null;
-    error = '';
-    resetReview();
-  };
-
-  const handleFileInput = (e: Event) => {
-    const input = e.target as HTMLInputElement;
-    files = input.files;
-    error = '';
-    resetReview();
-  };
-
-  const hasEligibleTransactions = (): boolean =>
-    selectedImporter.preprocessors
-      .filter((p) => enabledPreprocessors.has(p.id))
-      .some((p) => rawTransactions.some((tx) => p.isEligible(tx)));
-
-  const handleParse = async () => {
-    if (!files || files.length === 0) return;
-
-    try {
-      const text = await files[0].text();
-      rawTransactions = selectedImporter.parse(text);
-      importSourceName = selectedImporter.exchangeName;
-      error = '';
-
-      if (hasEligibleTransactions()) {
-        reviewing = true;
-      } else {
-        handleConfirm(new Map());
-      }
-    } catch (e) {
-      error = e instanceof Error ? e.message : 'Failed to parse CSV';
-      parsedCount = 0;
-    }
-  };
-
   const converter = getCryptoConverter();
 
-  const openLiveSource = (name: string) => {
-    liveSourceOpen = liveSourceOpen === name ? null : name;
-    liveCredsKey = '';
-    liveCredsSecret = '';
-    liveError = '';
-
-    // Auto-suggest pair symbols for a connected source that supports discovery.
-    const source = liveSources.find((s) => s.exchangeName === name);
-    if (liveSourceOpen === name && source && liveCredsSaved[name] && source.discoverSymbols) {
-      discoverSymbols(source);
-    }
-  };
-
-  const discoverSymbols = async (source: ILiveSource) => {
-    if (!source.discoverSymbols) return;
-    liveDiscovering = true;
-    liveError = '';
-    try {
-      liveSymbols = (await source.discoverSymbols()).join(', ');
-    } catch (e) {
-      liveError = e instanceof Error ? e.message : String(e);
-    } finally {
-      liveDiscovering = false;
-    }
-  };
-
-  const handleSaveCredentials = async (source: ILiveSource) => {
-    try {
-      await source.saveCredentials(liveCredsKey.trim(), liveCredsSecret.trim());
-      liveCredsSaved = { ...liveCredsSaved, [source.exchangeName]: true };
-      liveCredsKey = '';
-      liveCredsSecret = '';
-      liveError = '';
-      if (source.discoverSymbols) discoverSymbols(source);
-    } catch (e) {
-      liveError = e instanceof Error ? e.message : String(e);
-    }
-  };
-
-  const handleClearCredentials = async (source: ILiveSource) => {
-    if (!confirm(`Forget the saved ${source.exchangeName} API key? You'll need to re-enter it to import again.`)) return;
-    try {
-      await source.clearCredentials();
-      liveCredsSaved = { ...liveCredsSaved, [source.exchangeName]: false };
-    } catch (e) {
-      liveError = e instanceof Error ? e.message : String(e);
-    }
-  };
-
-  const handleLiveFetch = async (source: ILiveSource) => {
-    liveFetching = true;
-    importSourceName = source.exchangeName;
-    liveError = '';
-    liveInfo = '';
-    liveFetchProgress = 0;
-    liveFetchTotal = 0;
-    resetReview();
-    try {
-      const symbols = liveSymbols
-        .split(',')
-        .map((s) => s.trim().toUpperCase())
-        .filter((s) => s.length > 0);
-      if ((source.requiresSymbols ?? true) && symbols.length === 0) {
-        liveFetching = false;
-        liveError = 'No pair symbols to fetch. Enter at least one pair (e.g. BTC-USD) or use Re-detect pairs.';
-        return;
-      }
-      if (source.requiresDateRange && (!liveFromDate || !liveToDate)) {
-        liveFetching = false;
-        liveError = `Select a start and end date — ${source.exchangeName} only serves bounded ranges.`;
-        return;
-      }
-      // Clamp the end of the window to today (the API's maximum).
-      if (liveToDate > today) liveToDate = today;
-      const fetched = await source.fetch({
-        symbols,
-        from: liveFromDate ? new Date(liveFromDate) : undefined,
-        to: liveToDate ? new Date(`${liveToDate}T23:59:59Z`) : undefined,
-        onProgress: ({ completed, total }) => {
-          liveFetchProgress = completed;
-          liveFetchTotal = total;
-        },
-        onRateLimit: ({ waitMs }) => startRateLimitCountdown(waitMs),
-      });
-      rawTransactions = fetched;
-      stopRateLimitCountdown();
-      liveFetching = false;
-      if (fetched.length === 0) {
-        liveInfo = (source.requiresSymbols ?? true)
-          ? `No transactions found for: ${symbols.join(', ')}. Check the pair symbols and date range.`
-          : `No ${source.exchangeName} exchange activity found. If you bought or sold via the main app rather than the exchange order book, that isn't exposed by the API — export a CSV and import it below instead.`;
-        return;
-      }
-      enabledPreprocessors = new Set();
-      await handleConfirm(new Map());
-    } catch (e) {
-      stopRateLimitCountdown();
-      liveFetching = false;
-      liveError = e instanceof Error ? e.message : String(e);
-    }
-  };
-
-  const handleConfirm = async (selectedTxIds: Map<string, Set<string>>) => {
-    const preprocessed = selectedImporter.preprocessors
-      .filter((p) => enabledPreprocessors.has(p.id))
-      .reduce((txs, p) => p.apply(txs, selectedTxIds.get(p.id)), rawTransactions);
-
-    reviewing = false;
+  const handleEnrich = async (transactions: Transaction[], sourceName: string) => {
+    importSourceName = sourceName;
     enriching = true;
     enrichProgress = 0;
-    enrichTotal = preprocessed.length;
+    enrichTotal = transactions.length;
     enrichFailed = 0;
+    parsedCount = 0;
 
-    const result = await enrichFiatValues(preprocessed, converter, countryConfig.currency, (progress) => {
+    const result = await enrichFiatValues(transactions, converter, countryConfig.currency, (progress) => {
       enrichProgress = progress.completed;
       enrichTotal = progress.total;
       enrichFailed = progress.failed;
@@ -290,173 +75,6 @@
         {countryConfig.country} · {countryConfig.currency} · {countryConfig.defaultCostBasisMethod.toUpperCase()}
       </p>
 
-      <!-- Live sources -->
-      <div class="mb-8">
-        <h3 class="mb-2 text-sm font-medium text-text-heading">Connect an exchange directly</h3>
-        <p class="mb-3 text-xs text-text">
-          Pull transactions straight from the exchange API instead of uploading a CSV. Requires the
-          desktop app so credentials can be stored in your OS keychain and requests can bypass browser CORS.
-        </p>
-        {#each liveSources as source}
-          {@const available = source.isAvailable()}
-          {@const open = liveSourceOpen === source.exchangeName}
-          {@const saved = liveCredsSaved[source.exchangeName] ?? false}
-          <div class="mb-3 rounded-lg border border-border bg-bg-card p-4">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-sm font-medium text-text-heading">{source.exchangeName}</p>
-                {#if !available}
-                  <p class="text-xs text-text">Available in the desktop app — see the project README for the download link.</p>
-                {:else if saved}
-                  <p class="text-xs text-text">Credentials saved in OS keychain.</p>
-                {:else}
-                  <p class="text-xs text-text">No credentials saved yet.</p>
-                {/if}
-              </div>
-              <div class="flex gap-2">
-                {#if available && saved}
-                  <button
-                    class="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-text-heading transition-colors hover:border-red-300 hover:text-red-600"
-                    onclick={() => handleClearCredentials(source)}
-                  >
-                    Forget API key
-                  </button>
-                {/if}
-                <button
-                  class="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-text-heading transition-colors hover:bg-bg-card disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={!available}
-                  onclick={() => openLiveSource(source.exchangeName)}
-                >
-                  {open ? 'Close' : saved ? 'Manage' : 'Connect'}
-                </button>
-              </div>
-            </div>
-
-            {#if available && open}
-              <div class="mt-4 space-y-3 border-t border-border pt-4">
-                {#if !saved}
-                  <div>
-                    <label for="live-key-{source.exchangeName}" class="mb-1 block text-xs font-medium text-text-heading">{source.keyLabel ?? 'API key'}</label>
-                    <input
-                      id="live-key-{source.exchangeName}"
-                      type="password"
-                      bind:value={liveCredsKey}
-                      class="w-full rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-text-heading focus:border-accent focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label for="live-secret-{source.exchangeName}" class="mb-1 block text-xs font-medium text-text-heading">{source.secretLabel ?? 'API secret'}</label>
-                    <textarea
-                      id="live-secret-{source.exchangeName}"
-                      rows="3"
-                      bind:value={liveCredsSecret}
-                      class="w-full rounded-lg border border-border bg-bg-card px-3 py-2 font-mono text-xs text-text-heading focus:border-accent focus:outline-none"
-                    ></textarea>
-                  </div>
-                  <button
-                    class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90 disabled:opacity-50"
-                    disabled={!liveCredsKey || !liveCredsSecret}
-                    onclick={() => handleSaveCredentials(source)}
-                  >
-                    Save credentials
-                  </button>
-                {:else}
-                  {#if source.requiresSymbols ?? true}
-                    <div>
-                      <div class="mb-1 flex items-center justify-between">
-                        <label for="live-symbols-{source.exchangeName}" class="block text-xs font-medium text-text-heading">Pair symbols (comma-separated)</label>
-                        {#if source.discoverSymbols}
-                          <button
-                            type="button"
-                            class="text-xs font-medium text-accent hover:underline disabled:opacity-50"
-                            disabled={liveDiscovering}
-                            onclick={() => discoverSymbols(source)}
-                          >
-                            {liveDiscovering ? 'Detecting…' : 'Re-detect pairs'}
-                          </button>
-                        {/if}
-                      </div>
-                      <input
-                        id="live-symbols-{source.exchangeName}"
-                        type="text"
-                        placeholder={source.symbolPlaceholder ?? ''}
-                        bind:value={liveSymbols}
-                        class="w-full rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-text-heading focus:border-accent focus:outline-none"
-                      />
-                    </div>
-                  {/if}
-                  {#if source.symbolsNote}
-                    <p class="text-xs text-text">{source.symbolsNote}</p>
-                  {/if}
-                  <div>
-                    <div class="mb-1 flex items-center justify-between">
-                      <span class="text-xs font-medium text-text-heading">Date range{source.requiresDateRange ? '' : ' (optional)'}</span>
-                      {#if liveFromDate || liveToDate}
-                        <button
-                          type="button"
-                          class="text-xs font-medium text-accent hover:underline"
-                          onclick={() => { liveFromDate = ''; liveToDate = ''; }}
-                        >
-                          Clear dates
-                        </button>
-                      {/if}
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                      <div>
-                        <label for="live-from-{source.exchangeName}" class="mb-1 block text-xs text-text">From</label>
-                        <DateField id="live-from-{source.exchangeName}" max={today} bind:value={liveFromDate} />
-                      </div>
-                      <div>
-                        <label for="live-to-{source.exchangeName}" class="mb-1 block text-xs text-text">To</label>
-                        <DateField id="live-to-{source.exchangeName}" max={today} bind:value={liveToDate} />
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90 disabled:opacity-50"
-                    disabled={liveFetching}
-                    onclick={() => handleLiveFetch(source)}
-                  >
-                    {liveFetching ? 'Fetching…' : 'Fetch transactions'}
-                  </button>
-                  {#if liveRateLimitSeconds > 0}
-                    <div class="rounded-lg border border-amber-300 bg-amber-50 p-3">
-                      <p class="text-xs text-amber-800">
-                        Hit {source.exchangeName}'s rate limit — waiting {liveRateLimitSeconds}s before retrying…
-                      </p>
-                    </div>
-                  {/if}
-                  {#if liveFetching && liveFetchTotal > 0}
-                    <div class="rounded-lg border border-border bg-bg-card p-4">
-                      <div class="mb-2 flex items-center justify-between text-sm">
-                        <span class="text-text-heading">Fetching transactions…</span>
-                        <span class="text-text">{liveFetchProgress} / {liveFetchTotal} periods</span>
-                      </div>
-                      <div class="h-2 overflow-hidden rounded-full bg-border">
-                        <div
-                          class="h-full rounded-full bg-accent transition-[width] duration-100 ease-linear"
-                          style="width: {liveFetchTotal > 0 ? (liveFetchProgress / liveFetchTotal) * 100 : 0}%"
-                        ></div>
-                      </div>
-                    </div>
-                  {/if}
-                {/if}
-
-                {#if liveError}
-                  <div class="rounded-lg border border-red-300 bg-red-50 p-3">
-                    <p class="text-xs text-red-700">{liveError}</p>
-                  </div>
-                {/if}
-                {#if liveInfo}
-                  <div class="rounded-lg border border-amber-300 bg-amber-50 p-3">
-                    <p class="text-xs text-amber-800">{liveInfo}</p>
-                  </div>
-                {/if}
-              </div>
-            {/if}
-          </div>
-        {/each}
-      </div>
       <!-- Stored transaction history -->
       {#if storedTransactionCount > 0}
         <div class="mb-6 flex items-center justify-between rounded-lg border border-border bg-bg-card px-3 py-2">
@@ -472,104 +90,48 @@
         </div>
       {/if}
 
-      <!-- Importer selector -->
-      <div class="mb-6">
-        <label for="importer-select" class="mb-2 block text-sm font-medium text-text-heading">
-          Exchange format
-        </label>
-        <select
-          id="importer-select"
-          class="w-full rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-text-heading focus:border-accent focus:outline-none"
-          onchange={(e) => selectImporter((e.target as HTMLSelectElement).value)}
-        >
-          {#each importers as importer}
-            <option value={importer.exchangeName} selected={importer === selectedImporter}>
-              {importer.exchangeName}
-            </option>
-          {/each}
-        </select>
-      </div>
-
-      <!-- Preprocessor toggles -->
-      {#if selectedImporter.preprocessors.length > 0}
-        <div class="mb-6 rounded-lg border border-border bg-bg-card p-4">
-          <p class="mb-3 text-sm font-medium text-text-heading">Options</p>
-          {#each selectedImporter.preprocessors as preprocessor}
-            <label class="flex cursor-pointer items-start gap-3 rounded-md p-2 hover:bg-bg-card/80">
-              <input
-                type="checkbox"
-                checked={enabledPreprocessors.has(preprocessor.id)}
-                onchange={() => togglePreprocessor(preprocessor.id)}
-                class="mt-0.5 accent-accent"
-              />
-              <div>
-                <p class="text-sm font-medium text-text-heading">{preprocessor.label}</p>
-                <p class="text-xs text-text">{preprocessor.description}</p>
-              </div>
-            </label>
-          {/each}
+      {#if isTauri()}
+        <!-- Tauri: tabbed block combining CSV and Live -->
+        <div class="flex border-b border-border">
+          <button
+            class="px-5 py-3 text-sm font-medium transition-colors focus:outline-none
+              {activeTab === 'csv'
+                ? 'border-b-2 border-accent text-accent -mb-px'
+                : 'text-text hover:text-text-heading'}"
+            onclick={() => { activeTab = 'csv'; }}
+          >
+            CSV import
+          </button>
+          <button
+            class="px-5 py-3 text-sm font-medium transition-colors focus:outline-none
+              {activeTab === 'live'
+                ? 'border-b-2 border-accent text-accent -mb-px'
+                : 'text-text hover:text-text-heading'}"
+            onclick={() => { activeTab = 'live'; }}
+          >
+            Live exchange
+          </button>
         </div>
-      {/if}
 
-      <!-- Drop zone (hidden during review) -->
-      {#if !reviewing}
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div
-          class="cursor-pointer rounded-xl border-2 border-dashed p-12 text-center transition-colors
-            {dragOver ? 'border-accent bg-accent-bg' : 'border-border bg-bg-card hover:border-accent-border'}"
-          ondragover={(e) => { e.preventDefault(); dragOver = true; }}
-          ondragleave={() => { dragOver = false; }}
-          ondrop={handleDrop}
-          onclick={() => document.getElementById('csv-input')?.click()}
-          onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') document.getElementById('csv-input')?.click(); }}
-          role="button"
-          tabindex="0"
-        >
-          <svg class="mx-auto mb-4 size-10 text-text" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
-          </svg>
-          <p class="mb-1 text-sm font-medium text-text-heading">
-            Drop your CSV here or click to browse
+        <div class="pt-6">
+          {#if activeTab === 'csv'}
+            <CsvImporter {importers} onConfirm={handleEnrich} />
+          {:else}
+            <LiveImporter {liveSources} onConfirm={handleEnrich} />
+          {/if}
+        </div>
+
+      {:else}
+        <!-- Browser: teaser for desktop-only live sources, then CSV import -->
+        <div class="mb-8">
+          <h3 class="mb-2 text-sm font-medium text-text-heading">Connect an exchange directly</h3>
+          <p class="mb-3 text-xs text-text">
+            Pull transactions straight from the exchange API instead of uploading a CSV. Requires the
+            desktop app so credentials can be stored in your OS keychain and requests can bypass browser CORS.
           </p>
-          <p class="text-xs text-text">Supports: {importers.map((i) => i.exchangeName).join(', ')}</p>
-          <input
-            id="csv-input"
-            type="file"
-            accept=".csv"
-            class="hidden"
-            onchange={handleFileInput}
-          />
         </div>
 
-        <!-- File info + parse button -->
-        {#if files && files.length > 0}
-          <div class="mt-6 rounded-lg border border-border bg-bg-card p-4">
-            <div class="flex items-center justify-between">
-              <p class="text-sm text-text-heading">
-                <span class="font-medium">{files[0].name}</span>
-                <span class="text-text"> ({(files[0].size / 1024).toFixed(1)} KB)</span>
-              </p>
-              <button
-                class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90"
-                onclick={handleParse}
-              >
-                Import
-              </button>
-            </div>
-          </div>
-        {/if}
-      {/if}
-
-      <!-- Review step -->
-      {#if reviewing}
-        <PreprocessorReview
-          {rawTransactions}
-          preprocessors={selectedImporter.preprocessors}
-          {enabledPreprocessors}
-          fileName={files?.[0]?.name ?? ''}
-          onConfirm={handleConfirm}
-          onBack={resetReview}
-        />
+        <CsvImporter {importers} onConfirm={handleEnrich} />
       {/if}
 
       <!-- Enrichment progress -->
@@ -601,15 +163,8 @@
         </div>
       {/if}
 
-      <!-- Error message -->
-      {#if error}
-        <div class="mt-4 rounded-lg border border-red-300 bg-red-50 p-4">
-          <p class="text-sm text-red-700">{error}</p>
-        </div>
-      {/if}
-
       <!-- Success message -->
-      {#if parsedCount > 0 && !error && !reviewing}
+      {#if parsedCount > 0}
         <div class="mt-4 rounded-lg border border-green-300 bg-green-50 p-4">
           <p class="text-sm text-green-700">
             Imported {parsedCount} transactions from {importSourceName}. View your results on the Results page.
