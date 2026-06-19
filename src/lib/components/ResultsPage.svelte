@@ -6,8 +6,8 @@
   import TaxEventsTable from '$lib/components/TaxEventsTable.svelte';
   import { TaxCalculator } from '$lib/engine/tax-calculator';
   import { LotTracker } from '$lib/engine/lot-tracker';
-  import { buildSellsFromPrices } from '$lib/engine/simulation';
-  import { getCurrentPriceFetcher } from '$lib/context';
+  import { buildSimulatedSells } from '$lib/engine/simulation';
+  import { getCryptoConverter } from '$lib/context';
   import type { Transaction } from '$lib/types/transaction';
   import type { CountryConfig } from '$lib/types/tax-rules';
   import type { TaxSummary } from '$lib/types/results';
@@ -34,7 +34,7 @@
   const signed = (v: BigNumber) =>
     `${v.gt(0) ? '+' : v.lt(0) ? '−' : ''}${v.abs().toFormat(2)}`;
 
-  const priceFetcher = getCurrentPriceFetcher();
+  const converter = getCryptoConverter();
 
   const { summaries, holdings } = $derived.by(() => {
     const tracker = new LotTracker(countryConfig.defaultCostBasisMethod);
@@ -121,10 +121,11 @@
     pricesLoading = true;
     (async () => {
       const now = new Date();
-      const { prices } = await priceFetcher.fetchCurrentPrices(hs.map((h) => h.asset), cc.currency);
+      const result = await buildSimulatedSells(hs, converter, now, cc.currency);
       if (cancelled) return;
-      const { transactions: sells, unpriced } = buildSellsFromPrices(hs, prices, now, cc.currency);
-      const valueByAsset = new Map(
+      const sells = result.transactions;
+      const unpriced = result.unpricedAssets;
+      const valueByAsset = new Map<string, BigNumber>(
         sells.map((s) => [s.fromAsset as string, s.fiatValue as BigNumber]),
       );
       const tracker = new LotTracker(cc.defaultCostBasisMethod);
