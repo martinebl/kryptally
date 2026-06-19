@@ -14,6 +14,8 @@
     );
 
     const fmt = (v: BigNumber) => v.toFormat(2);
+    const signed = (v: BigNumber) =>
+        `${v.gt(0) ? '+' : v.lt(0) ? '−' : ''}${v.abs().toFormat(2)}`;
 
     const gainColor = (v: BigNumber) =>
         v.gt(0) ? 'text-green-600' : v.lt(0) ? 'text-red-500' : 'text-text';
@@ -28,7 +30,8 @@
 </script>
 
 <div class="mb-10">
-    <Table rows={sortedEvents} {filterFn} title="Tax Events">
+    <Table rows={sortedEvents} {filterFn} title="Tax Events"
+        subtitle="Every disposal and income event, with the FIFO lots it was matched against.">
         {#snippet headers()}
             <th class="px-4 py-3">Date</th>
             <th class="px-4 py-3">Type</th>
@@ -55,7 +58,7 @@
             <td class="px-4 py-3 text-right font-mono text-text-heading">{fmt(event.proceeds)}</td>
             <td class="px-4 py-3 text-right font-mono text-text-heading">{fmt(event.costBasis)}</td>
             <td class="px-4 py-3 text-right font-mono font-medium {gainColor(event.gainLoss)}">
-                {event.gainLoss.gt(0) ? '+' : ''}{fmt(event.gainLoss)}
+                {signed(event.gainLoss)}
             </td>
         {/snippet}
     </Table>

@@ -18,9 +18,9 @@
             sell: 'bg-red-100 text-red-700',
             trade: 'bg-purple-100 text-purple-700',
             fee: 'bg-amber-100 text-amber-700',
-            mining: 'bg-blue-100 text-blue-700',
+            mining: 'bg-gray-100 text-gray-600',
             staking: 'bg-blue-100 text-blue-700',
-            airdrop: 'bg-teal-100 text-teal-700',
+            airdrop: 'bg-purple-100 text-purple-700',
         };
         return map[type] ?? 'bg-gray-100 text-gray-700';
     };

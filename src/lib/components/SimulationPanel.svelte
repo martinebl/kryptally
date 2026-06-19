@@ -1,10 +1,6 @@
 <script lang="ts">
   import BigNumber from 'bignumber.js';
   import Card from '$lib/components/Card.svelte';
-  import { TaxCalculator } from '$lib/engine/tax-calculator';
-  import { LotTracker } from '$lib/engine/lot-tracker';
-  import { buildSimulatedSells } from '$lib/engine/simulation';
-  import { getCryptoConverter } from '$lib/context';
   import type { Transaction } from '$lib/types/transaction';
   import type { CountryConfig } from '$lib/types/tax-rules';
   import type { TaxSummary } from '$lib/types/results';
@@ -12,89 +8,86 @@
   interface Props {
     transactions: Transaction[];
     holdings: { asset: string; totalAmount: BigNumber }[];
-    summary: TaxSummary;
+    baseSummary: TaxSummary;
+    simSummary: TaxSummary | null;
+    unrealizedTotal: BigNumber;
+    holdingsCount: number;
+    unpriced: string[];
+    loading: boolean;
     countryConfig: CountryConfig;
   }
 
-  const { transactions, holdings, summary, countryConfig }: Props = $props();
+  const {
+    baseSummary,
+    simSummary,
+    unrealizedTotal,
+    holdingsCount,
+    unpriced,
+    loading,
+    countryConfig,
+  }: Props = $props();
 
   const fmt = (v: BigNumber) => v.toFormat(2);
+  const signed = (v: BigNumber) =>
+    `${v.gt(0) ? '+' : v.lt(0) ? '−' : ''}${v.abs().toFormat(2)}`;
   const gainColor = (v: BigNumber) =>
     v.gt(0) ? 'text-green-600' : v.lt(0) ? 'text-red-500' : 'text-text';
-  const converter = getCryptoConverter();
 
-  let simulationSummary = $state<TaxSummary | null>(null);
-  let simulationUnpricedAssets = $state<string[]>([]);
-  let simulationLoading = $state(false);
-
-  async function runSimulation() {
-    simulationLoading = true;
-    const { transactions: syntheticSells, unpricedAssets } = await buildSimulatedSells(
-      holdings, converter, new Date(), countryConfig.currency,
-    );
-    simulationUnpricedAssets = unpricedAssets;
-    const tracker = new LotTracker(countryConfig.defaultCostBasisMethod);
-    const calculator = new TaxCalculator(countryConfig.resolve, countryConfig.currency, tracker);
-    const summaries = calculator.process([...transactions, ...syntheticSells]);
-    const currentYear = new Date().getFullYear();
-    simulationSummary = summaries.get(currentYear) ?? [...summaries.values()].at(-1) ?? null;
-    simulationLoading = false;
-  }
-
-  function clearSimulation() {
-    simulationSummary = null;
-    simulationUnpricedAssets = [];
-  }
+  let showDetail = $state(false);
 </script>
 
-<div class="mx-auto mb-10 max-w-2xl">
-  {#if !simulationSummary}
-    <button
-      onclick={runSimulation}
-      disabled={simulationLoading}
-      class="w-full rounded-lg border border-border bg-bg-card px-6 py-3 text-sm font-medium text-text-heading transition hover:border-primary hover:text-primary disabled:opacity-50"
-    >
-      {simulationLoading ? 'Fetching prices...' : 'Simulate Full Sell'}
-    </button>
-    <p class="mt-2 text-center text-xs text-text">
-      See estimated tax if you sold all {holdings.length} held asset{holdings.length > 1 ? 's' : ''} today
-    </p>
-  {:else}
-    <button
-      onclick={clearSimulation}
-      class="mb-4 w-full rounded-lg border border-border bg-bg-card px-6 py-3 text-sm font-medium text-text-heading transition hover:border-red-400 hover:text-red-500"
-    >
-      Clear Simulation
-    </button>
-  {/if}
+<div class="flex flex-wrap items-center justify-between gap-6 rounded-2xl border border-border bg-bg-card p-6">
+  <div>
+    <div class="text-xs font-semibold uppercase tracking-wider text-text">Unrealized on current holdings</div>
+    {#if loading}
+      <div class="mt-2 h-9 w-52 animate-pulse rounded-lg bg-text/10"></div>
+      <div class="mt-2.5 h-4 w-80 max-w-full animate-pulse rounded bg-text/10"></div>
+    {:else}
+      <div class="mt-2 flex items-baseline gap-2.5">
+        <span class="font-mono text-3xl font-semibold {gainColor(unrealizedTotal)}">{signed(unrealizedTotal)}</span>
+        <span class="text-sm text-text/40">{countryConfig.currency}</span>
+      </div>
+      <div class="mt-1.5 text-[13px] text-text/70">
+        If you sold all {holdingsCount} held asset{holdingsCount === 1 ? '' : 's'} today, est. tax would be
+        ≈ {simSummary ? fmt(simSummary.estimatedTax) : '—'} {countryConfig.currency}.
+      </div>
+    {/if}
+  </div>
+  <button
+    onclick={() => (showDetail = !showDetail)}
+    disabled={loading || !simSummary}
+    class="cursor-pointer whitespace-nowrap rounded-xl border border-accent bg-accent px-6 py-3 text-[15px] font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+  >
+    {showDetail ? 'Hide Simulation' : 'Simulate Full Sell'}
+  </button>
 </div>
 
-{#if simulationUnpricedAssets.length > 0}
-  <div class="mx-auto mb-6 max-w-2xl rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-    Could not fetch price for: {simulationUnpricedAssets.join(', ')}. These assets were excluded from the simulation.
+{#if unpriced.length > 0}
+  <div class="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+    Could not fetch price for: {unpriced.join(', ')}. These assets were excluded from the unrealized figures.
   </div>
 {/if}
 
-{#if simulationSummary}
-  {@const gainDelta = simulationSummary.netGainLoss.minus(summary.netGainLoss)}
-  {@const taxDelta = simulationSummary.estimatedTax.minus(summary.estimatedTax)}
-  <h3 class="mb-4 text-center font-heading text-lg font-medium text-text-heading">
+{#if showDetail && simSummary}
+  {@const gainDelta = simSummary.netGainLoss.minus(baseSummary.netGainLoss)}
+  {@const taxDelta = simSummary.estimatedTax.minus(baseSummary.estimatedTax)}
+  <h3 class="mb-4 mt-6 font-heading text-lg font-medium text-text-heading">
     Simulated Tax Outcome (if sold today)
   </h3>
-  <div class="mb-10 grid grid-cols-3 gap-4 max-md:grid-cols-1">
+  <div class="grid grid-cols-3 gap-4 max-md:grid-cols-1">
     <Card title="Capital Gains (Simulated)">
       <div class="space-y-2">
         <div class="flex justify-between text-sm">
           <span class="text-text">Proceeds</span>
-          <span class="font-mono text-text-heading">{fmt(simulationSummary.totalProceeds)}</span>
+          <span class="font-mono text-text-heading">{fmt(simSummary.totalProceeds)}</span>
         </div>
         <div class="flex justify-between text-sm">
           <span class="text-text">Cost basis</span>
-          <span class="font-mono text-text-heading">{fmt(simulationSummary.totalCostBasis)}</span>
+          <span class="font-mono text-text-heading">{fmt(simSummary.totalCostBasis)}</span>
         </div>
-        <div class="border-t border-border pt-2 flex justify-between text-sm font-medium">
+        <div class="flex justify-between border-t border-border pt-2 text-sm font-medium">
           <span class="text-text-heading">Net gain/loss</span>
-          <span class="font-mono {gainColor(simulationSummary.netGainLoss)}">{fmt(simulationSummary.netGainLoss)}</span>
+          <span class="font-mono {gainColor(simSummary.netGainLoss)}">{fmt(simSummary.netGainLoss)}</span>
         </div>
         <div class="flex justify-between text-xs text-text">
           <span>vs. actual</span>
@@ -107,30 +100,30 @@
       <div class="space-y-2">
         <div class="flex justify-between text-sm">
           <span class="text-text">Mining</span>
-          <span class="font-mono text-text-heading">{fmt(simulationSummary.incomeFromMining)}</span>
+          <span class="font-mono text-text-heading">{fmt(simSummary.incomeFromMining)}</span>
         </div>
         <div class="flex justify-between text-sm">
           <span class="text-text">Staking</span>
-          <span class="font-mono text-text-heading">{fmt(simulationSummary.incomeFromStaking)}</span>
+          <span class="font-mono text-text-heading">{fmt(simSummary.incomeFromStaking)}</span>
         </div>
         <div class="flex justify-between text-sm">
           <span class="text-text">Airdrops</span>
-          <span class="font-mono text-text-heading">{fmt(simulationSummary.incomeFromAirdrops)}</span>
+          <span class="font-mono text-text-heading">{fmt(simSummary.incomeFromAirdrops)}</span>
         </div>
-        <div class="border-t border-border pt-2 flex justify-between text-sm font-medium">
+        <div class="flex justify-between border-t border-border pt-2 text-sm font-medium">
           <span class="text-text-heading">Total income</span>
-          <span class="font-mono text-text-heading">{fmt(simulationSummary.totalIncome)}</span>
+          <span class="font-mono text-text-heading">{fmt(simSummary.totalIncome)}</span>
         </div>
       </div>
     </Card>
 
     <Card title="Estimated Tax (Simulated)">
       <div class="flex h-full flex-col justify-center">
-        <p class="text-center font-mono text-3xl font-semibold {gainColor(simulationSummary.estimatedTax.negated())}">
-          {fmt(simulationSummary.estimatedTax)}
+        <p class="text-center font-mono text-3xl font-semibold {gainColor(simSummary.estimatedTax.negated())}">
+          {fmt(simSummary.estimatedTax)}
         </p>
         <p class="mt-1 text-center text-xs text-text">{countryConfig.currency}</p>
-        <p class="mt-2 text-center text-xs font-mono {gainColor(taxDelta.negated())}">
+        <p class="mt-2 text-center font-mono text-xs {gainColor(taxDelta.negated())}">
           {taxDelta.gt(0) ? '+' : ''}{fmt(taxDelta)} vs. actual
         </p>
       </div>
