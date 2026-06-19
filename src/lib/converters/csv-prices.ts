@@ -2,25 +2,7 @@ import BigNumber from 'bignumber.js';
 import type { ICryptoToFiatConverter, IFiatConverter } from '$lib/types';
 import { resolveCoinId } from '$lib/converters/coin-ids';
 import { parsePriceCSV } from '$lib/converters/price-csv-parser';
-
-/**
- * Fiat currencies supported by Frankfurter. These are never crypto assets,
- * so we route them directly to the fiat converter instead of a price lookup.
- */
-const FIAT_CURRENCIES = new Set([
-  'USD', 'EUR', 'GBP', 'CHF', 'JPY', 'AUD', 'CAD', 'HKD', 'SGD', 'KRW',
-  'SEK', 'NOK', 'DKK', 'TRY', 'BRL', 'ZAR', 'MXN', 'INR', 'PLN', 'CZK',
-  'HUF', 'RON', 'BGN', 'ISK', 'NZD', 'PHP', 'IDR', 'MYR', 'THB',
-]);
-
-/**
- * USD-pegged stablecoins. Treat as exactly 1 USD for fiat value purposes,
- * rather than trying to look them up as volatile crypto.
- */
-const STABLECOINS = new Set([
-  'USDT', 'USDC', 'BUSD', 'DAI', 'TUSD', 'GUSD', 'USDP', 'FRAX',
-  'LUSD', 'FDUSD', 'PYUSD', 'USDD',
-]);
+import { FIAT_CURRENCIES, STABLECOINS } from '$lib/converters/fiat-currencies';
 
 /** Price data for a single asset: a date→price map plus the currency those prices are in */
 export interface PriceData {

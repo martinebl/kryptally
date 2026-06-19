@@ -1,0 +1,43 @@
+[package]
+name = "app"
+version = "0.1.0"
+description = "Cryptax desktop wrapper"
+authors = ["Cryptax contributors"]
+license = ""
+repository = ""
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.6.2", features = [] }
+
+[dependencies]
+# arbitrary_precision keeps every JSON number as an exact decimal string
+# (no f64), so any future float-typed amount round-trips losslessly to the TS
+# BigNumber layer instead of being truncated to a float.
+serde_json = { version = "1.0", features = ["arbitrary_precision"] }
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+tauri = { version = "2.11.2", features = [] }
+tauri-plugin-log = "2"
+
+# HTTP + crypto for exchange APIs
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+# Async sleep for rate-limit backoff (Tauri already runs on tokio).
+tokio = { version = "1", features = ["time"] }
+hmac = "0.12"
+sha2 = "0.10"
+hex = "0.4"
+urlencoding = "2"
+thiserror = "1"
+
+# Ed25519 request signing for Revolut X
+ed25519-dalek = { version = "2", features = ["pkcs8", "pem"] }
+base64 = "0.22"
+
+# OS keyring for API secret storage
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }

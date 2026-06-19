@@ -7,9 +7,10 @@
         headers: Snippet;
         row: Snippet<[T]>;
         title?: string;
+        subtitle?: string;
     }
 
-    let { rows, filterFn, headers, row, title }: Props = $props();
+    let { rows, filterFn, headers, row, title, subtitle }: Props = $props();
     let query = $state('');
 
     const visibleRows = $derived(
@@ -20,9 +21,14 @@
 </script>
 
 {#if title || filterFn}
-<div class="mb-4 flex items-center {title ? 'justify-between' : 'justify-end'}">
+<div class="mb-4 flex items-end {title ? 'justify-between' : 'justify-end'} gap-4">
     {#if title}
-        <h3 class="font-heading text-lg font-medium text-text-heading">{title}</h3>
+        <div>
+            <h3 class="font-heading text-xl font-semibold tracking-tight text-text-heading">{title}</h3>
+            {#if subtitle}
+                <p class="mt-0.5 text-[13px] text-text/80">{subtitle}</p>
+            {/if}
+        </div>
     {/if}
     {#if filterFn}
         <input
