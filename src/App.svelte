@@ -138,7 +138,7 @@
         >
           Results
         </button>
-        <button
+        <!-- <button
           class="border-none bg-transparent text-sm transition-colors
             {countryConfig ? 'cursor-pointer hover:text-text-heading' : 'cursor-not-allowed opacity-40'}
             {currentPage === 'test-results' ? 'text-accent' : 'text-text'}"
@@ -146,7 +146,7 @@
           onclick={() => navigate('test-results')}
         >
           Test Results
-        </button>
+        </button> -->
       </div>
     </nav>
   </header>
@@ -164,8 +164,8 @@
       />
     {:else if currentPage === 'results' && countryConfig}
       <ResultsPage {transactions} {countryConfig} />
-    {:else if currentPage === 'test-results'}
-      <TestResultsPage />
+    <!-- {:else if currentPage === 'test-results'}
+      <TestResultsPage /> -->
     {/if}
 
     <CoinDisambiguator
