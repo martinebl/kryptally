@@ -1,11 +1,12 @@
 <script lang="ts">
   import type { Transaction } from '$lib/types';
   import type { CountryConfig } from '$lib/types/tax-rules';
-  import { setCryptoConverter, setPersistPriceEntry } from '$lib/context';
+  import { setCryptoConverter, setCurrentPriceFetcher, setPersistPriceEntry } from '$lib/context';
   import { createCoinGeckoCryptoToFiatConverter, preflightResolve, setUserResolutions, type CoinListEntry } from '$lib/converters/coingecko';
   import { createCsvCryptoToFiatConverter, loadCsvPrices } from '$lib/converters/csv-prices';
   import { createLayeredCryptoToFiatConverter } from '$lib/converters/layered';
   import { createFrankfurterFiatConverter } from '$lib/converters/frankfurter';
+  import { createCoinGeckoCurrentPriceFetcher } from '$lib/converters/current-prices';
   import LandingPage from '$lib/components/LandingPage.svelte'
   import ImportPage from '$lib/components/ImportPage.svelte'
   import ResultsPage from '$lib/components/ResultsPage.svelte'
@@ -52,6 +53,9 @@
     createCsvCryptoToFiatConverter(pricesByAsset, createFrankfurterFiatConverter()),
     createCoinGeckoCryptoToFiatConverter(),
   ]));
+
+  // Batched current-price lookup for "value today" / unrealized figures.
+  setCurrentPriceFetcher(createCoinGeckoCurrentPriceFetcher(createFrankfurterFiatConverter()));
 
   let currentPage = $state('home');
   let transactions = $state<Transaction[]>([]);
