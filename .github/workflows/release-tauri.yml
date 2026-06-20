@@ -144,5 +144,5 @@ jobs:
           name: ${{ github.ref_name }}
           body_path: /tmp/release-notes.md
           files: artifacts/**/*
-          draft: false
+          draft: true
           prerelease: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.prerelease == 'true' || contains(github.ref_name, '-rc') || contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') }}
