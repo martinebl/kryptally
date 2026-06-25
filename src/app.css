@@ -1,19 +1,23 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --font-heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: ui-monospace, Consolas, monospace;
+  --font-sans: 'IBM Plex Sans', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 'IBM Plex Sans', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
 
-  --color-bg: #fff;
-  --color-bg-card: rgba(244, 243, 236, 0.5);
+  --color-bg: #faf9f7;
+  --color-surface: #ffffff;
+  --color-bg-card: #f5f3ef;
   --color-modal: #f4f3ec;
-  --color-text: #6b6375;
-  --color-text-heading: #08060d;
-  --color-border: #e5e4e7;
-  --color-accent: #f7931a;
-  --color-accent-bg: rgba(247, 147, 26, 0.1);
-  --color-accent-border: rgba(247, 147, 26, 0.5);
+  --color-text: #57534c;
+  --color-text-muted: #8f8b83;
+  --color-text-faint: #a8a49b;
+  --color-text-heading: #26241f;
+  --color-border: #ece8e1;
+  --color-border-soft: #f3efe7;
+  --color-accent: #ef8a16;
+  --color-accent-bg: rgba(239, 138, 22, 0.1);
+  --color-accent-border: rgba(239, 138, 22, 0.5);
 }
 
 @layer base {
