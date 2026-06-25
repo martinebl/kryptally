@@ -54,8 +54,8 @@ fn build_query(params: &[(&str, String)]) -> String {
 /// Sign a request message with an Ed25519 private key (PKCS#8 PEM) and return
 /// the standard-base64 signature.
 fn sign(private_key_pem: &str, message: &str) -> Result<String, String> {
-    let signing_key =
-        SigningKey::from_pkcs8_pem(private_key_pem).map_err(|e| format!("parse private key: {e}"))?;
+    let signing_key = SigningKey::from_pkcs8_pem(private_key_pem)
+        .map_err(|e| format!("parse private key: {e}"))?;
     let signature = signing_key.sign(message.as_bytes());
     Ok(STANDARD.encode(signature.to_bytes()))
 }
@@ -63,7 +63,11 @@ fn sign(private_key_pem: &str, message: &str) -> Result<String, String> {
 /// Perform a signed GET against the Revolut X API. `path` is relative to the
 /// `/api/1.0` prefix (e.g. "/balances"). The signed message is
 /// `timestamp + "GET" + fullPath + query + body`, with an empty body for GETs.
-async fn signed_get(app: &AppHandle, path: &str, params: &[(&str, String)]) -> Result<Value, String> {
+async fn signed_get(
+    app: &AppHandle,
+    path: &str,
+    params: &[(&str, String)],
+) -> Result<Value, String> {
     let creds = secrets::load(SERVICE)?;
     let full_path = format!("{API_PREFIX}{path}");
     let query = build_query(params);
