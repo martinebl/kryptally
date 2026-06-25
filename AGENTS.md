@@ -53,7 +53,7 @@ Modules expose functionality through barrel exports (`index.ts`). Use TypeScript
 - **No monolith components** - components are not supposed to be massive and unreadable. Once a component crosses 300 lines, consider splitting it up into smaller sub components
 
 ### Rust (Tauri backend)
-- **Avoid `mut`** — bindings are immutable by default; only add `let mut` when you actually mutate.
+- **Avoid `mut`** — bindings are immutable by default; only add `let mut` when there is no way around it, or when the performance cost of using immutable copies is too high.
 - **Propagate errors with `?`**, adding context via `.map_err(|e| format!("...: {e}"))`. Avoid `.unwrap()`/`.expect()` outside `run()` setup and tests.
 - **Thin `#[tauri::command]` wrappers** — delegate to plain module functions so logic stays free of Tauri types and testable.
 - **One module per concern** — an exchange per file (`binance.rs`, `revolut_x.rs`), shared infrastructure isolated (`secrets.rs`).
@@ -64,7 +64,7 @@ Modules expose functionality through barrel exports (`index.ts`). Use TypeScript
 - Write tests before implementing new functionality (TDD).
 - Test against the interface contract, not implementation details.
 - **Never copy real dates or amounts from user-provided CSV snippets into test data.** Randomize them so tests are independent of real user data.
-- Run `npm run test` after changes to catch regressions.
+- Run `npm run test` and `cargo test` after changes to catch regressions.
 
 ## Price resolution order
 
