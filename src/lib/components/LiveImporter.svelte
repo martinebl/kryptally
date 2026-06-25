@@ -4,312 +4,535 @@
 
   interface Props {
     liveSources: ILiveSource[];
-    onConfirm: (transactions: Transaction[], sourceName: string) => Promise<void>;
+    onConfirm: (transactions: Transaction[], sourceName: string) => Promise<{ newCount: number; dupCount: number }>;
+    onNavigate: (page: string) => void;
   }
 
-  const { liveSources, onConfirm }: Props = $props();
+  const { liveSources, onConfirm, onNavigate }: Props = $props();
 
-  let liveSourceOpen = $state<string | null>(null);
-  let liveCredsKey = $state('');
-  let liveCredsSecret = $state('');
-  let liveCredsSaved = $state<Record<string, boolean>>({});
   const today = new Date().toISOString().slice(0, 10);
-  let liveSymbols = $state('');
-  let liveFromDate = $state('');
-  let liveToDate = $state(today);
-  let liveFetching = $state(false);
-  let liveFetchProgress = $state(0);
-  let liveFetchTotal = $state(0);
-  let liveDiscovering = $state(false);
-  let liveError = $state('');
-  let liveInfo = $state('');
-  let liveRateLimitSeconds = $state(0);
-  let rateLimitTimer: ReturnType<typeof setInterval> | undefined;
 
-  const stopRateLimitCountdown = () => {
-    if (rateLimitTimer) clearInterval(rateLimitTimer);
-    rateLimitTimer = undefined;
-    liveRateLimitSeconds = 0;
+  const lastFetchKey = (name: string) => `kryptax-last-fetch-${name}`;
+
+  const loadLastFetch = (name: string): Date | null => {
+    try {
+      const raw = localStorage.getItem(lastFetchKey(name));
+      return raw ? new Date(raw) : null;
+    } catch {
+      return null;
+    }
   };
 
-  // The backend hit a rate limit and is waiting `waitMs` before retrying; count
-  // down so the wait looks intentional rather than frozen.
-  const startRateLimitCountdown = (waitMs: number) => {
-    stopRateLimitCountdown();
-    liveRateLimitSeconds = Math.max(1, Math.ceil(waitMs / 1000));
-    rateLimitTimer = setInterval(() => {
-      liveRateLimitSeconds -= 1;
-      if (liveRateLimitSeconds <= 0) stopRateLimitCountdown();
+  const saveLastFetch = (name: string, date: Date) => {
+    try {
+      localStorage.setItem(lastFetchKey(name), date.toISOString());
+    } catch {}
+  };
+
+  const formatLastFetch = (date: Date | null): string => {
+    if (!date) return 'Never fetched';
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) return 'Last fetched today';
+    if (diffDays === 1) return 'Last fetched yesterday';
+    if (diffDays < 7) {
+      const day = date.toLocaleDateString('en-US', { weekday: 'long' });
+      return `Last fetched ${day}`;
+    }
+    const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `Last fetched ${dateStr}`;
+  };
+
+  // Per-source UI state, keyed by exchangeName
+  type SourceState = {
+    open: boolean;
+    hasCreds: boolean | undefined; // undefined = not yet checked
+    lastFetch: Date | null;
+    credsKey: string;
+    credsSecret: string;
+    fromDate: string;
+    toDate: string;
+    phase: 'idle' | 'fetching' | 'done';
+    fetchedTotal: number;
+    newCount: number;
+    dupCount: number;
+    progDone: number;
+    progTotal: number;
+    rateLimitSeconds: number;
+    error: string;
+    info: string;
+    // Binance-specific
+    symbols: string;
+    discovering: boolean;
+  };
+
+  const defaultState = (name: string): SourceState => ({
+    open: false,
+    hasCreds: undefined,
+    lastFetch: loadLastFetch(name),
+    credsKey: '',
+    credsSecret: '',
+    fromDate: '',
+    toDate: today,
+    phase: 'idle',
+    fetchedTotal: 0,
+    newCount: 0,
+    dupCount: 0,
+    progDone: 0,
+    progTotal: 0,
+    rateLimitSeconds: 0,
+    error: '',
+    info: '',
+    symbols: '',
+    discovering: false,
+  });
+
+  let states = $state<Record<string, SourceState>>(
+    Object.fromEntries(liveSources.map((s) => [s.exchangeName, defaultState(s.exchangeName)]))
+  );
+
+  const rateLimitTimers: Record<string, ReturnType<typeof setInterval>> = {};
+
+  const stopRateLimit = (name: string) => {
+    if (rateLimitTimers[name]) {
+      clearInterval(rateLimitTimers[name]);
+      delete rateLimitTimers[name];
+    }
+    states[name].rateLimitSeconds = 0;
+  };
+
+  const startRateLimit = (name: string, waitMs: number) => {
+    stopRateLimit(name);
+    states[name].rateLimitSeconds = Math.max(1, Math.ceil(waitMs / 1000));
+    rateLimitTimers[name] = setInterval(() => {
+      states[name].rateLimitSeconds -= 1;
+      if (states[name].rateLimitSeconds <= 0) stopRateLimit(name);
     }, 1000);
   };
 
+  // Check credentials on mount for available sources
   $effect(() => {
     liveSources.forEach(async (s) => {
-      if (s.isAvailable() && liveCredsSaved[s.exchangeName] === undefined) {
+      if (s.isAvailable() && states[s.exchangeName].hasCreds === undefined) {
         const has = await s.hasCredentials();
-        liveCredsSaved = { ...liveCredsSaved, [s.exchangeName]: has };
+        states[s.exchangeName].hasCreds = has;
+        // Auto-expand connected sources that have never been opened
+        if (has && !states[s.exchangeName].open) {
+          states[s.exchangeName].open = true;
+          if (s.discoverSymbols) discoverSymbols(s);
+        }
       }
     });
   });
 
-  const openLiveSource = (name: string) => {
-    liveSourceOpen = liveSourceOpen === name ? null : name;
-    liveCredsKey = '';
-    liveCredsSecret = '';
-    liveError = '';
-
-    const source = liveSources.find((s) => s.exchangeName === name);
-    if (liveSourceOpen === name && source && liveCredsSaved[name] && source.discoverSymbols) {
+  const toggleOpen = (source: ILiveSource) => {
+    const st = states[source.exchangeName];
+    st.open = !st.open;
+    st.error = '';
+    if (st.open && st.hasCreds && source.discoverSymbols && !st.symbols) {
       discoverSymbols(source);
     }
   };
 
   const discoverSymbols = async (source: ILiveSource) => {
     if (!source.discoverSymbols) return;
-    liveDiscovering = true;
-    liveError = '';
+    const st = states[source.exchangeName];
+    st.discovering = true;
+    st.error = '';
     try {
-      liveSymbols = (await source.discoverSymbols()).join(', ');
+      st.symbols = (await source.discoverSymbols()).join(', ');
     } catch (e) {
-      liveError = e instanceof Error ? e.message : String(e);
+      st.error = e instanceof Error ? e.message : String(e);
     } finally {
-      liveDiscovering = false;
+      st.discovering = false;
     }
   };
 
   const handleSaveCredentials = async (source: ILiveSource) => {
+    const st = states[source.exchangeName];
     try {
-      await source.saveCredentials(liveCredsKey.trim(), liveCredsSecret.trim());
-      liveCredsSaved = { ...liveCredsSaved, [source.exchangeName]: true };
-      liveCredsKey = '';
-      liveCredsSecret = '';
-      liveError = '';
+      await source.saveCredentials(st.credsKey.trim(), st.credsSecret.trim());
+      st.hasCreds = true;
+      st.credsKey = '';
+      st.credsSecret = '';
+      st.error = '';
       if (source.discoverSymbols) discoverSymbols(source);
     } catch (e) {
-      liveError = e instanceof Error ? e.message : String(e);
+      st.error = e instanceof Error ? e.message : String(e);
     }
   };
 
-  const handleClearCredentials = async (source: ILiveSource) => {
+  const handleDisconnect = async (source: ILiveSource) => {
     if (!confirm(`Forget the saved ${source.exchangeName} API key? You'll need to re-enter it to import again.`)) return;
+    const st = states[source.exchangeName];
     try {
       await source.clearCredentials();
-      liveCredsSaved = { ...liveCredsSaved, [source.exchangeName]: false };
+      st.hasCreds = false;
+      st.phase = 'idle';
+      st.error = '';
     } catch (e) {
-      liveError = e instanceof Error ? e.message : String(e);
+      st.error = e instanceof Error ? e.message : String(e);
     }
   };
 
   const handleFetch = async (source: ILiveSource) => {
-    liveFetching = true;
-    liveError = '';
-    liveInfo = '';
-    liveFetchProgress = 0;
-    liveFetchTotal = 0;
+    const st = states[source.exchangeName];
+    const name = source.exchangeName;
+
+    st.phase = 'fetching';
+    st.error = '';
+    st.info = '';
+    st.progDone = 0;
+    st.progTotal = 0;
+
     try {
-      const symbols = liveSymbols
+      const symbols = st.symbols
         .split(',')
         .map((s) => s.trim().toUpperCase())
         .filter((s) => s.length > 0);
+
       if ((source.requiresSymbols ?? true) && symbols.length === 0) {
-        liveFetching = false;
-        liveError = 'No pair symbols to fetch. Enter at least one pair (e.g. BTC-USD) or use Re-detect pairs.';
+        st.phase = 'idle';
+        st.error = 'No pair symbols to fetch. Enter at least one pair or use Re-detect pairs.';
         return;
       }
-      if (source.requiresDateRange && (!liveFromDate || !liveToDate)) {
-        liveFetching = false;
-        liveError = `Select a start and end date — ${source.exchangeName} only serves bounded ranges.`;
+      if (source.requiresDateRange && (!st.fromDate || !st.toDate)) {
+        st.phase = 'idle';
+        st.error = `Select a start and end date — ${name} only serves bounded ranges.`;
         return;
       }
-      // Clamp the end of the window to today (the API's maximum).
-      if (liveToDate > today) liveToDate = today;
+
+      const toDate = st.toDate > today ? today : st.toDate;
       const fetched = await source.fetch({
         symbols,
-        from: liveFromDate ? new Date(liveFromDate) : undefined,
-        to: liveToDate ? new Date(`${liveToDate}T23:59:59Z`) : undefined,
+        from: st.fromDate ? new Date(st.fromDate) : undefined,
+        to: toDate ? new Date(`${toDate}T23:59:59Z`) : undefined,
         onProgress: ({ completed, total }) => {
-          liveFetchProgress = completed;
-          liveFetchTotal = total;
+          st.progDone = completed;
+          st.progTotal = total;
         },
-        onRateLimit: ({ waitMs }) => startRateLimitCountdown(waitMs),
+        onRateLimit: ({ waitMs }) => startRateLimit(name, waitMs),
       });
-      stopRateLimitCountdown();
-      liveFetching = false;
+
+      stopRateLimit(name);
+
       if (fetched.length === 0) {
-        liveInfo = (source.requiresSymbols ?? true)
+        st.phase = 'idle';
+        st.info = (source.requiresSymbols ?? true)
           ? `No transactions found for: ${symbols.join(', ')}. Check the pair symbols and date range.`
-          : `No ${source.exchangeName} exchange activity found. If you bought or sold via the main app rather than the exchange order book, that isn't exposed by the API — export a CSV and import it below instead.`;
+          : `No ${name} exchange activity found in the selected date range.`;
         return;
       }
-      await onConfirm(fetched, source.exchangeName);
+
+      const counts = await onConfirm(fetched, name);
+      const fetchedAt = new Date();
+      saveLastFetch(name, fetchedAt);
+      st.lastFetch = fetchedAt;
+      st.fetchedTotal = fetched.length;
+      st.newCount = counts.newCount;
+      st.dupCount = counts.dupCount;
+      st.phase = 'done';
     } catch (e) {
-      stopRateLimitCountdown();
-      liveFetching = false;
-      liveError = e instanceof Error ? e.message : String(e);
+      stopRateLimit(name);
+      st.phase = 'idle';
+      st.error = e instanceof Error ? e.message : String(e);
     }
   };
 </script>
 
-<p class="mb-4 text-xs text-text">
-  Pull transactions straight from the exchange API instead of uploading a CSV. Credentials are stored in your OS keychain.
+<p class="mb-5 flex items-start gap-2.5 text-sm leading-relaxed text-text">
+  <span class="mt-px shrink-0 text-text">⌗</span>
+  <span>
+    Pull transactions straight from the exchange API instead of uploading a CSV. API keys are encrypted in your operating
+    system's <strong class="font-semibold text-text-heading">keychain</strong> — never written to disk or transmitted.
+  </span>
 </p>
 
-{#each liveSources as source}
-  {@const available = source.isAvailable()}
-  {@const open = liveSourceOpen === source.exchangeName}
-  {@const saved = liveCredsSaved[source.exchangeName] ?? false}
-  <div class="mb-3 rounded-lg border border-border bg-bg-card p-4">
-    <div class="flex items-center justify-between">
-      <div>
-        <p class="text-sm font-medium text-text-heading">{source.exchangeName}</p>
-        {#if !available}
-          <p class="text-xs text-text">Available in the desktop app — see the project README for the download link.</p>
-        {:else if saved}
-          <p class="text-xs text-text">Credentials saved in OS keychain.</p>
-        {:else}
-          <p class="text-xs text-text">No credentials saved yet.</p>
-        {/if}
-      </div>
-      <div class="flex gap-2">
-        {#if available && saved}
-          <button
-            class="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-text-heading transition-colors hover:border-red-300 hover:text-red-600"
-            onclick={() => handleClearCredentials(source)}
-          >
-            Forget API key
-          </button>
-        {/if}
-        <button
-          class="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-text-heading transition-colors hover:bg-bg-card disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={!available}
-          onclick={() => openLiveSource(source.exchangeName)}
-        >
-          {open ? 'Close' : saved ? 'Manage' : 'Connect'}
-        </button>
-      </div>
-    </div>
+<div class="flex flex-col gap-3">
+  {#each liveSources as source}
+    {@const available = source.isAvailable()}
+    {@const st = states[source.exchangeName]}
+    {@const connected = st.hasCreds === true}
 
-    {#if available && open}
-      <div class="mt-4 space-y-3 border-t border-border pt-4">
-        {#if !saved}
-          <div>
-            <label for="live-key-{source.exchangeName}" class="mb-1 block text-xs font-medium text-text-heading">{source.keyLabel ?? 'API key'}</label>
-            <input
-              id="live-key-{source.exchangeName}"
-              type="password"
-              bind:value={liveCredsKey}
-              class="w-full rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-text-heading focus:border-accent focus:outline-none"
-            />
+    <div
+      class="overflow-hidden rounded-xl border bg-white transition-colors
+        {st.open && connected ? 'border-border' : 'border-border'}"
+    >
+      <!-- Card header -->
+      <div class="flex items-center justify-between gap-4 px-5 py-4">
+        <div>
+          <div class="flex items-center gap-2.5">
+            <span class="text-base font-bold text-text-heading">{source.exchangeName}</span>
+            {#if !available}
+              <span class="inline-flex items-center gap-1.5 rounded-full border border-border bg-bg-card px-2.5 py-0.5 text-xs font-semibold text-text">
+                <span class="inline-block size-1.5 rounded-full bg-border"></span>
+                Desktop only
+              </span>
+            {:else if connected}
+              <span class="inline-flex items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-2.5 py-0.5 text-xs font-semibold text-green-700">
+                <span class="inline-block size-1.5 rounded-full bg-green-500"></span>
+                Connected
+              </span>
+            {:else}
+              <span class="inline-flex items-center gap-1.5 rounded-full border border-border bg-bg-card px-2.5 py-0.5 text-xs font-semibold text-text">
+                <span class="inline-block size-1.5 rounded-full bg-border"></span>
+                Not connected
+              </span>
+            {/if}
           </div>
-          <div>
-            <label for="live-secret-{source.exchangeName}" class="mb-1 block text-xs font-medium text-text-heading">{source.secretLabel ?? 'API secret'}</label>
-            <textarea
-              id="live-secret-{source.exchangeName}"
-              rows="3"
-              bind:value={liveCredsSecret}
-              class="w-full rounded-lg border border-border bg-bg-card px-3 py-2 font-mono text-xs text-text-heading focus:border-accent focus:outline-none"
-            ></textarea>
-          </div>
+          <p class="mt-1 text-sm text-text">
+            {#if !available}
+              Available in the desktop app.
+            {:else if connected}
+              <span class="mr-1.5 text-text/60">🔒</span>Credentials in keychain · {formatLastFetch(st.lastFetch)}
+            {:else}
+              Add your API keys to pull trades with a single click.
+            {/if}
+          </p>
+        </div>
+
+        {#if available}
           <button
-            class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90 disabled:opacity-50"
-            disabled={!liveCredsKey || !liveCredsSecret}
-            onclick={() => handleSaveCredentials(source)}
+            class="flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-text-heading transition-colors hover:bg-bg-card"
+            onclick={() => toggleOpen(source)}
           >
-            Save credentials
+            {#if connected}
+              {st.open ? 'Close' : 'Manage'}
+              <span
+                class="text-[10px] text-text transition-transform duration-200"
+                class:rotate-180={st.open}
+              >▼</span>
+            {:else}
+              Connect
+            {/if}
           </button>
-        {:else}
-          {#if source.requiresSymbols ?? true}
-            <div>
-              <div class="mb-1 flex items-center justify-between">
-                <label for="live-symbols-{source.exchangeName}" class="block text-xs font-medium text-text-heading">Pair symbols (comma-separated)</label>
-                {#if source.discoverSymbols}
+        {/if}
+      </div>
+
+      <!-- Expanded panel -->
+      {#if available && st.open}
+        <div class="border-t border-border bg-bg-card/50 px-5 py-5">
+
+          {#if !connected}
+            <!-- Credential entry form -->
+            <div class="space-y-3">
+              <div>
+                <label for="live-key-{source.exchangeName}" class="mb-1 block text-xs font-semibold text-text-heading">
+                  {source.keyLabel ?? 'API key'}
+                </label>
+                <input
+                  id="live-key-{source.exchangeName}"
+                  type="password"
+                  bind:value={st.credsKey}
+                  class="w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-text-heading focus:border-accent focus:outline-none"
+                />
+              </div>
+              <div>
+                <label for="live-secret-{source.exchangeName}" class="mb-1 block text-xs font-semibold text-text-heading">
+                  {source.secretLabel ?? 'API secret'}
+                </label>
+                <textarea
+                  id="live-secret-{source.exchangeName}"
+                  rows="3"
+                  bind:value={st.credsSecret}
+                  class="w-full rounded-lg border border-border bg-white px-3 py-2.5 font-mono text-xs text-text-heading focus:border-accent focus:outline-none"
+                ></textarea>
+              </div>
+              <button
+                class="rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!st.credsKey || !st.credsSecret}
+                onclick={() => handleSaveCredentials(source)}
+              >
+                Save credentials
+              </button>
+            </div>
+
+          {:else}
+            <!-- Connected: what it fetches -->
+            {#if source.whatFetches}
+              <div class="mb-4">
+                <p class="mb-2.5 text-[11px] font-semibold uppercase tracking-widest text-text/70">What this fetches</p>
+                <div class="space-y-2">
+                  {#each source.whatFetches as item}
+                    <div class="flex gap-2.5 text-sm leading-relaxed">
+                      <span class={item.included ? 'text-green-600' : 'text-border'}>{item.included ? '✓' : '✕'}</span>
+                      <span class={item.included ? 'text-text-heading' : 'text-text'}>{item.label}</span>
+                    </div>
+                  {/each}
+                </div>
+              </div>
+            {/if}
+
+            <!-- Binance: symbols input -->
+            {#if source.requiresSymbols ?? true}
+              <div class="mb-4">
+                <div class="mb-1 flex items-center justify-between">
+                  <label for="live-symbols-{source.exchangeName}" class="text-sm font-semibold text-text-heading">
+                    Pair symbols
+                  </label>
+                  {#if source.discoverSymbols}
+                    <button
+                      type="button"
+                      class="text-xs font-medium text-accent hover:underline disabled:opacity-50"
+                      disabled={st.discovering}
+                      onclick={() => discoverSymbols(source)}
+                    >
+                      {st.discovering ? 'Detecting…' : 'Re-detect pairs'}
+                    </button>
+                  {/if}
+                </div>
+                <input
+                  id="live-symbols-{source.exchangeName}"
+                  type="text"
+                  placeholder={source.symbolPlaceholder ?? ''}
+                  bind:value={st.symbols}
+                  class="w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-text-heading focus:border-accent focus:outline-none"
+                />
+              </div>
+            {/if}
+
+            <!-- Date range -->
+            <div class="mb-4">
+              <div class="mb-2 flex items-baseline justify-between">
+                <p class="text-sm font-semibold text-text-heading">
+                  Date range{#if source.requiresDateRange}
+                    <span class="ml-0.5 text-amber-500">*</span>
+                  {:else}
+                    <span class="ml-1 text-xs font-normal text-text">(optional)</span>
+                  {/if}
+                </p>
+                {#if st.fromDate || st.toDate}
                   <button
                     type="button"
-                    class="text-xs font-medium text-accent hover:underline disabled:opacity-50"
-                    disabled={liveDiscovering}
-                    onclick={() => discoverSymbols(source)}
+                    class="text-xs font-medium text-text hover:text-text-heading"
+                    onclick={() => { st.fromDate = ''; st.toDate = ''; }}
                   >
-                    {liveDiscovering ? 'Detecting…' : 'Re-detect pairs'}
+                    Clear dates
                   </button>
                 {/if}
               </div>
-              <input
-                id="live-symbols-{source.exchangeName}"
-                type="text"
-                placeholder={source.symbolPlaceholder ?? ''}
-                bind:value={liveSymbols}
-                class="w-full rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-text-heading focus:border-accent focus:outline-none"
-              />
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label for="live-from-{source.exchangeName}" class="mb-1 block text-xs text-text">From</label>
+                  <DateField
+                    id="live-from-{source.exchangeName}"
+                    max={today}
+                    bind:value={st.fromDate}
+                  />
+                </div>
+                <div>
+                  <label for="live-to-{source.exchangeName}" class="mb-1 block text-xs text-text">To</label>
+                  <DateField
+                    id="live-to-{source.exchangeName}"
+                    max={today}
+                    bind:value={st.toDate}
+                  />
+                </div>
+              </div>
+              {#if source.requiresDateRange}
+                <p class="mt-2 text-xs {!st.fromDate || !st.toDate ? 'text-amber-600' : 'text-text'}">
+                  {!st.fromDate || !st.toDate
+                    ? 'Both From and To are required by the Revolut API.'
+                    : 'Both dates are required by the Revolut API.'}
+                </p>
+              {/if}
             </div>
-          {/if}
-          {#if source.symbolsNote}
-            <p class="text-xs text-text">{source.symbolsNote}</p>
-          {/if}
-          <div>
-            <div class="mb-1 flex items-center justify-between">
-              <span class="text-xs font-medium text-text-heading">Date range{source.requiresDateRange ? '' : ' (optional)'}</span>
-              {#if liveFromDate || liveToDate}
+
+            <!-- Fetch / progress / done -->
+            <div class="border-t border-border pt-4">
+              {#if st.phase === 'idle'}
+                {@const datesOk = !source.requiresDateRange || (!!st.fromDate && !!st.toDate)}
+                {@const symbolsOk = !(source.requiresSymbols ?? true) || st.symbols.trim().length > 0}
+                <div class="flex items-center gap-3.5">
+                  <button
+                    class="shrink-0 rounded-lg px-5 py-2.5 text-sm font-semibold text-white transition-colors
+                      {datesOk && symbolsOk ? 'bg-accent hover:bg-accent/90 cursor-pointer' : 'bg-border cursor-not-allowed'}"
+                    disabled={!datesOk || !symbolsOk}
+                    onclick={() => handleFetch(source)}
+                  >
+                    Fetch transactions
+                  </button>
+                  <p class="text-xs leading-relaxed text-text">
+                    New transactions merge with your stored history — duplicates are skipped.
+                  </p>
+                </div>
+
+              {:else if st.phase === 'fetching'}
+                <div class="flex items-center justify-between text-sm">
+                  <span class="font-medium text-text-heading">Fetching from {source.exchangeName}…</span>
+                  {#if st.progTotal > 0}
+                    <span class="font-mono text-text">{st.progDone} / {st.progTotal}</span>
+                  {/if}
+                </div>
+                <div class="mt-3 h-2 overflow-hidden rounded-full bg-border">
+                  <div
+                    class="h-full rounded-full bg-accent transition-[width] duration-100 ease-linear"
+                    style="width: {st.progTotal > 0 ? (st.progDone / st.progTotal) * 100 : 0}%"
+                  ></div>
+                </div>
+                {#if st.rateLimitSeconds > 0}
+                  <p class="mt-2 text-xs text-amber-600">
+                    Rate limited — waiting {st.rateLimitSeconds}s before retrying…
+                  </p>
+                {/if}
+
+              {:else}
+                <!-- Done state -->
+                <div class="flex items-start justify-between gap-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3.5">
+                  <div class="flex gap-2.5">
+                    <span class="mt-px text-green-600">✓</span>
+                    <div>
+                      <p class="text-sm font-semibold text-green-700">
+                        Fetched {st.fetchedTotal} transactions from {source.exchangeName}
+                      </p>
+                      <p class="mt-0.5 text-sm text-green-600">
+                        {st.newCount} new · {st.dupCount} duplicate{st.dupCount === 1 ? '' : 's'} skipped
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    class="shrink-0 rounded-lg border border-green-300 bg-white px-3 py-1.5 text-sm font-semibold text-green-700 transition-colors hover:bg-green-50"
+                    onclick={() => onNavigate('results')}
+                  >
+                    View results →
+                  </button>
+                </div>
                 <button
                   type="button"
-                  class="text-xs font-medium text-accent hover:underline"
-                  onclick={() => { liveFromDate = ''; liveToDate = ''; }}
+                  class="mt-3 text-xs text-text hover:text-text-heading"
+                  onclick={() => { states[source.exchangeName].phase = 'idle'; }}
                 >
-                  Clear dates
+                  Fetch again
                 </button>
               {/if}
             </div>
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label for="live-from-{source.exchangeName}" class="mb-1 block text-xs text-text">From</label>
-                <DateField id="live-from-{source.exchangeName}" max={today} bind:value={liveFromDate} />
-              </div>
-              <div>
-                <label for="live-to-{source.exchangeName}" class="mb-1 block text-xs text-text">To</label>
-                <DateField id="live-to-{source.exchangeName}" max={today} bind:value={liveToDate} />
-              </div>
-            </div>
-          </div>
-          <button
-            class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90 disabled:opacity-50"
-            disabled={liveFetching}
-            onclick={() => handleFetch(source)}
-          >
-            {liveFetching ? 'Fetching…' : 'Fetch transactions'}
-          </button>
-          {#if liveRateLimitSeconds > 0}
-            <div class="rounded-lg border border-amber-300 bg-amber-50 p-3">
-              <p class="text-xs text-amber-800">
-                Hit {source.exchangeName}'s rate limit — waiting {liveRateLimitSeconds}s before retrying…
-              </p>
-            </div>
-          {/if}
-          {#if liveFetching && liveFetchTotal > 0}
-            <div class="rounded-lg border border-border bg-bg-card p-4">
-              <div class="mb-2 flex items-center justify-between text-sm">
-                <span class="text-text-heading">Fetching transactions…</span>
-                <span class="text-text">{liveFetchProgress} / {liveFetchTotal} periods</span>
-              </div>
-              <div class="h-2 overflow-hidden rounded-full bg-border">
-                <div
-                  class="h-full rounded-full bg-accent transition-[width] duration-100 ease-linear"
-                  style="width: {liveFetchTotal > 0 ? (liveFetchProgress / liveFetchTotal) * 100 : 0}%"
-                ></div>
-              </div>
-            </div>
-          {/if}
-        {/if}
 
-        {#if liveError}
-          <div class="rounded-lg border border-red-300 bg-red-50 p-3">
-            <p class="text-xs text-red-700">{liveError}</p>
-          </div>
-        {/if}
-        {#if liveInfo}
-          <div class="rounded-lg border border-amber-300 bg-amber-50 p-3">
-            <p class="text-xs text-amber-800">{liveInfo}</p>
-          </div>
-        {/if}
-      </div>
-    {/if}
-  </div>
-{/each}
+            {#if st.info}
+              <div class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <p class="text-xs text-amber-700">{st.info}</p>
+              </div>
+            {/if}
+
+            <!-- Disconnect -->
+            <div class="mt-4 border-t border-border pt-4">
+              <button
+                type="button"
+                class="text-xs font-medium text-text/60 hover:text-red-600 transition-colors"
+                onclick={() => handleDisconnect(source)}
+              >
+                Forget API key &amp; disconnect
+              </button>
+            </div>
+          {/if}
+
+          {#if st.error}
+            <div class="mt-3 rounded-lg border border-red-200 bg-red-50 p-3">
+              <p class="text-xs text-red-700">{st.error}</p>
+            </div>
+          {/if}
+        </div>
+      {/if}
+    </div>
+  {/each}
+</div>

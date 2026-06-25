@@ -97,14 +97,21 @@ const parseStore = (raw: string | null): SerializedStore => {
   }
 };
 
+export interface MergeResult {
+  transactions: Transaction[];
+  newCount: number;
+  dupCount: number;
+}
+
 export interface ITransactionRepository {
   /** Load all stored transactions in insertion order. */
   load(): Promise<Transaction[]>;
   /**
    * Merge incoming transactions into the store, deduplicating on content;
-   * incoming entries replace stored duplicates. Returns the full merged list.
+   * incoming entries replace stored duplicates. Returns the full merged list
+   * plus counts of new vs duplicate entries.
    */
-  merge(incoming: Transaction[]): Promise<Transaction[]>;
+  merge(incoming: Transaction[]): Promise<MergeResult>;
   clear(): Promise<void>;
 }
 
@@ -122,11 +129,17 @@ export const createTransactionRepository = (storage: IStorage): ITransactionRepo
         .catch(() => {}) // a failed earlier merge must not block later ones
         .then(async () => {
           const store = parseStore(await storage.get(KEY));
+          let newCount = 0;
           keyByContent(incoming.map(serializeTransaction)).forEach(([key, tx]) => {
+            if (!(key in store)) newCount++;
             store[key] = tx;
           });
           await storage.set(KEY, JSON.stringify(store));
-          return Object.values(store).map(deserializeTransaction);
+          return {
+            transactions: Object.values(store).map(deserializeTransaction),
+            newCount,
+            dupCount: incoming.length - newCount,
+          };
         });
       pendingWrite = write;
       return write;

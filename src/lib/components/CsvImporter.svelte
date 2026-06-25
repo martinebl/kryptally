@@ -4,7 +4,7 @@
 
   interface Props {
     importers: IExchangeImporter[];
-    onConfirm: (transactions: Transaction[], sourceName: string) => Promise<void>;
+    onConfirm: (transactions: Transaction[], sourceName: string) => Promise<unknown>;
   }
 
   const { importers, onConfirm }: Props = $props();

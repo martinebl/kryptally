@@ -6,3 +6,4 @@ export { parsePriceCSV, readCsvHeaders, detectColumns } from './price-csv-parser
 export { resolveCoinId, GECKO_COIN_IDS as COIN_IDS } from './coin-ids';
 export { createLayeredCryptoToFiatConverter } from './layered';
 export { createFrankfurterFiatConverter } from './frankfurter';
+export { createCoinGeckoCurrentPriceFetcher } from './current-prices';

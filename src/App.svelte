@@ -1,11 +1,12 @@
 <script lang="ts">
   import type { Transaction } from '$lib/types';
   import type { CountryConfig } from '$lib/types/tax-rules';
-  import { setCryptoConverter, setPersistPriceEntry } from '$lib/context';
+  import { setCryptoConverter, setCurrentPriceFetcher, setPersistPriceEntry } from '$lib/context';
   import { createCoinGeckoCryptoToFiatConverter, preflightResolve, setUserResolutions, type CoinListEntry } from '$lib/converters/coingecko';
   import { createCsvCryptoToFiatConverter, loadCsvPrices } from '$lib/converters/csv-prices';
   import { createLayeredCryptoToFiatConverter } from '$lib/converters/layered';
   import { createFrankfurterFiatConverter } from '$lib/converters/frankfurter';
+  import { createCoinGeckoCurrentPriceFetcher } from '$lib/converters/current-prices';
   import LandingPage from '$lib/components/LandingPage.svelte'
   import ImportPage from '$lib/components/ImportPage.svelte'
   import ResultsPage from '$lib/components/ResultsPage.svelte'
@@ -13,7 +14,7 @@
   import CoinDisambiguator from '$lib/components/CoinDisambiguator.svelte'
   import { availableCountries, findCountry } from '$lib/rules';
   import { createLocalStorageStorage, createPriceRepository, createTransactionRepository } from '$lib/storage';
-  import logoUrl from '/kryptax.png'
+  import { version } from '../version.json';
 
   const storage = createLocalStorageStorage();
 
@@ -53,6 +54,9 @@
     createCoinGeckoCryptoToFiatConverter(),
   ]));
 
+  // Batched current-price lookup for "value today" / unrealized figures.
+  setCurrentPriceFetcher(createCoinGeckoCurrentPriceFetcher(createFrankfurterFiatConverter()));
+
   let currentPage = $state('home');
   let transactions = $state<Transaction[]>([]);
   let pendingTransactions = $state<Transaction[]>([]);
@@ -69,7 +73,7 @@
     window.scrollTo(0, 0);
   };
 
-  const handleImport = async (imported: Transaction[]) => {
+  const handleImport = async (imported: Transaction[]): Promise<{ newCount: number; dupCount: number }> => {
     const allTickers = [
       ...imported.map((t) => t.toAsset),
       ...imported.map((t) => t.fromAsset),
@@ -81,13 +85,16 @@
     pendingTransactions = imported;
     ambiguousCoins = ambiguous;
 
-    transactions = await txRepo.merge(imported);
+    const result = await txRepo.merge(imported);
+    transactions = result.transactions;
     pendingTransactions = [];
+    return { newCount: result.newCount, dupCount: result.dupCount };
   };
 
   const handleDisambiguate = async (resolutions: Record<string, string>) => {
     setUserResolutions(resolutions);
-    transactions = await txRepo.merge(pendingTransactions);
+    const result = await txRepo.merge(pendingTransactions);
+    transactions = result.transactions;
     pendingTransactions = [];
     ambiguousCoins = {};
     navigate('results');
@@ -103,60 +110,52 @@
 
 <div class="flex min-h-svh flex-col">
   <!-- Nav -->
-  <header class="border-b border-border">
-    <nav class="mx-auto flex max-w-5xl items-center justify-between px-8 py-4">
+  <header class="border-b border-border bg-surface">
+    <nav class="mx-auto flex h-16 max-w-[1100px] items-center justify-between px-6">
       <button
-        class="flex cursor-pointer items-center gap-2.5 border-none bg-transparent text-xl font-semibold text-text-heading"
+        class="flex cursor-pointer items-center gap-2.5 border-none bg-transparent"
         onclick={() => navigate('home')}
       >
-        <img src={logoUrl} alt="Kryptax logo" class="size-7 rounded-full" />
-        <span>Kryptax</span>
+        <span class="flex size-[30px] items-center justify-center rounded-full bg-text-heading text-[15px] font-bold text-accent">K</span>
+        <span class="text-[19px] font-bold tracking-tight text-text-heading">Kryptax</span>
       </button>
-      <div class="flex gap-6 max-md:hidden">
+      <div class="flex items-center gap-7 text-[15px] max-md:gap-5">
         <button
-          class="cursor-pointer border-none bg-transparent text-sm transition-colors hover:text-text-heading
-            {currentPage === 'home' ? 'text-text' : 'text-text'}"
+          class="cursor-pointer border-none bg-transparent transition-colors
+            {currentPage === 'home' ? 'font-semibold text-accent' : 'text-text-muted hover:text-text-heading'}"
           onclick={() => navigate('home')}
         >
           Home
         </button>
         <button
-          class="border-none bg-transparent text-sm transition-colors
+          class="border-none bg-transparent transition-colors
             {countryConfig ? 'cursor-pointer hover:text-text-heading' : 'cursor-not-allowed opacity-40'}
-            {currentPage === 'import' ? 'text-accent' : 'text-text'}"
+            {currentPage === 'import' ? 'font-semibold text-accent' : 'text-text-muted'}"
           disabled={!countryConfig}
           onclick={() => navigate('import')}
         >
           Import
         </button>
         <button
-          class="border-none bg-transparent text-sm transition-colors
+          class="border-none bg-transparent transition-colors
             {countryConfig ? 'cursor-pointer hover:text-text-heading' : 'cursor-not-allowed opacity-40'}
-            {currentPage === 'results' ? 'text-accent' : 'text-text'}"
+            {currentPage === 'results' ? 'font-semibold text-accent' : 'text-text-muted'}"
           disabled={!countryConfig}
           onclick={() => navigate('results')}
         >
           Results
         </button>
-        <!-- <button
-          class="border-none bg-transparent text-sm transition-colors
-            {countryConfig ? 'cursor-pointer hover:text-text-heading' : 'cursor-not-allowed opacity-40'}
-            {currentPage === 'test-results' ? 'text-accent' : 'text-text'}"
-          disabled={!countryConfig}
-          onclick={() => navigate('test-results')}
-        >
-          Test Results
-        </button> -->
       </div>
     </nav>
   </header>
 
-  <main class="mx-auto w-full max-w-5xl px-8">
+  <main class="mx-auto w-full max-w-[1100px] px-6">
     {#if currentPage === 'home'}
       <LandingPage onNavigate={navigate} {availableCountries} selectedCountry={countryConfig} onSelectCountry={selectCountry} />
     {:else if currentPage === 'import' && countryConfig}
       <ImportPage
         onImport={handleImport}
+        onNavigate={navigate}
         {pricesByAsset}
         {countryConfig}
         storedTransactionCount={transactions.length}
@@ -176,7 +175,10 @@
   </main>
 
   <!-- Footer -->
-  <footer class="mt-auto border-t border-border px-8 py-6 text-center text-sm text-text">
-    <p>Kryptax — open-source crypto tax calculator</p>
+  <footer class="mt-auto border-t border-border bg-surface">
+    <div class="mx-auto flex max-w-[1100px] flex-wrap items-center justify-between gap-4 px-6 py-7 text-[13px] text-text-muted">
+      <span>Kryptax</span>
+      <span class="font-mono text-text-faint">v{version} · Apache-2.0 licensed</span>
+    </div>
   </footer>
 </div>

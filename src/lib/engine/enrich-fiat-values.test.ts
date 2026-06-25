@@ -174,4 +174,30 @@ describe('enrichFiatValues', () => {
 
     expect(result.transactions[0].fiatValue!.isEqualTo(bn('6000'))).toBe(true);
   });
+
+  it('records the asset and date for each pricing failure in missingPrices', async () => {
+    const txs = [
+      makeTx({ id: 'tx-1', type: 'buy', date: new Date('2023-07-04'), toAsset: 'UNKNOWN', toAmount: bn('50') }),
+      makeTx({ id: 'tx-2', type: 'sell', date: new Date('2023-09-11'), fromAsset: 'MYSTERY', fromAmount: bn('20') }),
+      makeTx({ id: 'tx-3', type: 'buy', date: new Date('2023-08-20'), toAsset: 'ETH', toAmount: bn('1') }),
+    ];
+
+    const result = await enrichFiatValues(txs, mockConverter, 'DKK');
+
+    expect(result.failed).toBe(2);
+    expect(result.missingPrices).toHaveLength(2);
+    expect(result.missingPrices[0]).toEqual({ asset: 'UNKNOWN', date: '2023-07-04' });
+    expect(result.missingPrices[1]).toEqual({ asset: 'MYSTERY', date: '2023-09-11' });
+  });
+
+  it('returns empty missingPrices when all transactions are priced successfully', async () => {
+    const txs = [
+      makeTx({ id: 'tx-1', type: 'buy', date: new Date('2024-03-10'), toAsset: 'BTC', toAmount: bn('0.5') }),
+    ];
+
+    const result = await enrichFiatValues(txs, mockConverter, 'DKK');
+
+    expect(result.failed).toBe(0);
+    expect(result.missingPrices).toHaveLength(0);
+  });
 });

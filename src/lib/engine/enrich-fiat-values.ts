@@ -30,9 +30,15 @@ export interface EnrichmentProgress {
   failed: number;
 }
 
+export interface MissingPrice {
+  asset: string;
+  date: string; // YYYY-MM-DD
+}
+
 export interface EnrichmentResult {
   transactions: Transaction[];
   failed: number;
+  missingPrices: MissingPrice[];
 }
 
 /**
@@ -42,6 +48,8 @@ export interface EnrichmentResult {
  *
  * Processes sequentially so `onProgress` can report meaningful updates.
  */
+const toISODate = (d: Date): string => d.toISOString().slice(0, 10);
+
 export const enrichFiatValues = async (
   transactions: Transaction[],
   converter: ICryptoToFiatConverter,
@@ -50,6 +58,7 @@ export const enrichFiatValues = async (
 ): Promise<EnrichmentResult> => {
   const total = transactions.length;
   const results: Transaction[] = [];
+  const missingPrices: MissingPrice[] = [];
   let failed = 0;
 
   for (let i = 0; i < transactions.length; i++) {
@@ -72,6 +81,7 @@ export const enrichFiatValues = async (
       } catch {
         results.push(tx);
         failed++;
+        missingPrices.push({ asset: sourceCurrency, date: toISODate(tx.date) });
       }
       onProgress?.({ completed: i + 1, total, failed });
       continue;
@@ -90,10 +100,11 @@ export const enrichFiatValues = async (
     } catch {
       results.push(tx);
       failed++;
+      missingPrices.push({ asset: resolved.asset, date: toISODate(tx.date) });
     }
 
     onProgress?.({ completed: i + 1, total, failed });
   }
 
-  return { transactions: results, failed };
+  return { transactions: results, failed, missingPrices };
 };
