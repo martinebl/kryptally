@@ -13,6 +13,14 @@ npm run build   # Production build
 npm run preview # Preview production build
 ```
 
+Rust backend (run in `src-tauri/`):
+
+```bash
+cargo test    # Run Rust tests — NOT covered by `npm run test`
+cargo clippy  # Lint / idiom enforcement
+cargo fmt     # Format
+```
+
 ## Stack
 
 Vite + Svelte 5 + TypeScript + Tailwind CSS 4 + bignumber.js
@@ -30,14 +38,26 @@ Modules expose functionality through barrel exports (`index.ts`). Use TypeScript
 
 ## Key conventions
 
+### General
 - **Each module should have a clear, single responsibility.** Expose functionality across modules via TypeScript interfaces, not concrete implementations.
-
 - **BigNumber for all monetary/crypto amounts** — never native floats. This includes price maps (e.g. `Map<string, BigNumber>`), parsed CSV prices, rates, quantities, and any intermediate calculations.
 - **Test files** use `.test.ts` suffix, placed next to the code they test.
 - **Tax rules are JSON data** — the engine interprets them, no hardcoded country logic.
 - **Absolute imports** via `$lib` alias only — no relative paths.
 - **Functional style** — prefer map/filter/reduce, pure functions, `const` over `let`.
+
+### Svelte
 - **UI components should not contain business logic** — delegate to engine/lib.
+- **Effects** - never use effects if it can be avoided. Use native change handlers bound to inputs, or derived states instead
+- **Magic numbers** - don't put random hardcoded numbers in styling or tailwind classes. The base tailwind numbers (like p-1) is fine, but custom px values, are almost always worth reusing as a spacing token configured in the theme. This also applies to color codes.
+- **No monolith components** - components are not supposed to be massive and unreadable. Once a component crosses 300 lines, consider splitting it up into smaller sub components
+
+### Rust (Tauri backend)
+- **Avoid `mut`** — bindings are immutable by default; only add `let mut` when you actually mutate.
+- **Propagate errors with `?`**, adding context via `.map_err(|e| format!("...: {e}"))`. Avoid `.unwrap()`/`.expect()` outside `run()` setup and tests.
+- **Thin `#[tauri::command]` wrappers** — delegate to plain module functions so logic stays free of Tauri types and testable.
+- **One module per concern** — an exchange per file (`binance.rs`, `revolut_x.rs`), shared infrastructure isolated (`secrets.rs`).
+- **No magic values** — hoist URLs, service names, and windows to module-level `const` (e.g. `BASE_URL`, `RECV_WINDOW_MS`).
 
 ## Testing
 
