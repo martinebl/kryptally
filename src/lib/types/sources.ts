@@ -56,6 +56,9 @@ export interface ILiveSource {
   /** Help text shown under the symbols input (e.g. what is/isn't fetched). */
   readonly symbolsNote?: string;
 
+  /** Structured list of what the live connector does / does not fetch, for the UI card. */
+  readonly whatFetches?: Array<{ label: string; included: boolean }>;
+
   /** Label for the API key credential field. */
   readonly keyLabel?: string;
 

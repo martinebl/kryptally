@@ -110,7 +110,7 @@ describe('createTransactionRepository', () => {
     const txs = [makeTx(), makeTx({ date: new Date('2024-09-02T11:45:00Z'), type: 'sell' })];
 
     await repo.merge(txs);
-    const merged = await repo.merge(txs);
+    const { transactions: merged } = await repo.merge(txs);
 
     expect(merged).toHaveLength(2);
     expect(await repo.load()).toHaveLength(2);
@@ -123,7 +123,7 @@ describe('createTransactionRepository', () => {
     const newer = makeTx({ id: 'binance-1726300000000-1', date: new Date('2024-09-14T08:26:40Z') });
 
     await repo.merge([shared]);
-    const merged = await repo.merge([sharedAgain, newer]);
+    const { transactions: merged } = await repo.merge([sharedAgain, newer]);
 
     expect(merged).toHaveLength(2);
   });
@@ -134,7 +134,7 @@ describe('createTransactionRepository', () => {
     const reimported = makeTx({ fiatValue: new BigNumber('250.5'), fiatCurrency: 'DKK' });
 
     await repo.merge([original]);
-    const merged = await repo.merge([reimported]);
+    const { transactions: merged } = await repo.merge([reimported]);
 
     expect(merged).toHaveLength(1);
     expect(merged[0].fiatValue!.toFixed()).toBe('250.5');
@@ -145,7 +145,7 @@ describe('createTransactionRepository', () => {
     const twin = () => makeTx({ id: 'revolut-x-1723627293000-7' });
 
     await repo.merge([twin(), twin()]);
-    const merged = await repo.merge([twin(), twin()]);
+    const { transactions: merged } = await repo.merge([twin(), twin()]);
 
     expect(merged).toHaveLength(2);
   });
@@ -156,10 +156,28 @@ describe('createTransactionRepository', () => {
     const second = makeTx({ date: new Date('2024-10-01T14:00:00Z'), type: 'sell' });
 
     await repo.merge([first]);
-    const merged = await repo.merge([first, second]);
+    const { transactions: merged } = await repo.merge([first, second]);
 
     expect(merged[0].type).toBe('buy');
     expect(merged[1].type).toBe('sell');
+  });
+
+  it('reports newCount and dupCount correctly', async () => {
+    const repo = createTransactionRepository(createInMemoryStorage());
+    const first = makeTx();
+    const second = makeTx({ date: new Date('2024-10-01T14:00:00Z'), type: 'sell' });
+
+    const r1 = await repo.merge([first, second]);
+    expect(r1.newCount).toBe(2);
+    expect(r1.dupCount).toBe(0);
+
+    const r2 = await repo.merge([first, second]);
+    expect(r2.newCount).toBe(0);
+    expect(r2.dupCount).toBe(2);
+
+    const r3 = await repo.merge([first, makeTx({ date: new Date('2024-11-01T00:00:00Z') })]);
+    expect(r3.newCount).toBe(1);
+    expect(r3.dupCount).toBe(1);
   });
 
   it('clears all stored transactions', async () => {
@@ -180,5 +198,14 @@ describe('createTransactionRepository', () => {
     ]);
 
     expect(await repo.load()).toHaveLength(2);
+  });
+
+  it('newCount + dupCount equals incoming.length', async () => {
+    const repo = createTransactionRepository(createInMemoryStorage());
+    const txs = [makeTx(), makeTx({ date: new Date('2024-12-01T00:00:00Z') })];
+    await repo.merge([txs[0]]);
+
+    const { newCount, dupCount } = await repo.merge(txs);
+    expect(newCount + dupCount).toBe(txs.length);
   });
 });

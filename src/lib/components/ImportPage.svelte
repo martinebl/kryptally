@@ -8,20 +8,23 @@
   import CsvImporter from '$lib/components/CsvImporter.svelte';
   import LiveImporter from '$lib/components/LiveImporter.svelte';
   import CsvPriceUploader from '$lib/components/CsvPriceUploader.svelte';
+  import ImportStatus from '$lib/components/ImportStatus.svelte';
+  import MissingPricesModal from '$lib/components/MissingPricesModal.svelte';
   import { getCryptoConverter } from '$lib/context';
-  import { enrichFiatValues } from '$lib/engine/enrich-fiat-values';
+  import { enrichFiatValues, type MissingPrice } from '$lib/engine/enrich-fiat-values';
   import type { PricesByAsset } from '$lib/converters/csv-prices';
   import { isTauri } from '$lib/runtime';
 
   interface Props {
-    onImport: (transactions: Transaction[]) => void;
+    onImport: (transactions: Transaction[]) => Promise<{ newCount: number; dupCount: number }>;
+    onNavigate: (page: string) => void;
     pricesByAsset: PricesByAsset;
     countryConfig: CountryConfig;
     storedTransactionCount: number;
     onClearHistory: () => void;
   }
 
-  const { onImport, pricesByAsset, countryConfig, storedTransactionCount, onClearHistory }: Props = $props();
+  const { onImport, onNavigate, pricesByAsset, countryConfig, storedTransactionCount, onClearHistory }: Props = $props();
 
   const importers = [
     new LedgerImporter(),
@@ -34,20 +37,28 @@
   let activeTab = $state<'csv' | 'live'>('csv');
   let importSourceName = $state('');
   let parsedCount = $state(0);
+  let newCount = $state(0);
+  let dupCount = $state(0);
   let enriching = $state(false);
   let enrichProgress = $state(0);
   let enrichTotal = $state(0);
   let enrichFailed = $state(0);
+  let missingPrices = $state<MissingPrice[]>([]);
+  let showMissingModal = $state(false);
+  let highlightPricePanel = $state(false);
+  let pricePanel: HTMLElement | null = null;
+  let highlightTimeout: ReturnType<typeof setTimeout> | null = null;
 
   const converter = getCryptoConverter();
 
-  const handleEnrich = async (transactions: Transaction[], sourceName: string) => {
+  const handleEnrich = async (transactions: Transaction[], sourceName: string): Promise<{ newCount: number; dupCount: number }> => {
     importSourceName = sourceName;
     enriching = true;
     enrichProgress = 0;
     enrichTotal = transactions.length;
     enrichFailed = 0;
     parsedCount = 0;
+    missingPrices = [];
 
     const result = await enrichFiatValues(transactions, converter, countryConfig.currency, (progress) => {
       enrichProgress = progress.completed;
@@ -58,26 +69,42 @@
     enriching = false;
     enrichFailed = result.failed;
     parsedCount = result.transactions.length;
-    onImport(result.transactions);
+    missingPrices = result.missingPrices;
+    const counts = await onImport(result.transactions);
+    newCount = counts.newCount;
+    dupCount = counts.dupCount;
+    return counts;
+  };
+
+  const scrollToPricePanel = () => {
+    if (pricePanel) {
+      const y = pricePanel.getBoundingClientRect().top + window.scrollY - 28;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+    if (highlightTimeout) clearTimeout(highlightTimeout);
+    highlightPricePanel = true;
+    highlightTimeout = setTimeout(() => { highlightPricePanel = false; }, 2800);
   };
 </script>
 
 <section class="py-16">
-  <div class="grid grid-cols-1 gap-x-12 gap-y-10 lg:grid-cols-3 lg:items-start">
+  <div class="grid grid-cols-1 gap-x-14 gap-y-10 lg:grid-cols-3 lg:items-start">
 
-    <!-- Transactions column -->
+    <!-- ===== LEFT: IMPORT ===== -->
     <div class="lg:col-span-2">
       <h2 class="mb-2 font-heading text-2xl font-medium text-text-heading">Import transactions</h2>
       <p class="mb-4 text-sm leading-relaxed text-text">
         Upload a CSV export from your exchange. Your data stays in your browser and is never sent anywhere.
       </p>
-      <p class="mb-8 rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-text">
+
+      <!-- Context bar -->
+      <p class="mb-3 rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-text">
         {countryConfig.country} · {countryConfig.currency} · {countryConfig.defaultCostBasisMethod.toUpperCase()}
       </p>
 
-      <!-- Stored transaction history -->
+      <!-- Stored transactions -->
       {#if storedTransactionCount > 0}
-        <div class="mb-6 flex items-center justify-between rounded-lg border border-border bg-bg-card px-3 py-2">
+        <div class="mb-5 flex items-center justify-between rounded-lg border border-border bg-bg-card px-3 py-2">
           <p class="text-sm text-text">
             {storedTransactionCount} transaction{storedTransactionCount === 1 ? '' : 's'} stored in your browser
           </p>
@@ -90,92 +117,85 @@
         </div>
       {/if}
 
-      {#if isTauri()}
-        <!-- Tauri: tabbed block combining CSV and Live -->
-        <div class="flex border-b border-border">
-          <button
-            class="px-5 py-3 text-sm font-medium transition-colors focus:outline-none
-              {activeTab === 'csv'
-                ? 'border-b-2 border-accent text-accent -mb-px'
-                : 'text-text hover:text-text-heading'}"
-            onclick={() => { activeTab = 'csv'; }}
-          >
-            CSV import
-          </button>
-          <button
-            class="px-5 py-3 text-sm font-medium transition-colors focus:outline-none
-              {activeTab === 'live'
-                ? 'border-b-2 border-accent text-accent -mb-px'
-                : 'text-text hover:text-text-heading'}"
-            onclick={() => { activeTab = 'live'; }}
-          >
-            Live exchange
-          </button>
-        </div>
+      <!-- Tabs -->
+      <div class="mb-6 flex gap-6 border-b border-border">
+        <button
+          class="-mb-px border-b-2 py-3 text-sm font-semibold transition-colors focus:outline-none
+            {activeTab === 'csv' ? 'border-accent text-accent' : 'border-transparent text-text hover:text-text-heading'}"
+          onclick={() => { activeTab = 'csv'; }}
+        >
+          CSV import
+        </button>
+        <button
+          class="-mb-px border-b-2 py-3 text-sm font-semibold transition-colors focus:outline-none
+            {activeTab === 'live' ? 'border-accent text-accent' : 'border-transparent text-text hover:text-text-heading'}"
+          onclick={() => { activeTab = 'live'; }}
+        >
+          Live exchange
+        </button>
+      </div>
 
-        <div class="pt-6">
-          {#if activeTab === 'csv'}
-            <CsvImporter {importers} onConfirm={handleEnrich} />
-          {:else}
-            <LiveImporter {liveSources} onConfirm={handleEnrich} />
-          {/if}
-        </div>
-
-      {:else}
-        <!-- Browser: teaser for desktop-only live sources, then CSV import -->
-        <div class="mb-8">
-          <h3 class="mb-2 text-sm font-medium text-text-heading">Connect an exchange directly</h3>
-          <p class="mb-3 text-xs text-text">
-            Pull transactions straight from the exchange API instead of uploading a CSV. Requires the
-            desktop app so credentials can be stored in your OS keychain and requests can bypass browser CORS.
-          </p>
-        </div>
-
+      {#if activeTab === 'csv'}
         <CsvImporter {importers} onConfirm={handleEnrich} />
-      {/if}
-
-      <!-- Enrichment progress -->
-      {#if enriching}
-        <div class="mt-4 rounded-lg border border-border bg-bg-card p-4">
-          <div class="mb-2 flex items-center justify-between text-sm">
-            <span class="text-text-heading">Fetching market prices...</span>
-            <span class="text-text">
-              {enrichProgress} / {enrichTotal}{#if enrichFailed > 0}<span class="text-amber-600"> ({enrichFailed} failed)</span>{/if}
+      {:else}
+        <!-- Live exchange tab -->
+        {#if isTauri()}
+          <LiveImporter {liveSources} onConfirm={handleEnrich} {onNavigate} />
+        {:else}
+          <!-- Browser: desktop-only notice -->
+          <div class="mt-2 rounded-xl border border-border bg-bg-card px-7 py-6">
+            <span class="inline-block rounded-full border border-border bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wider text-accent">
+              Desktop app only
             </span>
+            <h3 class="mt-4 text-lg font-bold tracking-tight text-text-heading">Connect an exchange directly</h3>
+            <p class="mt-2.5 max-w-lg text-sm leading-relaxed text-text">
+              Browsers block the cross-origin requests needed to reach exchange APIs, so live import isn't available on the web.
+              The Kryptax desktop app stores your API keys in your operating system's keychain and pulls trades straight from
+              Binance, Revolut X and others — nothing leaves your machine.
+            </p>
+            <p class="mt-3 text-sm leading-relaxed text-text">
+              On the web, export a CSV from your exchange and use the
+              <button
+                class="font-semibold text-text-heading underline underline-offset-2 hover:text-accent"
+                onclick={() => { activeTab = 'csv'; }}
+              >CSV import</button> tab.
+            </p>
+            <a
+              href="https://github.com/martinebl/kryptax/releases"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="mt-5 inline-block rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent/90"
+            >
+              Get the desktop app →
+            </a>
           </div>
-          <div class="h-2 overflow-hidden rounded-full bg-border">
-            <div
-              class="h-full rounded-full bg-accent transition-[width] duration-100 ease-linear"
-              style="width: {enrichTotal > 0 ? (enrichProgress / enrichTotal) * 100 : 0}%"
-            ></div>
-          </div>
-        </div>
+        {/if}
       {/if}
 
-      <!-- Enrichment warning -->
-      {#if !enriching && enrichFailed > 0 && parsedCount > 0}
-        <div class="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4">
-          <p class="text-sm text-amber-800">
-            Could not fetch market prices for {enrichFailed} of {parsedCount} transactions.
-            These will show a cost basis of 0. This typically happens for transactions older than 1 year
-            (CoinGecko free tier limitation) or for unrecognized assets.
-          </p>
-        </div>
-      {/if}
+      <!-- Enrichment status (progress + warning shared by both tabs; success is CSV-only) -->
+      <ImportStatus
+        {enriching}
+        {enrichProgress}
+        {enrichTotal}
+        {enrichFailed}
+        {parsedCount}
+        {newCount}
+        {dupCount}
+        sourceName={importSourceName}
+        showSuccess={activeTab === 'csv'}
+        onViewResults={() => onNavigate('results')}
+        onReviewMissing={() => { showMissingModal = true; }}
+      />
 
-      <!-- Success message -->
-      {#if parsedCount > 0}
-        <div class="mt-4 rounded-lg border border-green-300 bg-green-50 p-4">
-          <p class="text-sm text-green-700">
-            Imported {parsedCount} transactions from {importSourceName}. View your results on the Results page.
-          </p>
-        </div>
-      {/if}
     </div>
 
-    <!-- Price data column -->
-    <div>
-      <h2 class="mb-2 font-heading text-2xl font-medium text-text-heading">Price data</h2>
+    <!-- ===== RIGHT: PRICE DATA ===== -->
+    <div
+      bind:this={pricePanel}
+      class="rounded-2xl border bg-white p-6 transition-all duration-300 lg:sticky lg:top-8
+        {highlightPricePanel ? 'border-accent ring-4 ring-accent/20' : 'border-border'}"
+    >
+      <h2 class="mb-2 font-heading text-xl font-semibold text-text-heading">Price data</h2>
       <p class="mb-4 text-sm leading-relaxed text-text">
         Upload a CSV with historical prices for assets or periods not covered by CoinGecko's free API.
       </p>
@@ -184,3 +204,13 @@
 
   </div>
 </section>
+
+<!-- Missing prices modal -->
+{#if showMissingModal}
+  <MissingPricesModal
+    {missingPrices}
+    currency={countryConfig.currency}
+    onClose={() => { showMissingModal = false; }}
+    onGoToUploader={() => { showMissingModal = false; scrollToPricePanel(); }}
+  />
+{/if}

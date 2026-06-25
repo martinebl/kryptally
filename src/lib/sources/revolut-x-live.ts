@@ -162,8 +162,20 @@ export class RevolutXLiveSource implements ILiveSource {
   readonly preprocessors: IImportPreprocessor[] = [];
   readonly requiresSymbols = false;
   readonly requiresDateRange = true;
-  readonly symbolsNote =
-    'Fetches all your Revolut X exchange activity: historical orders plus private trade fills (for assets you currently hold). Trades made in the main Revolut app (not the Revolut X exchange) are not exposed by this API — use a CSV export for those. The API does not report fees.';
+  readonly whatFetches = [
+    { label: 'Historical orders across your full Revolut X account history.', included: true },
+    { label: 'Private trade fills for assets you currently hold.', included: true },
+    {
+      label:
+        'Trades made in the main Revolut app (not the X exchange) — these aren\'t exposed by the API; export them as a CSV.',
+      included: false,
+    },
+    {
+      label:
+        "Trading fees — Revolut's API doesn't report them, so cost basis may be slightly understated. Add them via CSV import for exact figures.",
+      included: false,
+    },
+  ];
   readonly keyLabel = 'API key';
   readonly secretLabel = 'Ed25519 private key (PEM)';
 

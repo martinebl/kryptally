@@ -1,39 +1,31 @@
-import BigNumber from 'bignumber.js';
-import type { ICryptoToFiatConverter } from '$lib/types/converters';
+import type BigNumber from 'bignumber.js';
 import type { Transaction } from '$lib/types/transaction';
 
 export interface SimulatedSellsResult {
   transactions: Transaction[];
-  unpricedAssets: string[];
+  unpriced: string[];
 }
 
 /**
- * Builds synthetic sell transactions for all provided holdings using current prices
- * from the given converter. Assets whose price cannot be fetched are skipped and
- * reported in `unpricedAssets`.
+ * Builds synthetic sell transactions for the given holdings using the supplied
+ * current prices (keyed by asset). Holdings with no positive price are skipped
+ * and reported in `unpriced`. Pure — fetching prices is the caller's concern.
  */
-export async function buildSimulatedSells(
+export function buildSellsFromPrices(
   holdings: { asset: string; totalAmount: BigNumber }[],
-  converter: ICryptoToFiatConverter,
+  prices: Map<string, BigNumber>,
   simulationDate: Date,
   fiatCurrency: string,
-): Promise<SimulatedSellsResult> {
+): SimulatedSellsResult {
   const transactions: Transaction[] = [];
-  const unpricedAssets: string[] = [];
+  const unpriced: string[] = [];
 
   for (const { asset, totalAmount } of holdings) {
     if (totalAmount.lte(0)) continue;
 
-    let rate: BigNumber;
-    try {
-      rate = await converter.getRate(asset, fiatCurrency, simulationDate);
-    } catch {
-      unpricedAssets.push(asset);
-      continue;
-    }
-
-    if (rate.lte(0)) {
-      unpricedAssets.push(asset);
+    const rate = prices.get(asset);
+    if (!rate || rate.lte(0)) {
+      unpriced.push(asset);
       continue;
     }
 
@@ -48,5 +40,5 @@ export async function buildSimulatedSells(
     });
   }
 
-  return { transactions, unpricedAssets };
+  return { transactions, unpriced };
 }
