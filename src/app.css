@@ -18,6 +18,27 @@
   --color-accent: #ef8a16;
   --color-accent-bg: rgba(239, 138, 22, 0.1);
   --color-accent-border: rgba(239, 138, 22, 0.5);
+
+  /* Spacing — commonly reused custom pixel values */
+  --spacing-page: 1100px;
+  --spacing-card-x: 22px;
+  --spacing-btn-x: 26px;
+  --spacing-btn-y: 13px;
+  --spacing-tag-x: 11px;
+  --spacing-hero-bottom: 60px;
+  --spacing-section-lg: 34px;
+  --spacing-section-sm: 18px;
+
+  /* Font sizes */
+  --text-nav: 15px;
+  --text-meta: 13px;
+  --text-tag: 11.5px;
+  --text-card-heading: 17px;
+  --text-hero: 46px;
+  --text-section-heading: 28px;
+
+  /* Border radius */
+  --radius-btn: 11px;
 }
 
 @layer base {

@@ -10,6 +10,7 @@
   import CsvPriceUploader from '$lib/components/CsvPriceUploader.svelte';
   import ImportStatus from '$lib/components/ImportStatus.svelte';
   import MissingPricesModal from '$lib/components/MissingPricesModal.svelte';
+  import Badge from '$lib/components/Badge.svelte';
   import { getCryptoConverter } from '$lib/context';
   import { enrichFiatValues, type MissingPrice } from '$lib/engine/enrich-fiat-values';
   import type { PricesByAsset } from '$lib/converters/csv-prices';
@@ -144,9 +145,7 @@
         {:else}
           <!-- Browser: desktop-only notice -->
           <div class="mt-2 rounded-xl border border-border bg-bg-card px-7 py-6">
-            <span class="inline-block rounded-full border border-border bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wider text-accent">
-              Desktop app only
-            </span>
+            <Badge variant="outlined" color="accent">Desktop app only</Badge>
             <h3 class="mt-4 text-lg font-bold tracking-tight text-text-heading">Connect an exchange directly</h3>
             <p class="mt-2.5 max-w-lg text-sm leading-relaxed text-text">
               Browsers block the cross-origin requests needed to reach exchange APIs, so live import isn't available on the web.

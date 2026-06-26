@@ -47,7 +47,7 @@
         <span class="font-mono text-3xl font-semibold {gainColor(unrealizedTotal)}">{signed(unrealizedTotal)}</span>
         <span class="text-sm text-text/40">{countryConfig.currency}</span>
       </div>
-      <div class="mt-1.5 text-[13px] text-text/70">
+      <div class="mt-1.5 text-meta text-text/70">
         If you sold all {holdingsCount} held asset{holdingsCount === 1 ? '' : 's'} today, est. tax would be
         ≈ {simSummary ? fmt(simSummary.estimatedTax) : '—'} {countryConfig.currency}.
       </div>
@@ -56,7 +56,7 @@
   <button
     onclick={() => (showDetail = !showDetail)}
     disabled={loading || !simSummary}
-    class="cursor-pointer whitespace-nowrap rounded-xl border border-accent bg-accent px-6 py-3 text-[15px] font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+    class="cursor-pointer whitespace-nowrap rounded-xl border border-accent bg-accent px-6 py-3 text-nav font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
   >
     {showDetail ? 'Hide Simulation' : 'Simulate Full Sell'}
   </button>

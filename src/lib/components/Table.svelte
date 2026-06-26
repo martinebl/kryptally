@@ -26,7 +26,7 @@
         <div>
             <h3 class="font-heading text-xl font-semibold tracking-tight text-text-heading">{title}</h3>
             {#if subtitle}
-                <p class="mt-0.5 text-[13px] text-text/80">{subtitle}</p>
+                <p class="mt-0.5 text-meta text-text/80">{subtitle}</p>
             {/if}
         </div>
     {/if}

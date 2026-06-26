@@ -2,6 +2,7 @@
     import BigNumber from 'bignumber.js';
     import type { TaxableEvent } from '$lib/types/results';
     import Table from '$lib/components/Table.svelte';
+    import Badge from '$lib/components/Badge.svelte';
 
     interface Props {
         events: TaxableEvent[];
@@ -46,12 +47,9 @@
                 {event.date.toISOString().slice(0, 10)}
             </td>
             <td class="px-4 py-3">
-                <span class="inline-block rounded-full px-2 py-0.5 text-xs font-medium
-                    {event.type === 'income'
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'bg-amber-100 text-amber-700'}">
+                <Badge color={event.type === 'income' ? 'blue' : 'amber'}>
                     {eventTypeLabel(event)}
-                </span>
+                </Badge>
             </td>
             <td class="px-4 py-3 font-medium text-text-heading">{event.asset}</td>
             <td class="px-4 py-3 text-right font-mono text-text-heading">{event.amount.toFormat(6)}</td>
