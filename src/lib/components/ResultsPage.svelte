@@ -12,7 +12,7 @@
   import type { CountryConfig } from '$lib/types/tax-rules';
   import type { TaxSummary } from '$lib/types/results';
   import { filterDustHoldings } from '$lib/engine/dust-filter';
-  import ActivitiesTable from './ActivitiesTable.svelte';
+  import ActivitiesTable from '$lib/components/ActivitiesTable.svelte';
 
   interface Props {
     transactions: Transaction[];
@@ -216,7 +216,7 @@
 
         <!-- Gains / losses bar -->
         <div class="mt-6">
-          <div class="mb-1.5 flex justify-between text-[13px]">
+          <div class="mb-1.5 flex justify-between text-meta">
             <span class="font-medium text-green-600">Gains <span class="font-mono">{fmt(summary.totalGains)}</span></span>
             <span class="font-medium text-red-500">Losses <span class="font-mono">{fmt(summary.totalLosses)}</span></span>
           </div>
@@ -239,10 +239,10 @@
 
         <div class="mt-auto border-t border-dashed border-border pt-4">
           <div class="flex items-baseline gap-2">
-            <span class="text-[13px] text-text">Estimated tax</span>
-            <span class="font-mono text-[15px] font-medium text-text-heading">≈ {fmt(summary.estimatedTax)} {countryConfig.currency}</span>
+              <span class="text-meta text-text">Estimated tax</span>
+              <span class="font-mono text-nav font-medium text-text-heading">≈ {fmt(summary.estimatedTax)} {countryConfig.currency}</span>
           </div>
-          <p class="mt-1.5 text-[11.5px] leading-relaxed text-text/60">
+          <p class="mt-1.5 text-tag leading-relaxed text-text/60">
             Very rough estimate — excludes your personal income, deductions &amp; the asymmetric treatment of
             crypto losses. For orientation only, not tax advice.
           </p>
@@ -253,13 +253,13 @@
     <!-- Breakdown -->
     <div class="mt-4 grid grid-cols-2 gap-4 max-md:grid-cols-1">
       <div class="rounded-2xl border border-border bg-bg-card p-6">
-        <h3 class="mb-3.5 font-heading text-[15px] font-semibold text-text-heading">Capital Gains</h3>
+        <h3 class="mb-3.5 font-heading text-nav font-semibold text-text-heading">Capital Gains</h3>
         <div class="flex justify-between py-1.5 text-sm text-text"><span>Proceeds</span><span class="font-mono text-text-heading">{fmt(summary.totalProceeds)}</span></div>
         <div class="flex justify-between py-1.5 text-sm text-text"><span>Cost basis</span><span class="font-mono text-text-heading">{fmt(summary.totalCostBasis)}</span></div>
         <div class="mt-2 flex justify-between border-t border-border pt-2.5 text-sm font-semibold"><span class="text-text-heading">Net gain/loss</span><span class="font-mono {gainColor(summary.netGainLoss)}">{signed(summary.netGainLoss)}</span></div>
       </div>
       <div class="rounded-2xl border border-border bg-bg-card p-6">
-        <h3 class="mb-3.5 font-heading text-[15px] font-semibold text-text-heading">Income</h3>
+        <h3 class="mb-3.5 font-heading text-nav font-semibold text-text-heading">Income</h3>
         <div class="flex justify-between py-1.5 text-sm text-text"><span>Mining</span><span class="font-mono text-text-heading">{fmt(summary.incomeFromMining)}</span></div>
         <div class="flex justify-between py-1.5 text-sm text-text"><span>Staking</span><span class="font-mono text-text-heading">{fmt(summary.incomeFromStaking)}</span></div>
         <div class="flex justify-between py-1.5 text-sm text-text"><span>Airdrops</span><span class="font-mono text-text-heading">{fmt(summary.incomeFromAirdrops)}</span></div>

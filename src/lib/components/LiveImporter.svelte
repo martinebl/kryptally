@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { ILiveSource, Transaction } from '$lib/types';
-  import DateField from '$lib/components/DateField.svelte';
+  import LiveSourceCard from '$lib/components/LiveSourceCard.svelte';
 
   interface Props {
     liveSources: ILiveSource[];
@@ -44,10 +44,9 @@
     return `Last fetched ${dateStr}`;
   };
 
-  // Per-source UI state, keyed by exchangeName
   type SourceState = {
     open: boolean;
-    hasCreds: boolean | undefined; // undefined = not yet checked
+    hasCreds: boolean | undefined;
     lastFetch: Date | null;
     credsKey: string;
     credsSecret: string;
@@ -62,7 +61,6 @@
     rateLimitSeconds: number;
     error: string;
     info: string;
-    // Binance-specific
     symbols: string;
     discovering: boolean;
   };
@@ -111,13 +109,11 @@
     }, 1000);
   };
 
-  // Check credentials on mount for available sources
   $effect(() => {
     liveSources.forEach(async (s) => {
       if (s.isAvailable() && states[s.exchangeName].hasCreds === undefined) {
         const has = await s.hasCredentials();
         states[s.exchangeName].hasCreds = has;
-        // Auto-expand connected sources that have never been opened
         if (has && !states[s.exchangeName].open) {
           states[s.exchangeName].open = true;
           if (s.discoverSymbols) discoverSymbols(s);
@@ -251,288 +247,19 @@
 
 <div class="flex flex-col gap-3">
   {#each liveSources as source}
-    {@const available = source.isAvailable()}
-    {@const st = states[source.exchangeName]}
-    {@const connected = st.hasCreds === true}
-
-    <div
-      class="overflow-hidden rounded-xl border bg-white transition-colors
-        {st.open && connected ? 'border-border' : 'border-border'}"
-    >
-      <!-- Card header -->
-      <div class="flex items-center justify-between gap-4 px-5 py-4">
-        <div>
-          <div class="flex items-center gap-2.5">
-            <span class="text-base font-bold text-text-heading">{source.exchangeName}</span>
-            {#if !available}
-              <span class="inline-flex items-center gap-1.5 rounded-full border border-border bg-bg-card px-2.5 py-0.5 text-xs font-semibold text-text">
-                <span class="inline-block size-1.5 rounded-full bg-border"></span>
-                Desktop only
-              </span>
-            {:else if connected}
-              <span class="inline-flex items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-2.5 py-0.5 text-xs font-semibold text-green-700">
-                <span class="inline-block size-1.5 rounded-full bg-green-500"></span>
-                Connected
-              </span>
-            {:else}
-              <span class="inline-flex items-center gap-1.5 rounded-full border border-border bg-bg-card px-2.5 py-0.5 text-xs font-semibold text-text">
-                <span class="inline-block size-1.5 rounded-full bg-border"></span>
-                Not connected
-              </span>
-            {/if}
-          </div>
-          <p class="mt-1 text-sm text-text">
-            {#if !available}
-              Available in the desktop app.
-            {:else if connected}
-              <span class="mr-1.5 text-text/60">🔒</span>Credentials in keychain · {formatLastFetch(st.lastFetch)}
-            {:else}
-              Add your API keys to pull trades with a single click.
-            {/if}
-          </p>
-        </div>
-
-        {#if available}
-          <button
-            class="flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-text-heading transition-colors hover:bg-bg-card"
-            onclick={() => toggleOpen(source)}
-          >
-            {#if connected}
-              {st.open ? 'Close' : 'Manage'}
-              <span
-                class="text-[10px] text-text transition-transform duration-200"
-                class:rotate-180={st.open}
-              >▼</span>
-            {:else}
-              Connect
-            {/if}
-          </button>
-        {/if}
-      </div>
-
-      <!-- Expanded panel -->
-      {#if available && st.open}
-        <div class="border-t border-border bg-bg-card/50 px-5 py-5">
-
-          {#if !connected}
-            <!-- Credential entry form -->
-            <div class="space-y-3">
-              <div>
-                <label for="live-key-{source.exchangeName}" class="mb-1 block text-xs font-semibold text-text-heading">
-                  {source.keyLabel ?? 'API key'}
-                </label>
-                <input
-                  id="live-key-{source.exchangeName}"
-                  type="password"
-                  bind:value={st.credsKey}
-                  class="w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-text-heading focus:border-accent focus:outline-none"
-                />
-              </div>
-              <div>
-                <label for="live-secret-{source.exchangeName}" class="mb-1 block text-xs font-semibold text-text-heading">
-                  {source.secretLabel ?? 'API secret'}
-                </label>
-                <textarea
-                  id="live-secret-{source.exchangeName}"
-                  rows="3"
-                  bind:value={st.credsSecret}
-                  class="w-full rounded-lg border border-border bg-white px-3 py-2.5 font-mono text-xs text-text-heading focus:border-accent focus:outline-none"
-                ></textarea>
-              </div>
-              <button
-                class="rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={!st.credsKey || !st.credsSecret}
-                onclick={() => handleSaveCredentials(source)}
-              >
-                Save credentials
-              </button>
-            </div>
-
-          {:else}
-            <!-- Connected: what it fetches -->
-            {#if source.whatFetches}
-              <div class="mb-4">
-                <p class="mb-2.5 text-[11px] font-semibold uppercase tracking-widest text-text/70">What this fetches</p>
-                <div class="space-y-2">
-                  {#each source.whatFetches as item}
-                    <div class="flex gap-2.5 text-sm leading-relaxed">
-                      <span class={item.included ? 'text-green-600' : 'text-border'}>{item.included ? '✓' : '✕'}</span>
-                      <span class={item.included ? 'text-text-heading' : 'text-text'}>{item.label}</span>
-                    </div>
-                  {/each}
-                </div>
-              </div>
-            {/if}
-
-            <!-- Binance: symbols input -->
-            {#if source.requiresSymbols ?? true}
-              <div class="mb-4">
-                <div class="mb-1 flex items-center justify-between">
-                  <label for="live-symbols-{source.exchangeName}" class="text-sm font-semibold text-text-heading">
-                    Pair symbols
-                  </label>
-                  {#if source.discoverSymbols}
-                    <button
-                      type="button"
-                      class="text-xs font-medium text-accent hover:underline disabled:opacity-50"
-                      disabled={st.discovering}
-                      onclick={() => discoverSymbols(source)}
-                    >
-                      {st.discovering ? 'Detecting…' : 'Re-detect pairs'}
-                    </button>
-                  {/if}
-                </div>
-                <input
-                  id="live-symbols-{source.exchangeName}"
-                  type="text"
-                  placeholder={source.symbolPlaceholder ?? ''}
-                  bind:value={st.symbols}
-                  class="w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-text-heading focus:border-accent focus:outline-none"
-                />
-              </div>
-            {/if}
-
-            <!-- Date range -->
-            <div class="mb-4">
-              <div class="mb-2 flex items-baseline justify-between">
-                <p class="text-sm font-semibold text-text-heading">
-                  Date range{#if source.requiresDateRange}
-                    <span class="ml-0.5 text-amber-500">*</span>
-                  {:else}
-                    <span class="ml-1 text-xs font-normal text-text">(optional)</span>
-                  {/if}
-                </p>
-                {#if st.fromDate || st.toDate}
-                  <button
-                    type="button"
-                    class="text-xs font-medium text-text hover:text-text-heading"
-                    onclick={() => { st.fromDate = ''; st.toDate = ''; }}
-                  >
-                    Clear dates
-                  </button>
-                {/if}
-              </div>
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label for="live-from-{source.exchangeName}" class="mb-1 block text-xs text-text">From</label>
-                  <DateField
-                    id="live-from-{source.exchangeName}"
-                    max={today}
-                    bind:value={st.fromDate}
-                  />
-                </div>
-                <div>
-                  <label for="live-to-{source.exchangeName}" class="mb-1 block text-xs text-text">To</label>
-                  <DateField
-                    id="live-to-{source.exchangeName}"
-                    max={today}
-                    bind:value={st.toDate}
-                  />
-                </div>
-              </div>
-              {#if source.requiresDateRange}
-                <p class="mt-2 text-xs {!st.fromDate || !st.toDate ? 'text-amber-600' : 'text-text'}">
-                  {!st.fromDate || !st.toDate
-                    ? 'Both From and To are required by the Revolut API.'
-                    : 'Both dates are required by the Revolut API.'}
-                </p>
-              {/if}
-            </div>
-
-            <!-- Fetch / progress / done -->
-            <div class="border-t border-border pt-4">
-              {#if st.phase === 'idle'}
-                {@const datesOk = !source.requiresDateRange || (!!st.fromDate && !!st.toDate)}
-                {@const symbolsOk = !(source.requiresSymbols ?? true) || st.symbols.trim().length > 0}
-                <div class="flex items-center gap-3.5">
-                  <button
-                    class="shrink-0 rounded-lg px-5 py-2.5 text-sm font-semibold text-white transition-colors
-                      {datesOk && symbolsOk ? 'bg-accent hover:bg-accent/90 cursor-pointer' : 'bg-border cursor-not-allowed'}"
-                    disabled={!datesOk || !symbolsOk}
-                    onclick={() => handleFetch(source)}
-                  >
-                    Fetch transactions
-                  </button>
-                  <p class="text-xs leading-relaxed text-text">
-                    New transactions merge with your stored history — duplicates are skipped.
-                  </p>
-                </div>
-
-              {:else if st.phase === 'fetching'}
-                <div class="flex items-center justify-between text-sm">
-                  <span class="font-medium text-text-heading">Fetching from {source.exchangeName}…</span>
-                  {#if st.progTotal > 0}
-                    <span class="font-mono text-text">{st.progDone} / {st.progTotal}</span>
-                  {/if}
-                </div>
-                <div class="mt-3 h-2 overflow-hidden rounded-full bg-border">
-                  <div
-                    class="h-full rounded-full bg-accent transition-[width] duration-100 ease-linear"
-                    style="width: {st.progTotal > 0 ? (st.progDone / st.progTotal) * 100 : 0}%"
-                  ></div>
-                </div>
-                {#if st.rateLimitSeconds > 0}
-                  <p class="mt-2 text-xs text-amber-600">
-                    Rate limited — waiting {st.rateLimitSeconds}s before retrying…
-                  </p>
-                {/if}
-
-              {:else}
-                <!-- Done state -->
-                <div class="flex items-start justify-between gap-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3.5">
-                  <div class="flex gap-2.5">
-                    <span class="mt-px text-green-600">✓</span>
-                    <div>
-                      <p class="text-sm font-semibold text-green-700">
-                        Fetched {st.fetchedTotal} transactions from {source.exchangeName}
-                      </p>
-                      <p class="mt-0.5 text-sm text-green-600">
-                        {st.newCount} new · {st.dupCount} duplicate{st.dupCount === 1 ? '' : 's'} skipped
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    class="shrink-0 rounded-lg border border-green-300 bg-white px-3 py-1.5 text-sm font-semibold text-green-700 transition-colors hover:bg-green-50"
-                    onclick={() => onNavigate('results')}
-                  >
-                    View results →
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  class="mt-3 text-xs text-text hover:text-text-heading"
-                  onclick={() => { states[source.exchangeName].phase = 'idle'; }}
-                >
-                  Fetch again
-                </button>
-              {/if}
-            </div>
-
-            {#if st.info}
-              <div class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
-                <p class="text-xs text-amber-700">{st.info}</p>
-              </div>
-            {/if}
-
-            <!-- Disconnect -->
-            <div class="mt-4 border-t border-border pt-4">
-              <button
-                type="button"
-                class="text-xs font-medium text-text/60 hover:text-red-600 transition-colors"
-                onclick={() => handleDisconnect(source)}
-              >
-                Forget API key &amp; disconnect
-              </button>
-            </div>
-          {/if}
-
-          {#if st.error}
-            <div class="mt-3 rounded-lg border border-red-200 bg-red-50 p-3">
-              <p class="text-xs text-red-700">{st.error}</p>
-            </div>
-          {/if}
-        </div>
-      {/if}
-    </div>
+    <LiveSourceCard
+      {source}
+      state={states[source.exchangeName]}
+      available={source.isAvailable()}
+      connected={states[source.exchangeName].hasCreds === true}
+      {today}
+      {formatLastFetch}
+      {onNavigate}
+      onToggleOpen={toggleOpen}
+      onDiscoverSymbols={discoverSymbols}
+      onSaveCredentials={handleSaveCredentials}
+      onDisconnect={handleDisconnect}
+      onFetch={handleFetch}
+    />
   {/each}
 </div>

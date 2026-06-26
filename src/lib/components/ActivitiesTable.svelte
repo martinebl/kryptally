@@ -1,6 +1,7 @@
 <script lang="ts">
     import type { Transaction } from "$lib/types";
     import Table from "$lib/components/Table.svelte";
+    import Badge from "$lib/components/Badge.svelte";
 
     interface Props {
         transactions: Transaction[];
@@ -11,18 +12,18 @@
         [...transactions].sort((a, b) => b.date.getTime() - a.date.getTime())
     );
 
-    const typeBadgeClass = (type: string) => {
-        const map: Record<string, string> = {
-            transfer: 'bg-gray-100 text-gray-700',
-            buy: 'bg-green-100 text-green-700',
-            sell: 'bg-red-100 text-red-700',
-            trade: 'bg-purple-100 text-purple-700',
-            fee: 'bg-amber-100 text-amber-700',
-            mining: 'bg-gray-100 text-gray-600',
-            staking: 'bg-blue-100 text-blue-700',
-            airdrop: 'bg-purple-100 text-purple-700',
+    const typeBadgeColor = (type: string) => {
+        const map: Record<string, 'default' | 'success' | 'danger' | 'purple' | 'amber' | 'blue'> = {
+            transfer: 'default',
+            buy: 'success',
+            sell: 'danger',
+            trade: 'purple',
+            fee: 'amber',
+            mining: 'default',
+            staking: 'blue',
+            airdrop: 'purple',
         };
-        return map[type] ?? 'bg-gray-100 text-gray-700';
+        return map[type] ?? 'default';
     };
 
     const txAsset = (tx: Transaction) =>
@@ -60,9 +61,7 @@
             {tx.date.toISOString().slice(0, 10)}
         </td>
         <td class="px-4 py-3">
-            <span class="inline-block rounded-full px-2 py-0.5 text-xs font-medium {typeBadgeClass(tx.type)}">
-                {tx.type}
-            </span>
+            <Badge color={typeBadgeColor(tx.type)}>{tx.type}</Badge>
         </td>
         <td class="px-4 py-3 font-medium text-text-heading">
             {#if isTrade(tx)}

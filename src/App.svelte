@@ -111,15 +111,15 @@
 <div class="flex min-h-svh flex-col">
   <!-- Nav -->
   <header class="border-b border-border bg-surface">
-    <nav class="mx-auto flex h-16 max-w-[1100px] items-center justify-between px-6">
+    <nav class="mx-auto flex h-16 max-w-page items-center justify-between px-6">
       <button
         class="flex cursor-pointer items-center gap-2.5 border-none bg-transparent"
         onclick={() => navigate('home')}
       >
-        <span class="flex size-[30px] items-center justify-center rounded-full bg-text-heading text-[15px] font-bold text-accent">K</span>
+        <span class="flex size-[30px] items-center justify-center rounded-full bg-text-heading text-nav font-bold text-accent">K</span>
         <span class="text-[19px] font-bold tracking-tight text-text-heading">Kryptax</span>
       </button>
-      <div class="flex items-center gap-7 text-[15px] max-md:gap-5">
+      <div class="flex items-center gap-7 text-nav max-md:gap-5">
         <button
           class="cursor-pointer border-none bg-transparent transition-colors
             {currentPage === 'home' ? 'font-semibold text-accent' : 'text-text-muted hover:text-text-heading'}"
@@ -149,7 +149,7 @@
     </nav>
   </header>
 
-  <main class="mx-auto w-full max-w-[1100px] px-6">
+  <main class="mx-auto w-full max-w-page px-6">
     {#if currentPage === 'home'}
       <LandingPage onNavigate={navigate} {availableCountries} selectedCountry={countryConfig} onSelectCountry={selectCountry} />
     {:else if currentPage === 'import' && countryConfig}
@@ -176,7 +176,7 @@
 
   <!-- Footer -->
   <footer class="mt-auto border-t border-border bg-surface">
-    <div class="mx-auto flex max-w-[1100px] flex-wrap items-center justify-between gap-4 px-6 py-7 text-[13px] text-text-muted">
+    <div class="mx-auto flex max-w-page flex-wrap items-center justify-between gap-4 px-6 py-7 text-meta text-text-muted">
       <span>Kryptax</span>
       <span class="font-mono text-text-faint">v{version} · Apache-2.0 licensed</span>
     </div>

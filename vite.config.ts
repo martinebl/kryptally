@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import tailwindcss from '@tailwindcss/vite'
@@ -16,5 +17,8 @@ export default defineConfig({
     alias: {
       $lib: path.resolve(__dirname, 'src/lib'),
     },
+  },
+  test: {
+    exclude: ['e2e/**', 'node_modules/**'],
   },
 })

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { MissingPrice } from '$lib/engine/enrich-fiat-values';
   import { groupMissingPrices } from '$lib/engine/missing-prices';
+  import Badge from '$lib/components/Badge.svelte';
 
   interface Props {
     missingPrices: MissingPrice[];
@@ -65,9 +66,9 @@
             <p class="text-sm font-semibold text-text-heading">{group.asset}</p>
             <p class="mt-0.5 font-mono text-xs text-text">{group.range}</p>
           </div>
-          <span class="shrink-0 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+          <Badge variant="outlined" color="amber">
             {group.count} date{group.count === 1 ? '' : 's'}
-          </span>
+          </Badge>
         </div>
       {/each}
     </div>
