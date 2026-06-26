@@ -39,6 +39,7 @@ Modules expose functionality through barrel exports (`index.ts`). Use TypeScript
 ## Key conventions
 
 ### General
+- **Look up framework docs instead of guessing.** If a Tailwind class, Svelte API, or any library feature doesn't work as expected, fetch the official docs directly rather than iterating through guesses.
 - **Each module should have a clear, single responsibility.** Expose functionality across modules via TypeScript interfaces, not concrete implementations.
 - **BigNumber for all monetary/crypto amounts** — never native floats. This includes price maps (e.g. `Map<string, BigNumber>`), parsed CSV prices, rates, quantities, and any intermediate calculations.
 - **Test files** use `.test.ts` suffix, placed next to the code they test.

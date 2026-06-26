@@ -30,12 +30,12 @@
   --spacing-section-sm: 18px;
 
   /* Font sizes */
-  --font-size-nav: 15px;
-  --font-size-meta: 13px;
-  --font-size-tag: 11.5px;
-  --font-size-card-heading: 17px;
-  --font-size-hero: 46px;
-  --font-size-section-heading: 28px;
+  --text-nav: 15px;
+  --text-meta: 13px;
+  --text-tag: 11.5px;
+  --text-card-heading: 17px;
+  --text-hero: 46px;
+  --text-section-heading: 28px;
 
   /* Border radius */
   --radius-btn: 11px;
