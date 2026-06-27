@@ -26,6 +26,12 @@ export interface IExchangeImporter {
   /** Preprocessors that are relevant for this importer's output */
   readonly preprocessors: IImportPreprocessor[];
 
+  /**
+   * Cheap, non-throwing header sniff. Returns true if the given CSV text's
+   * headers match this exchange's export format. Does NOT validate row contents.
+   */
+  detect(csv: string): boolean;
+
   /** Parse raw CSV text into Transactions */
   parse(csv: string): Transaction[];
 }

@@ -77,6 +77,18 @@
     return counts;
   };
 
+  const handleCsvFileSelected = () => {
+    importSourceName = '';
+    parsedCount = 0;
+    newCount = 0;
+    dupCount = 0;
+    enriching = false;
+    enrichProgress = 0;
+    enrichTotal = 0;
+    enrichFailed = 0;
+    missingPrices = [];
+  };
+
   const scrollToPricePanel = () => {
     if (pricePanel) {
       const y = pricePanel.getBoundingClientRect().top + window.scrollY - 28;
@@ -137,7 +149,7 @@
       </div>
 
       {#if activeTab === 'csv'}
-        <CsvImporter {importers} onConfirm={handleEnrich} />
+        <CsvImporter {importers} onConfirm={handleEnrich} onFileSelected={handleCsvFileSelected} />
       {:else}
         <!-- Live exchange tab -->
         {#if isTauri()}

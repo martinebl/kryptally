@@ -14,6 +14,31 @@ describe('RevolutXImporter', () => {
     expect(importer.exchangeName).toBe('Revolut X');
   });
 
+  it('detect() returns true for a header-only Revolut X CSV', () => {
+    expect(importer.detect(header)).toBe(true);
+  });
+
+  it('detect() returns true for a header + data-row Revolut X CSV', () => {
+    const csvText = makeCsv('BTC,Buy - Revolut X,0.01916167,$66800.02,$1280.00,$0.00,"28 Jun 2021, 14:30:00"');
+    expect(importer.detect(csvText)).toBe(true);
+  });
+
+  it('detect() returns false for an empty CSV', () => {
+    expect(importer.detect('')).toBe(false);
+  });
+
+  it('detect() returns false for an unrelated CSV header', () => {
+    expect(importer.detect('Foo,Bar,Baz\n1,2,3')).toBe(false);
+  });
+
+  it('detect() does not match a Binance or Ledger header', () => {
+    const binanceHeader = 'User ID,Time,Account,Operation,Coin,Change,Remark';
+    const ledgerHeader =
+      'Operation Date,Status,Currency Ticker,Operation Type,Operation Amount,Operation Fees,Operation Hash,Account Name,Account xpub,Countervalue Ticker,Countervalue at Operation Date';
+    expect(importer.detect(binanceHeader)).toBe(false);
+    expect(importer.detect(ledgerHeader)).toBe(false);
+  });
+
   it('throws on empty CSV', () => {
     expect(() => importer.parse('')).toThrow('CSV is empty');
   });
