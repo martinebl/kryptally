@@ -1,0 +1,12 @@
+name: CI
+
+# Runs all test suites on pull requests targeting main.
+# The actual test jobs live in tests.yml (a reusable workflow) so they can
+# be invoked without duplicating setup across workflows.
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  tests:
+    uses: ./.github/workflows/tests.yml
