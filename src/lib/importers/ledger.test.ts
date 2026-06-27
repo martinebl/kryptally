@@ -32,6 +32,30 @@ describe('LedgerImporter', () => {
     expect(importer.exchangeName).toBe('Ledger');
   });
 
+  it('detect() returns true for a header-only Ledger CSV', () => {
+    expect(importer.detect(HEADER)).toBe(true);
+  });
+
+  it('detect() returns true for a header + data-row Ledger CSV', () => {
+    const csvText = csv(makeRow('2024-01-05T10:00:00.000Z', 'BTC', 'IN', '0.5', '0.0001'));
+    expect(importer.detect(csvText)).toBe(true);
+  });
+
+  it('detect() returns false for an empty CSV', () => {
+    expect(importer.detect('')).toBe(false);
+  });
+
+  it('detect() returns false for an unrelated CSV header', () => {
+    expect(importer.detect('Foo,Bar,Baz\n1,2,3')).toBe(false);
+  });
+
+  it('detect() does not match a Binance or Revolut X header', () => {
+    const binanceHeader = 'User ID,Time,Account,Operation,Coin,Change,Remark';
+    const revolutHeader = 'Symbol,Type,Quantity,Price,Value,Fees,Date';
+    expect(importer.detect(binanceHeader)).toBe(false);
+    expect(importer.detect(revolutHeader)).toBe(false);
+  });
+
   it('parses an IN operation as a transfer', () => {
     const input = csv(
       makeRow('2021-03-01T10:00:00.000Z', 'BTC', 'IN', '0.5', '0'),

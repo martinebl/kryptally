@@ -1,6 +1,7 @@
 import Papa from 'papaparse';
 import BigNumber from 'bignumber.js';
 import type { Transaction, TransactionType, IExchangeImporter, IImportPreprocessor } from '$lib/types';
+import { missingColumns, parseHeaders } from '$lib/importers/csv-util';
 
 interface RevolutXRow {
   Symbol: string;
@@ -136,6 +137,11 @@ export class RevolutXImporter implements IExchangeImporter {
   readonly exchangeName = 'Revolut X';
   readonly preprocessors: IImportPreprocessor[] = [];
 
+  detect(csv: string): boolean {
+    const headers = parseHeaders(csv);
+    return missingColumns(headers, REQUIRED_COLUMNS).length === 0;
+  }
+
   parse(csv: string): Transaction[] {
     const trimmed = csv.trim();
     if (trimmed.length === 0) {
@@ -152,7 +158,7 @@ export class RevolutXImporter implements IExchangeImporter {
     }
 
     const headers = result.meta.fields ?? [];
-    const missing = REQUIRED_COLUMNS.filter((c) => !headers.includes(c));
+    const missing = missingColumns(headers, REQUIRED_COLUMNS);
     if (missing.length > 0) {
       throw new Error(`Missing required columns: ${missing.join(', ')}`);
     }

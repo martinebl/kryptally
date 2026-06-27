@@ -2,6 +2,7 @@ import Papa from 'papaparse';
 import BigNumber from 'bignumber.js';
 import type { Transaction, TransactionType, IExchangeImporter, IImportPreprocessor } from '$lib/types';
 import { reclassifyInboundAsBuys } from '$lib/preprocessors/reclassify-inbound-as-buys';
+import { missingColumns, parseHeaders } from '$lib/importers/csv-util';
 
 interface LedgerRow {
   'Operation Date': string;
@@ -84,6 +85,11 @@ export class LedgerImporter implements IExchangeImporter {
     reclassifyInboundAsBuys,
   ];
 
+  detect(csv: string): boolean {
+    const headers = parseHeaders(csv);
+    return missingColumns(headers, REQUIRED_COLUMNS).length === 0;
+  }
+
   parse(csv: string): Transaction[] {
     const trimmed = csv.trim();
     if (trimmed.length === 0) {
@@ -100,7 +106,7 @@ export class LedgerImporter implements IExchangeImporter {
     }
 
     const headers = result.meta.fields ?? [];
-    const missing = REQUIRED_COLUMNS.filter((c) => !headers.includes(c));
+    const missing = missingColumns(headers, REQUIRED_COLUMNS);
     if (missing.length > 0) {
       throw new Error(`Missing required columns: ${missing.join(', ')}`);
     }

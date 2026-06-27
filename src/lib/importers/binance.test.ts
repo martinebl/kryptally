@@ -20,6 +20,31 @@ describe('BinanceImporter', () => {
     expect(() => importer.parse('')).toThrow('CSV is empty');
   });
 
+  it('detect() returns true for a header-only Binance CSV', () => {
+    expect(importer.detect(HEADER)).toBe(true);
+  });
+
+  it('detect() returns true for a header + data-row Binance CSV', () => {
+    const csv = makeCSV('123,20-03-15 10:00:00,Spot,Deposit,USD,545,');
+    expect(importer.detect(csv)).toBe(true);
+  });
+
+  it('detect() returns false for an empty CSV', () => {
+    expect(importer.detect('')).toBe(false);
+  });
+
+  it('detect() returns false for an unrelated CSV header', () => {
+    expect(importer.detect('Foo,Bar,Baz\n1,2,3')).toBe(false);
+  });
+
+  it('detect() does not match a Ledger or Revolut X header', () => {
+    const ledgerHeader =
+      'Operation Date,Status,Currency Ticker,Operation Type,Operation Amount,Operation Fees,Operation Hash,Account Name,Account xpub,Countervalue Ticker,Countervalue at Operation Date';
+    const revolutHeader = 'Symbol,Type,Quantity,Price,Value,Fees,Date';
+    expect(importer.detect(ledgerHeader)).toBe(false);
+    expect(importer.detect(revolutHeader)).toBe(false);
+  });
+
   it('throws on missing required columns', () => {
     expect(() => importer.parse('Foo,Bar\n1,2')).toThrow('Missing required columns');
   });
