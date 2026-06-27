@@ -1,5 +1,6 @@
 <script lang="ts">
-  import type { ILiveSource, Transaction } from '$lib/types';
+  import { onMount } from 'svelte';
+  import type { ILiveSource, SourceState, Transaction } from '$lib/types';
   import LiveSourceCard from '$lib/components/LiveSourceCard.svelte';
 
   interface Props {
@@ -44,27 +45,6 @@
     return `Last fetched ${dateStr}`;
   };
 
-  type SourceState = {
-    open: boolean;
-    hasCreds: boolean | undefined;
-    lastFetch: Date | null;
-    credsKey: string;
-    credsSecret: string;
-    fromDate: string;
-    toDate: string;
-    phase: 'idle' | 'fetching' | 'done';
-    fetchedTotal: number;
-    newCount: number;
-    dupCount: number;
-    progDone: number;
-    progTotal: number;
-    rateLimitSeconds: number;
-    error: string;
-    info: string;
-    symbols: string;
-    discovering: boolean;
-  };
-
   const defaultState = (name: string): SourceState => ({
     open: false,
     hasCreds: undefined,
@@ -90,6 +70,25 @@
     Object.fromEntries(liveSources.map((s) => [s.exchangeName, defaultState(s.exchangeName)]))
   );
 
+  // The exchange name the user just picked from the "Add exchange" dropdown,
+  // for which the credential form is currently shown inline (not yet connected).
+  let pendingAdd = $state<string | null>(null);
+  // Currently selected option in the "Add exchange" <select>.
+  let selectedToAdd = $state<string>('');
+
+  // Sources whose credentials are already on file — rendered as connected cards.
+  const connectedSources = $derived(
+    liveSources.filter((s) => states[s.exchangeName].hasCreds === true)
+  );
+  // Sources not yet connected and available in this runtime — offered in the
+  // "Add exchange" dropdown. Excludes the one currently being added so it
+  // doesn't show up as an option mid-add.
+  const addableSources = $derived(
+    liveSources.filter(
+      (s) => s.isAvailable() && states[s.exchangeName].hasCreds !== true && s.exchangeName !== pendingAdd
+    )
+  );
+
   const rateLimitTimers: Record<string, ReturnType<typeof setInterval>> = {};
 
   const stopRateLimit = (name: string) => {
@@ -109,15 +108,10 @@
     }, 1000);
   };
 
-  $effect(() => {
+  onMount(() => {
     liveSources.forEach(async (s) => {
       if (s.isAvailable() && states[s.exchangeName].hasCreds === undefined) {
-        const has = await s.hasCredentials();
-        states[s.exchangeName].hasCreds = has;
-        if (has && !states[s.exchangeName].open) {
-          states[s.exchangeName].open = true;
-          if (s.discoverSymbols) discoverSymbols(s);
-        }
+        states[s.exchangeName].hasCreds = await s.hasCredentials();
       }
     });
   });
@@ -150,9 +144,12 @@
     try {
       await source.saveCredentials(st.credsKey.trim(), st.credsSecret.trim());
       st.hasCreds = true;
+      st.open = true;
       st.credsKey = '';
       st.credsSecret = '';
       st.error = '';
+      pendingAdd = null;
+      selectedToAdd = '';
       if (source.discoverSymbols) discoverSymbols(source);
     } catch (e) {
       st.error = e instanceof Error ? e.message : String(e);
@@ -165,11 +162,45 @@
     try {
       await source.clearCredentials();
       st.hasCreds = false;
+      st.open = false;
       st.phase = 'idle';
       st.error = '';
+      st.credsKey = '';
+      st.credsSecret = '';
+      st.symbols = '';
+      st.newCount = 0;
+      st.dupCount = 0;
+      st.fetchedTotal = 0;
+      st.info = '';
     } catch (e) {
       st.error = e instanceof Error ? e.message : String(e);
     }
+  };
+
+  const onAdd = () => {
+    if (!selectedToAdd) return;
+    if (!liveSources.some((s) => s.exchangeName === selectedToAdd)) return;
+    // Defensive guard: the onMount keychain probe may resolve between the user
+    // picking an exchange and clicking Add, flipping hasCreds to true. In that
+    // case the source is already connected and shouldn't enter the add flow.
+    if (states[selectedToAdd].hasCreds === true) {
+      selectedToAdd = '';
+      return;
+    }
+    pendingAdd = selectedToAdd;
+    states[selectedToAdd].open = true;
+    states[selectedToAdd].error = '';
+    selectedToAdd = '';
+  };
+
+  const cancelAdd = () => {
+    if (!pendingAdd) return;
+    const st = states[pendingAdd];
+    st.open = false;
+    st.credsKey = '';
+    st.credsSecret = '';
+    st.error = '';
+    pendingAdd = null;
   };
 
   const handleFetch = async (source: ILiveSource) => {
@@ -237,21 +268,72 @@
   };
 </script>
 
-<p class="mb-5 flex items-start gap-2.5 text-sm leading-relaxed text-text">
-  <span class="mt-px shrink-0 text-text">⌗</span>
-  <span>
-    Pull transactions straight from the exchange API instead of uploading a CSV. API keys are encrypted in your operating
-    system's <strong class="font-semibold text-text-heading">keychain</strong> — never written to disk or transmitted.
-  </span>
-</p>
+<div class="flex flex-col gap-5">
+  <p class="flex items-start gap-2.5 text-sm leading-relaxed text-text">
+    <span class="mt-px shrink-0 text-text">⌗</span>
+    <span>
+      Pull transactions straight from the exchange API instead of uploading a CSV. API keys are encrypted in your operating
+      system's <strong class="font-semibold text-text-heading">keychain</strong> — never written directly to disk or transmitted.
+    </span>
+  </p>
 
-<div class="flex flex-col gap-3">
-  {#each liveSources as source}
+  {#if connectedSources.length === 0 && !pendingAdd}
+    <div class="rounded-xl border border-dashed border-border bg-bg-card px-7 py-8 text-center">
+      <p class="text-sm font-semibold text-text-heading">No exchanges connected yet</p>
+      <p class="mt-1.5 text-sm text-text">
+        Add an exchange below to pull trades straight from its API.
+      </p>
+    </div>
+  {/if}
+
+  {#if addableSources.length > 0 && !pendingAdd}
+    <div class="flex flex-wrap items-center gap-3">
+      <select
+        class="min-w-43 cursor-pointer appearance-none rounded-lg border border-border bg-white px-4 py-2 pr-9 text-sm text-text-heading focus:border-accent focus:outline-none"
+        value={selectedToAdd}
+        onchange={(e) => { selectedToAdd = (e.currentTarget as HTMLSelectElement).value; }}
+      >
+        <option value="" disabled>Add an exchange…</option>
+        {#each addableSources as s}
+          <option value={s.exchangeName}>{s.exchangeName}</option>
+        {/each}
+      </select>
+      <button
+        type="button"
+        class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+        disabled={!selectedToAdd}
+        onclick={onAdd}
+      >
+        Add
+      </button>
+    </div>
+  {/if}
+
+  {#if pendingAdd}
+    {@const addSource = liveSources.find((s) => s.exchangeName === pendingAdd)}
+    {#if addSource && states[addSource.exchangeName].hasCreds !== true}
+      <LiveSourceCard
+        source={addSource}
+        state={states[addSource.exchangeName]}
+        connected={false}
+        {today}
+        {formatLastFetch}
+        {onNavigate}
+        onToggleOpen={toggleOpen}
+        onDiscoverSymbols={discoverSymbols}
+        onSaveCredentials={handleSaveCredentials}
+        onDisconnect={handleDisconnect}
+        onFetch={handleFetch}
+        onCancel={cancelAdd}
+      />
+    {/if}
+  {/if}
+
+  {#each connectedSources as source (source.exchangeName)}
     <LiveSourceCard
       {source}
       state={states[source.exchangeName]}
-      available={source.isAvailable()}
-      connected={states[source.exchangeName].hasCreds === true}
+      connected={true}
       {today}
       {formatLastFetch}
       {onNavigate}

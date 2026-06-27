@@ -1,33 +1,11 @@
 <script lang="ts">
-  import type { ILiveSource } from '$lib/types';
+  import type { ILiveSource, SourceState } from '$lib/types';
   import DateField from '$lib/components/DateField.svelte';
   import Badge from '$lib/components/Badge.svelte';
-
-  interface SourceState {
-    open: boolean;
-    hasCreds: boolean | undefined;
-    lastFetch: Date | null;
-    credsKey: string;
-    credsSecret: string;
-    fromDate: string;
-    toDate: string;
-    phase: 'idle' | 'fetching' | 'done';
-    fetchedTotal: number;
-    newCount: number;
-    dupCount: number;
-    progDone: number;
-    progTotal: number;
-    rateLimitSeconds: number;
-    error: string;
-    info: string;
-    symbols: string;
-    discovering: boolean;
-  }
 
   interface Props {
     source: ILiveSource;
     state: SourceState;
-    available: boolean;
     connected: boolean;
     today: string;
     formatLastFetch: (date: Date | null) => string;
@@ -37,12 +15,18 @@
     onDisconnect: (source: ILiveSource) => void;
     onFetch: (source: ILiveSource) => void;
     onNavigate: (page: string) => void;
+    /**
+     * Optional close affordance for the pending-add form. When provided and the
+     * card is not yet connected, the header's Connect toggle is replaced by an
+     * ✕ button that calls this. Connected cards omit it and use the Manage
+     * toggle as usual.
+     */
+    onCancel?: () => void;
   }
 
   let {
     source,
     state: st,
-    available,
     connected,
     today,
     formatLastFetch,
@@ -52,6 +36,7 @@
     onDisconnect,
     onFetch,
     onNavigate,
+    onCancel,
   }: Props = $props();
 </script>
 
@@ -60,18 +45,14 @@
     <div>
       <div class="flex items-center gap-2.5">
         <span class="text-base font-bold text-text-heading">{source.exchangeName}</span>
-        {#if !available}
-          <Badge variant="outlined" color="default" dot>Desktop only</Badge>
-        {:else if connected}
+        {#if connected}
           <Badge variant="outlined" color="success" dot>Connected</Badge>
         {:else}
           <Badge variant="outlined" color="default" dot>Not connected</Badge>
         {/if}
       </div>
       <p class="mt-1 text-sm text-text">
-        {#if !available}
-          Available in the desktop app.
-        {:else if connected}
+        {#if connected}
           <span class="mr-1.5 text-text/60">🔒</span>Credentials in keychain · {formatLastFetch(st.lastFetch)}
         {:else}
           Add your API keys to pull trades with a single click.
@@ -79,7 +60,13 @@
       </p>
     </div>
 
-    {#if available}
+    {#if onCancel && !connected}
+      <button
+        class="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-bg-card text-sm text-text transition-colors hover:text-text-heading"
+        onclick={onCancel}
+        aria-label="Cancel"
+      >✕</button>
+    {:else}
       <button
         class="flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-text-heading transition-colors hover:bg-bg-card"
         onclick={() => onToggleOpen(source)}
@@ -94,7 +81,7 @@
     {/if}
   </div>
 
-  {#if available && st.open}
+  {#if st.open}
     <div class="border-t border-border bg-bg-card/50 px-5 py-5">
 
       {#if !connected}

@@ -50,7 +50,7 @@ Fiat-to-fiat conversions (e.g. USD → DKK) are handled by the [Frankfurter API]
 
 Prices are **daily snapshots** — intra-day price movements are not captured, so the values used may differ slightly from the exact price at the time of your transaction. This is generally acceptable for tax reporting purposes, but you should verify the results against your own records.
 
-## Running from source
+## For developers - Running from source
 
 ### Prerequisites
 

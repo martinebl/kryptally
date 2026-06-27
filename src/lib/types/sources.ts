@@ -1,6 +1,53 @@
 import type { Transaction } from './transaction';
 import type { IImportPreprocessor } from './importers';
 
+/**
+ * Per-source UI state held by the live importer component. Shared between
+ * LiveImporter.svelte (owner) and LiveSourceCard.svelte (presenter) so both
+ * sides agree on the same shape.
+ */
+export interface SourceState {
+  /** Whether the card body is currently expanded. */
+  open: boolean;
+  /**
+   * Credential status: `undefined` = unknown (still probing keychain),
+   * `true` = connected, `false` = not connected.
+   */
+  hasCreds: boolean | undefined;
+  /** Last successful fetch timestamp (persisted to localStorage). */
+  lastFetch: Date | null;
+  /** Current input value of the API key field. */
+  credsKey: string;
+  /** Current input value of the API secret field. */
+  credsSecret: string;
+  /** From-date string (yyyy-mm-dd) chosen by the user; '' = unbounded start. */
+  fromDate: string;
+  /** To-date string (yyyy-mm-dd); defaults to today. */
+  toDate: string;
+  /** High-level fetch phase driven by the fetch handler. */
+  phase: 'idle' | 'fetching' | 'done';
+  /** Total transactions fetched in the most recent fetch call. */
+  fetchedTotal: number;
+  /** New (non-duplicate) transactions imported in the last call. */
+  newCount: number;
+  /** Duplicate transactions skipped in the last call. */
+  dupCount: number;
+  /** Progress counter for the in-flight fetch. */
+  progDone: number;
+  /** Total requests the in-flight fetch will issue. */
+  progTotal: number;
+  /** Remaining seconds of an active rate-limit wait, or 0 when idle. */
+  rateLimitSeconds: number;
+  /** Last error message, shown in a red banner; '' = no error. */
+  error: string;
+  /** Last informational note, shown in an amber banner; '' = no note. */
+  info: string;
+  /** Comma-separated pair symbols to fetch. */
+  symbols: string;
+  /** True while a symbol auto-detection request is in flight. */
+  discovering: boolean;
+}
+
 export interface LiveSourceFetchParams {
   /** Inclusive lower bound for transaction dates. */
   from?: Date;
