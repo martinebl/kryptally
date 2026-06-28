@@ -8,11 +8,12 @@
         headers: Snippet;
         row: Snippet<[T]>;
         expandedRow?: Snippet<[T]>;
+        canExpand?: (row: T) => boolean;
         title?: string;
         subtitle?: string;
     }
 
-    let { rows, filterFn, headers, row, expandedRow, title, subtitle }: Props = $props();
+    let { rows, filterFn, headers, row, expandedRow, canExpand, title, subtitle }: Props = $props();
     let query = $state('');
     let expanded = new SvelteSet<T>();
 
@@ -67,24 +68,27 @@
         </thead>
         <tbody>
             {#each visibleRows as r}
+            {@const expandable = !!expandedRow && (!canExpand || canExpand(r))}
             <tr
-                class="border-b border-border last:border-none {expandedRow ? 'cursor-pointer hover:bg-bg-card/70' : 'hover:bg-bg-card/50'}"
-                tabindex={expandedRow ? 0 : undefined}
-                aria-expanded={expandedRow ? expanded.has(r) : undefined}
-                onclick={expandedRow ? () => toggle(r) : undefined}
-                onkeydown={expandedRow ? (e: KeyboardEvent) => onKeydown(e, r) : undefined}
+                class="border-b border-border last:border-none {expandable ? 'cursor-pointer hover:bg-bg-card/70' : 'hover:bg-bg-card/50'}"
+                tabindex={expandable ? 0 : undefined}
+                aria-expanded={expandable ? expanded.has(r) : undefined}
+                onclick={expandable ? () => toggle(r) : undefined}
+                onkeydown={expandable ? (e: KeyboardEvent) => onKeydown(e, r) : undefined}
             >
                 {@render row(r)}
                 {#if expandedRow}
                     <td class="px-2 py-3 text-text/60" aria-hidden="true">
-                        <svg class="size-4 transition-transform {expanded.has(r) ? 'rotate-90' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="m9 18 6-6-6-6" />
-                        </svg>
+                        {#if expandable}
+                            <svg class="size-4 transition-transform {expanded.has(r) ? 'rotate-90' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="m9 18 6-6-6-6" />
+                            </svg>
+                        {/if}
                     </td>
                 {/if}
             </tr>
-            {#if expandedRow && expanded.has(r)}
-                <tr class="border-b border-border bg-bg-card/30">
+            {#if expandable && expanded.has(r)}
+                <tr class="border-b border-border">
                     {@render expandedRow(r)}
                 </tr>
             {/if}
