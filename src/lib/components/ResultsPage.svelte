@@ -266,11 +266,9 @@
     </div>
 
     {#if deferredReady}
-      {#if summary.events.length > 0}
         <div class="mt-10">
-          <TaxEventsTable events={summary.events} />
+          <TaxEventsTable events={summary.events} {periodLabel} method={countryConfig.defaultCostBasisMethod} />
         </div>
-      {/if}
 
       {#if holdings.length > 0}
         <div class="mt-10">

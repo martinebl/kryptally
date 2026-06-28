@@ -35,8 +35,8 @@
   ];
 
   const steps = [
-    { no: '1', title: 'Import', body: 'Upload your exchange CSV exports. Optionally add price CSVs to keep lookups fully offline.' },
-    { no: '2', title: 'Configure', body: 'Select your country. Kryptax applies the local rules.' },
+    { no: '1', title: 'Configure', body: 'Select your country. Kryptax applies the local rules.' },
+    { no: '2', title: 'Import', body: 'Upload your exchange CSV exports. Optionally add price CSVs to keep lookups fully offline.' },
     { no: '3', title: 'Calculate', body: 'Get a clear breakdown of realised gains, losses and taxable events — ready to file.' },
   ];
 </script>
@@ -45,7 +45,7 @@
 <section class="grid grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] items-center gap-16 pt-16 pb-hero-bottom max-md:grid-cols-1 max-md:gap-10">
   <!-- left -->
   <div>
-    <div class="inline-flex items-center gap-2.5 rounded-full border border-[#f1e2bf] bg-[#fdf4e3] px-3 py-[5px] font-mono text-tag font-medium tracking-[0.08em] text-[#9a6a12]">
+    <div class="inline-flex items-center gap-2.5 rounded-full border border-[#f1e2bf] bg-[#fdf4e3] px-3 py-1.25 font-mono text-tag font-medium tracking-[0.08em] text-[#9a6a12]">
       <span class="size-1.5 rounded-full bg-accent"></span>LOCAL-FIRST · OPEN SOURCE
     </div>
 

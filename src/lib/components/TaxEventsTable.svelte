@@ -1,14 +1,19 @@
 <script lang="ts">
     import BigNumber from 'bignumber.js';
     import type { TaxableEvent } from '$lib/types/results';
+    import type { CostBasisMethod } from '$lib/types/tax-rules';
     import Table from '$lib/components/Table.svelte';
     import Badge from '$lib/components/Badge.svelte';
 
     interface Props {
         events: TaxableEvent[];
+        periodLabel?: string;
+        method: CostBasisMethod;
     }
 
-    const { events }: Props = $props();
+    const { events, periodLabel, method }: Props = $props();
+
+    const subtitle = $derived(`Every disposal and income event, with the ${method.toUpperCase()} lots it was matched against.`);
 
     const sortedEvents = $derived(
         [...events].sort((a, b) => b.date.getTime() - a.date.getTime())
@@ -31,8 +36,9 @@
 </script>
 
 <div class="mb-10">
+    {#if sortedEvents.length > 0}
     <Table rows={sortedEvents} {filterFn} title="Tax Events"
-        subtitle="Every disposal and income event, with the FIFO lots it was matched against.">
+        {subtitle}>
         {#snippet headers()}
             <th class="px-4 py-3">Date</th>
             <th class="px-4 py-3">Type</th>
@@ -60,4 +66,13 @@
             </td>
         {/snippet}
     </Table>
+    {:else}
+    <div class="mb-4">
+        <h3 class="font-heading text-xl font-semibold tracking-tight text-text-heading">Tax Events</h3>
+        <p class="mt-0.5 text-meta text-text/80">{subtitle}</p>
+    </div>
+    <div class="rounded-xl border border-border p-8 text-center text-sm text-text">
+        No tax events for {periodLabel ?? 'this period'}
+    </div>
+    {/if}
 </div>
