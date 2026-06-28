@@ -9,9 +9,10 @@
         events: TaxableEvent[];
         periodLabel?: string;
         method: CostBasisMethod;
+        currency: string;
     }
 
-    const { events, periodLabel, method }: Props = $props();
+    const { events, periodLabel, method, currency }: Props = $props();
 
     const subtitle = $derived(`Every disposal and income event, with the ${method.toUpperCase()} lots it was matched against.`);
 
@@ -70,10 +71,14 @@
             </td>
             <td class="px-4 py-3 font-medium text-text-heading">{event.asset}</td>
             <td class="px-4 py-3 text-right font-mono text-text-heading">{event.amount.toFormat(6)}</td>
-            <td class="px-4 py-3 text-right font-mono text-text-heading">{fmt(event.proceeds)}</td>
-            <td class="px-4 py-3 text-right font-mono text-text-heading">{fmt(event.costBasis)}</td>
+            <td class="px-4 py-3 text-right font-mono text-text-heading">
+                {fmt(event.proceeds)} <span class="text-text/40">{currency}</span>
+            </td>
+            <td class="px-4 py-3 text-right font-mono text-text-heading">
+                {fmt(event.costBasis)} <span class="text-text/40">{currency}</span>
+            </td>
             <td class="px-4 py-3 text-right font-mono font-medium {gainColor(event.gainLoss)}">
-                {signed(event.gainLoss)}
+                {signed(event.gainLoss)} <span class="text-text/40">{currency}</span>
             </td>
         {/snippet}
         {#snippet expandedRow(event)}
@@ -90,15 +95,15 @@
                         <div class="flex gap-9">
                             <div>
                                 <div class="font-mono text-[10px] font-semibold uppercase tracking-wider text-text-muted">Proceeds</div>
-                                <div class="font-mono text-sm text-text-heading">{fmt(event.proceeds)}</div>
+                                <div class="font-mono text-sm text-text-heading">{fmt(event.proceeds)} <span class="text-text/40">{currency}</span></div>
                             </div>
                             <div>
                                 <div class="font-mono text-[10px] font-semibold uppercase tracking-wider text-text-muted">Cost Basis</div>
-                                <div class="font-mono text-sm text-text-heading">{fmt(event.costBasis)}</div>
+                                <div class="font-mono text-sm text-text-heading">{fmt(event.costBasis)} <span class="text-text/40">{currency}</span></div>
                             </div>
                             <div>
                                 <div class="font-mono text-[10px] font-semibold uppercase tracking-wider text-text-muted">Gain / Loss</div>
-                                <div class="font-mono text-sm font-semibold {gainColor(event.gainLoss)}">{signed(event.gainLoss)}</div>
+                                <div class="font-mono text-sm font-semibold {gainColor(event.gainLoss)}">{signed(event.gainLoss)} <span class="text-text/40">{currency}</span></div>
                             </div>
                         </div>
                     </div>

@@ -89,6 +89,14 @@
 
   const periodLabel = $derived(effectiveYear === 'all' ? 'All years' : String(effectiveYear));
 
+  // Transactions belonging to the selected tax year, used by the
+  // "All Activity" table which is otherwise unaffected by the year picker.
+  const visibleTransactions = $derived(
+    effectiveYear === 'all'
+      ? transactions
+      : transactions.filter((tx) => tx.date.getFullYear() === effectiveYear),
+  );
+
   // ----- current prices, shared by holdings table + simulation panel -----
   // Fetched once on load so the design's value/unrealized figures can populate.
   // Reuses the same machinery as the "Simulate Full Sell" flow.
@@ -267,7 +275,7 @@
 
     {#if deferredReady}
         <div class="mt-10">
-          <TaxEventsTable events={summary.events} {periodLabel} method={countryConfig.defaultCostBasisMethod} />
+          <TaxEventsTable events={summary.events} {periodLabel} method={countryConfig.defaultCostBasisMethod} currency={countryConfig.currency} />
         </div>
 
       {#if holdings.length > 0}
@@ -299,7 +307,7 @@
       {/if}
 
       <div class="mt-10">
-        <ActivitiesTable {transactions} />
+        <ActivitiesTable transactions={visibleTransactions} />
       </div>
     {:else}
       <!-- Placeholder shown for one frame while the tables mount -->
