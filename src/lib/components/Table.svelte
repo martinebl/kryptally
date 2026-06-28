@@ -1,23 +1,38 @@
 <script lang="ts" generics="T">
     import type { Snippet } from 'svelte';
+    import { SvelteSet } from 'svelte/reactivity';
 
     interface Props {
         rows: T[];
         filterFn?: (row: T, query: string) => boolean;
         headers: Snippet;
         row: Snippet<[T]>;
+        expandedRow?: Snippet<[T]>;
         title?: string;
         subtitle?: string;
     }
 
-    let { rows, filterFn, headers, row, title, subtitle }: Props = $props();
+    let { rows, filterFn, headers, row, expandedRow, title, subtitle }: Props = $props();
     let query = $state('');
+    let expanded = new SvelteSet<T>();
 
     const visibleRows = $derived(
         query && filterFn
             ? rows.filter(r => filterFn(r, query.toLowerCase()))
             : rows
     );
+
+    function toggle(r: T) {
+        if (expanded.has(r)) expanded.delete(r);
+        else expanded.add(r);
+    }
+
+    function onKeydown(e: KeyboardEvent, r: T) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggle(r);
+        }
+    }
 </script>
 
 {#if title || filterFn}
@@ -45,13 +60,34 @@
         <thead>
             <tr class="border-b border-border bg-bg-card text-xs uppercase tracking-wide text-text">
                 {@render headers()}
+                {#if expandedRow}
+                    <th class="w-8 px-2 py-3" aria-hidden="true"></th>
+                {/if}
             </tr>
         </thead>
         <tbody>
             {#each visibleRows as r}
-            <tr class="border-b border-border last:border-none hover:bg-bg-card/50">
+            <tr
+                class="border-b border-border last:border-none {expandedRow ? 'cursor-pointer hover:bg-bg-card/70' : 'hover:bg-bg-card/50'}"
+                tabindex={expandedRow ? 0 : undefined}
+                aria-expanded={expandedRow ? expanded.has(r) : undefined}
+                onclick={expandedRow ? () => toggle(r) : undefined}
+                onkeydown={expandedRow ? (e: KeyboardEvent) => onKeydown(e, r) : undefined}
+            >
                 {@render row(r)}
+                {#if expandedRow}
+                    <td class="px-2 py-3 text-text/60" aria-hidden="true">
+                        <svg class="size-4 transition-transform {expanded.has(r) ? 'rotate-90' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m9 18 6-6-6-6" />
+                        </svg>
+                    </td>
+                {/if}
             </tr>
+            {#if expandedRow && expanded.has(r)}
+                <tr class="border-b border-border bg-bg-card/30">
+                    {@render expandedRow(r)}
+                </tr>
+            {/if}
             {/each}
         </tbody>
     </table>
