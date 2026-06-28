@@ -44,22 +44,19 @@
     return { summaries, holdings };
   });
 
-  // Years that have at least one taxable event, most recent first
+  // Years with any activity, plus the current year, most recent first
   const availableYears = $derived(
-    [...summaries.keys()]
-      .filter((y) => (summaries.get(y)?.events.length ?? 0) > 0)
-      .sort((a, b) => b - a)
+    [...new Set([...summaries.keys(), new Date().getFullYear()])].sort((a, b) => b - a),
   );
 
   type YearSelection = number | 'all';
   let selectedYear = $state<YearSelection>('all');
 
-  // Reset to 'all' if the selected year is no longer in the available list
-  $effect(() => {
-    if (typeof selectedYear === 'number' && !availableYears.includes(selectedYear)) {
-      selectedYear = 'all';
-    }
-  });
+  const effectiveYear = $derived(
+    typeof selectedYear === 'number' && !availableYears.includes(selectedYear)
+      ? 'all'
+      : selectedYear,
+  );
 
   const ZERO = new BigNumber(0);
 
@@ -85,12 +82,12 @@
   });
 
   const summary = $derived(
-    selectedYear === 'all'
+    effectiveYear === 'all'
       ? aggregateSummary
-      : (summaries.get(selectedYear) ?? null)
+      : (summaries.get(effectiveYear) ?? null)
   );
 
-  const periodLabel = $derived(selectedYear === 'all' ? 'All years' : String(selectedYear));
+  const periodLabel = $derived(effectiveYear === 'all' ? 'All years' : String(effectiveYear));
 
   // ----- current prices, shared by holdings table + simulation panel -----
   // Fetched once on load so the design's value/unrealized figures can populate.
@@ -175,7 +172,7 @@
       <h2 class="mb-4 font-heading text-2xl font-medium text-text-heading">No transactions</h2>
       <p class="text-sm text-text">Import a CSV file to see your tax report.</p>
     </div>
-  {:else if summary}
+  {:else}
     <!-- Header + year selector -->
     <div class="flex flex-wrap items-end justify-between gap-6">
       <div>
@@ -189,11 +186,11 @@
       </div>
       {#if availableYears.length > 0}
         <div class="flex gap-1.5 rounded-xl bg-bg-card p-1">
-          <button class={yearButtonClass(selectedYear === 'all')} onclick={() => (selectedYear = 'all')}>
+          <button class={yearButtonClass(effectiveYear === 'all')} onclick={() => (selectedYear = 'all')}>
             All
           </button>
           {#each availableYears as year}
-            <button class={yearButtonClass(selectedYear === year)} onclick={() => (selectedYear = year)}>
+            <button class={yearButtonClass(effectiveYear === year)} onclick={() => (selectedYear = year)}>
               {year}
             </button>
           {/each}
@@ -201,6 +198,7 @@
       {/if}
     </div>
 
+    {#if summary}
     <!-- Hero -->
     {@const total = summary.totalGains.plus(summary.totalLosses)}
     {@const gainPct = total.gt(0) ? summary.totalGains.div(total).times(100).toNumber() : 50}
@@ -310,6 +308,12 @@
       <div class="mt-10 space-y-4">
         <div class="h-7 w-44 animate-pulse rounded bg-text/10"></div>
         <div class="h-72 animate-pulse rounded-2xl border border-border bg-bg-card"></div>
+      </div>
+    {/if}
+    {:else}
+      <div class="py-16 text-center">
+        <h2 class="mb-4 font-heading text-2xl font-medium text-text-heading">No activity in {periodLabel}</h2>
+        <p class="text-sm text-text">No transactions were recorded for this year.</p>
       </div>
     {/if}
   {/if}

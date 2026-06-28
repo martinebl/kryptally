@@ -163,4 +163,25 @@ describe('TaxCalculator (orchestration)', () => {
       expect(s2021.totalGains.toNumber()).toBe(30000);
     });
   });
+
+  describe('year coverage', () => {
+    it('emits a zero-event summary key for a year with only non-taxable transactions', () => {
+      const tracker = new LotTracker(rules.costBasis.default);
+      const calc = new TaxCalculator(staticResolver(rules), rules.currency, tracker);
+
+      const summaries = calc.process([
+        makeTx({ id: 'buy-1', type: 'buy', date: new Date('2024-02-10'), toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(50000) }),
+        makeTx({ id: 'sell-1', type: 'sell', date: new Date('2025-04-01'), fromAsset: 'BTC', fromAmount: bn(1), fiatValue: bn(80000) }),
+      ]);
+
+      expect(summaries.has(2024)).toBe(true);
+      const s2024 = summaries.get(2024)!;
+      expect(s2024.events).toHaveLength(0);
+      expect(s2024.totalProceeds.toNumber()).toBe(0);
+      expect(s2024.totalIncome.toNumber()).toBe(0);
+
+      expect(summaries.has(2025)).toBe(true);
+      expect(summaries.get(2025)!.events).toHaveLength(1);
+    });
+  });
 });

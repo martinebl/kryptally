@@ -29,7 +29,7 @@
   ];
 
   const features = [
-    { no: '01', title: 'Your data stays local', body: 'Every calculation runs in your browser. Transaction data never leaves your device — only anonymous historical rate lookups touch the network.' },
+    { no: '01', title: 'Your data stays local', body: 'Every calculation runs on your system. Transaction data never leaves your device — only anonymous historical rate lookups touch the network.' },
     { no: '02', title: 'Exchange imports', body: 'Import history from major exchanges. Choose the exchange and upload a csv file (or connect directly via an API key in the desktop version).' },
     { no: '03', title: 'Offline crypto prices', body: 'Drop in daily price CSVs to resolve prices offline. Anything not covered falls back to the CoinGecko API.' },
   ];
