@@ -49,8 +49,7 @@
     open: false,
     hasCreds: undefined,
     lastFetch: loadLastFetch(name),
-    credsKey: '',
-    credsSecret: '',
+    creds: {},
     fromDate: '',
     toDate: today,
     phase: 'idle',
@@ -142,11 +141,14 @@
   const handleSaveCredentials = async (source: ILiveSource) => {
     const st = states[source.exchangeName];
     try {
-      await source.saveCredentials(st.credsKey.trim(), st.credsSecret.trim());
+      const values: Record<string, string> = {};
+      for (const field of source.credentialFields) {
+        values[field.id] = (st.creds[field.id] ?? '').trim();
+      }
+      await source.saveCredentials(values);
       st.hasCreds = true;
       st.open = true;
-      st.credsKey = '';
-      st.credsSecret = '';
+      st.creds = {};
       st.error = '';
       pendingAdd = null;
       selectedToAdd = '';
@@ -165,8 +167,7 @@
       st.open = false;
       st.phase = 'idle';
       st.error = '';
-      st.credsKey = '';
-      st.credsSecret = '';
+      st.creds = {};
       st.symbols = '';
       st.newCount = 0;
       st.dupCount = 0;
@@ -197,8 +198,7 @@
     if (!pendingAdd) return;
     const st = states[pendingAdd];
     st.open = false;
-    st.credsKey = '';
-    st.credsSecret = '';
+    st.creds = {};
     st.error = '';
     pendingAdd = null;
   };

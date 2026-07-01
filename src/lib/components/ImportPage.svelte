@@ -4,7 +4,7 @@
   import { LedgerImporter } from '$lib/importers/ledger';
   import { BinanceImporter } from '$lib/importers/binance';
   import { RevolutXImporter } from '$lib/importers/revolut-x';
-  import { BinanceLiveSource, RevolutXLiveSource } from '$lib/sources';
+  import { BinanceLiveSource, CoinmateLiveSource, RevolutXLiveSource } from '$lib/sources';
   import CsvImporter from '$lib/components/CsvImporter.svelte';
   import LiveImporter from '$lib/components/LiveImporter.svelte';
   import CsvPriceUploader from '$lib/components/CsvPriceUploader.svelte';
@@ -33,7 +33,7 @@
     new RevolutXImporter(),
   ];
 
-  const liveSources = [new BinanceLiveSource(), new RevolutXLiveSource()];
+  const liveSources = [new BinanceLiveSource(), new RevolutXLiveSource(), new CoinmateLiveSource()];
 
   let activeTab = $state<'csv' | 'live'>('csv');
   let importSourceName = $state('');

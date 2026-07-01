@@ -176,8 +176,10 @@ export class RevolutXLiveSource implements ILiveSource {
       included: false,
     },
   ];
-  readonly keyLabel = 'API key';
-  readonly secretLabel = 'Ed25519 private key (PEM)';
+  readonly credentialFields = [
+    { id: 'apiKey', label: 'API key' },
+    { id: 'secret', label: 'Ed25519 private key (PEM)', multiline: true },
+  ];
 
   isAvailable(): boolean {
     return isTauri();
@@ -187,8 +189,8 @@ export class RevolutXLiveSource implements ILiveSource {
     return invoke<boolean>('revolut_x_has_credentials');
   }
 
-  async saveCredentials(apiKey: string, secret: string): Promise<void> {
-    await invoke('revolut_x_save_credentials', { apiKey, secret });
+  async saveCredentials(values: Record<string, string>): Promise<void> {
+    await invoke('revolut_x_save_credentials', { apiKey: values.apiKey, secret: values.secret });
   }
 
   async clearCredentials(): Promise<void> {

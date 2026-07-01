@@ -358,7 +358,7 @@ describe('RevolutXLiveSource', () => {
     invokeMock.mockResolvedValue(undefined);
     const source = new RevolutXLiveSource();
 
-    await source.saveCredentials('rev-key', 'pem-secret');
+    await source.saveCredentials({ apiKey: 'rev-key', secret: 'pem-secret' });
     expect(invokeMock).toHaveBeenCalledWith('revolut_x_save_credentials', {
       apiKey: 'rev-key',
       secret: 'pem-secret',

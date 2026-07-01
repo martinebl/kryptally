@@ -117,8 +117,10 @@ export class BinanceLiveSource implements ILiveSource {
   readonly preprocessors: IImportPreprocessor[] = [];
   readonly symbolPlaceholder = 'BTCUSDT, ETHUSDT, SOLUSDT';
   readonly symbolsNote = 'Deposits and withdrawals are fetched automatically.';
-  readonly keyLabel = 'API key (read-only)';
-  readonly secretLabel = 'API secret';
+  readonly credentialFields = [
+    { id: 'apiKey', label: 'API key (read-only)' },
+    { id: 'secret', label: 'API secret' },
+  ];
 
   isAvailable(): boolean {
     return isTauri();
@@ -128,8 +130,8 @@ export class BinanceLiveSource implements ILiveSource {
     return invoke<boolean>('binance_has_credentials');
   }
 
-  async saveCredentials(apiKey: string, secret: string): Promise<void> {
-    await invoke('binance_save_credentials', { apiKey, secret });
+  async saveCredentials(values: Record<string, string>): Promise<void> {
+    await invoke('binance_save_credentials', { apiKey: values.apiKey, secret: values.secret });
   }
 
   async clearCredentials(): Promise<void> {

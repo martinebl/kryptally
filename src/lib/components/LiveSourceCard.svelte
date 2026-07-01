@@ -86,31 +86,33 @@
 
       {#if !connected}
         <div class="space-y-3">
-          <div>
-            <label for="live-key-{source.exchangeName}" class="mb-1 block text-xs font-semibold text-text-heading">
-              {source.keyLabel ?? 'API key'}
-            </label>
-            <input
-              id="live-key-{source.exchangeName}"
-              type="password"
-              bind:value={st.credsKey}
-              class="w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-text-heading focus:border-accent focus:outline-none"
-            />
-          </div>
-          <div>
-            <label for="live-secret-{source.exchangeName}" class="mb-1 block text-xs font-semibold text-text-heading">
-              {source.secretLabel ?? 'API secret'}
-            </label>
-            <textarea
-              id="live-secret-{source.exchangeName}"
-              rows="3"
-              bind:value={st.credsSecret}
-              class="w-full rounded-lg border border-border bg-white px-3 py-2.5 font-mono text-xs text-text-heading focus:border-accent focus:outline-none"
-            ></textarea>
-          </div>
+          {#each source.credentialFields as field (field.id)}
+            <div>
+              <label for="live-cred-{source.exchangeName}-{field.id}" class="mb-1 block text-xs font-semibold text-text-heading">
+                {field.label}
+              </label>
+              {#if field.multiline}
+                <textarea
+                  id="live-cred-{source.exchangeName}-{field.id}"
+                  rows="3"
+                  placeholder={field.placeholder ?? ''}
+                  bind:value={st.creds[field.id]}
+                  class="w-full rounded-lg border border-border bg-white px-3 py-2.5 font-mono text-xs text-text-heading focus:border-accent focus:outline-none"
+                ></textarea>
+              {:else}
+                <input
+                  id="live-cred-{source.exchangeName}-{field.id}"
+                  type="password"
+                  placeholder={field.placeholder ?? ''}
+                  bind:value={st.creds[field.id]}
+                  class="w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-text-heading focus:border-accent focus:outline-none"
+                />
+              {/if}
+            </div>
+          {/each}
           <button
             class="rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={!st.credsKey || !st.credsSecret}
+            disabled={source.credentialFields.some((f) => !st.creds[f.id])}
             onclick={() => onSaveCredentials(source)}
           >
             Save credentials
@@ -199,8 +201,8 @@
           {#if source.requiresDateRange}
             <p class="mt-2 text-xs {!st.fromDate || !st.toDate ? 'text-amber-600' : 'text-text'}">
               {!st.fromDate || !st.toDate
-                ? 'Both From and To are required by the Revolut API.'
-                : 'Both dates are required by the Revolut API.'}
+                ? `Both From and To are required by ${source.exchangeName}.`
+                : `Both dates are required by ${source.exchangeName}.`}
             </p>
           {/if}
         </div>

@@ -215,7 +215,7 @@ describe('BinanceLiveSource', () => {
     invokeMock.mockResolvedValue(undefined);
     const source = new BinanceLiveSource();
 
-    await source.saveCredentials('key-1', 'secret-2');
+    await source.saveCredentials({ apiKey: 'key-1', secret: 'secret-2' });
     expect(invokeMock).toHaveBeenCalledWith('binance_save_credentials', {
       apiKey: 'key-1',
       secret: 'secret-2',

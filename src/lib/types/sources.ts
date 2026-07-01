@@ -16,10 +16,11 @@ export interface SourceState {
   hasCreds: boolean | undefined;
   /** Last successful fetch timestamp (persisted to localStorage). */
   lastFetch: Date | null;
-  /** Current input value of the API key field. */
-  credsKey: string;
-  /** Current input value of the API secret field. */
-  credsSecret: string;
+  /**
+   * Current input values keyed by `CredentialField.id`, one entry per field
+   * declared on the source. Lives only in the UI — never persisted.
+   */
+  creds: Record<string, string>;
   /** From-date string (yyyy-mm-dd) chosen by the user; '' = unbounded start. */
   fromDate: string;
   /** To-date string (yyyy-mm-dd); defaults to today. */
@@ -70,6 +71,23 @@ export interface LiveSourceFetchParams {
 }
 
 /**
+ * Description of a single credential input field on the live-importer card.
+ * A source composes its credential form from a list of these; the host UI
+ * renders one control per entry and passes the results back to
+ * `ILiveSource.saveCredentials` keyed by `id`.
+ */
+export interface CredentialField {
+  /** Stable identifier unique within the source; used as the credentials record key. */
+  readonly id: string;
+  /** Label shown above the input. */
+  readonly label: string;
+  /** Render a multi-line `<textarea>` instead of a single-line password input. */
+  readonly multiline?: boolean;
+  /** Optional placeholder text inside the input. */
+  readonly placeholder?: string;
+}
+
+/**
  * Fetches transactions directly from an exchange API. Parallel to IExchangeImporter,
  * but pulls from a network source instead of parsing a user-supplied CSV.
  *
@@ -106,11 +124,14 @@ export interface ILiveSource {
   /** Structured list of what the live connector does / does not fetch, for the UI card. */
   readonly whatFetches?: Array<{ label: string; included: boolean }>;
 
-  /** Label for the API key credential field. */
-  readonly keyLabel?: string;
-
-  /** Label for the secret credential field (e.g. "API secret" or "Private key"). */
-  readonly secretLabel?: string;
+  /**
+   * Credential inputs this source needs from the user, in display order. The
+   * UI renders one field per entry (single-line `<input>` by default, or a
+   * multi-line `<textarea>` when `multiline` is set). Values are gathered into
+   * a `Record<id, string>` and passed back to `saveCredentials`, so each
+   * source owns the id ↔ Tauri command argument mapping.
+   */
+  readonly credentialFields: CredentialField[];
 
   /** True when the current runtime supports this source (e.g. desktop app only). */
   isAvailable(): boolean;
@@ -118,8 +139,12 @@ export interface ILiveSource {
   /** True when persistent credentials are already on file. */
   hasCredentials(): Promise<boolean>;
 
-  /** Persist API credentials (typically to the OS keyring). */
-  saveCredentials(apiKey: string, secret: string): Promise<void>;
+  /**
+   * Persist API credentials (typically to the OS keyring). `values` is keyed
+   * by `CredentialField.id`; the implementation is responsible for mapping
+   * these onto the Tauri command's argument shape.
+   */
+  saveCredentials(values: Record<string, string>): Promise<void>;
 
   /** Remove any persisted credentials. */
   clearCredentials(): Promise<void>;
