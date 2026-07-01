@@ -155,7 +155,7 @@
                             {/each}
                         </tbody>
                         <tfoot>
-                            <tr class="border-t border-border bg-bg">
+                            <tr class="border-t border-border bg-surface">
                                 <td class="px-5 py-2 font-mono text-[11px] text-text-muted">
                                     {event.lots.length} lot{event.lots.length !== 1 ? 's' : ''}
                                 </td>

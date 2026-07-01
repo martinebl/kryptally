@@ -70,7 +70,7 @@
             {#each visibleRows as r}
             {@const expandable = !!expandedRow && (!canExpand || canExpand(r))}
             <tr
-                class="border-b border-border last:border-none {expandable ? 'cursor-pointer hover:bg-bg-card/70' : 'hover:bg-bg-card/50'}"
+                class="border-b border-border last:border-none {expandable ? (expanded.has(r) ? 'cursor-pointer bg-accent-bg' : 'cursor-pointer hover:bg-bg-card/70') : 'hover:bg-bg-card/50'}"
                 tabindex={expandable ? 0 : undefined}
                 aria-expanded={expandable ? expanded.has(r) : undefined}
                 onclick={expandable ? () => toggle(r) : undefined}

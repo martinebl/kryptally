@@ -107,12 +107,7 @@
     <div class="lg:col-span-2">
       <h2 class="mb-2 font-heading text-2xl font-medium text-text-heading">Import transactions</h2>
       <p class="mb-4 text-sm leading-relaxed text-text">
-        Upload a CSV export from your exchange. Your data stays in your browser and is never sent anywhere.
-      </p>
-
-      <!-- Context bar -->
-      <p class="mb-3 rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-text">
-        {countryConfig.country} · {countryConfig.currency} · {countryConfig.defaultCostBasisMethod.toUpperCase()}
+        Upload a CSV export or connect directly to your exchange. Your data stays in your browser and is never sent anywhere.
       </p>
 
       <!-- Stored transactions -->
