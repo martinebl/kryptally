@@ -9,7 +9,7 @@
   import { buildSellsFromPrices } from '$lib/engine/simulation';
   import { getCurrentPriceFetcher } from '$lib/context';
   import type { Transaction } from '$lib/types/transaction';
-  import type { CountryConfig } from '$lib/types/tax-rules';
+  import type { CostBasisMethod, CountryConfig } from '$lib/types/tax-rules';
   import type { TaxSummary } from '$lib/types/results';
   import { filterDustHoldings } from '$lib/engine/dust-filter';
   import ActivitiesTable from '$lib/components/ActivitiesTable.svelte';
@@ -17,9 +17,10 @@
   interface Props {
     transactions: Transaction[];
     countryConfig: CountryConfig;
+    costBasisMethod: CostBasisMethod;
   }
 
-  const { transactions, countryConfig }: Props = $props();
+  const { transactions, countryConfig, costBasisMethod }: Props = $props();
 
   // Mount the heavy tables only after the first frame is painted. WebKitGTK
   // (the Linux Tauri webview) spends a long time on the first style/layout/paint
@@ -37,7 +38,7 @@
   const priceFetcher = getCurrentPriceFetcher();
 
   const { summaries, holdings } = $derived.by(() => {
-    const tracker = new LotTracker(countryConfig.defaultCostBasisMethod);
+    const tracker = new LotTracker(costBasisMethod);
     const calculator = new TaxCalculator(countryConfig.resolve, countryConfig.currency, tracker);
     const summaries = calculator.process(transactions);
     const holdings = tracker.getHoldings().filter((h) => h.totalAmount.gt(0));
@@ -117,6 +118,7 @@
     const hs = holdings;
     const txs = transactions;
     const cc = countryConfig;
+    const method = costBasisMethod;
     if (hs.length === 0) {
       pricesLoading = false;
       priceData = emptyPriceData();
@@ -132,7 +134,7 @@
       const valueByAsset = new Map<string, BigNumber>(
         sells.map((s) => [s.fromAsset as string, s.fiatValue as BigNumber]),
       );
-      const tracker = new LotTracker(cc.defaultCostBasisMethod);
+      const tracker = new LotTracker(method);
       const calculator = new TaxCalculator(cc.resolve, cc.currency, tracker);
       const sums = calculator.process([...txs, ...sells]);
       const currentYear = now.getFullYear();
@@ -188,7 +190,7 @@
           Tax Report <span class="font-medium text-text/50">— {countryConfig.country}</span>
         </h1>
         <p class="mt-1.5 text-sm text-text">
-          {countryConfig.currency} · {countryConfig.defaultCostBasisMethod.toUpperCase()} method ·
+          {countryConfig.currency} · {costBasisMethod.toUpperCase()} method ·
           {transactions.length} transactions · {periodLabel}
         </p>
       </div>
@@ -275,7 +277,7 @@
 
     {#if deferredReady}
         <div class="mt-10">
-          <TaxEventsTable events={summary.events} {periodLabel} method={countryConfig.defaultCostBasisMethod} currency={countryConfig.currency} />
+          <TaxEventsTable events={summary.events} {periodLabel} method={costBasisMethod} currency={countryConfig.currency} />
         </div>
 
       {#if holdings.length > 0}

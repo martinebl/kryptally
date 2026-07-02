@@ -1,14 +1,26 @@
 <script lang="ts">
-  import type { CountryConfig } from '$lib/types/tax-rules';
+  import type { CostBasisMethod, CountryConfig } from '$lib/types/tax-rules';
+  import CostBasisPicker from '$lib/components/CostBasisPicker.svelte';
 
   interface Props {
     onNavigate: (page: string) => void;
     availableCountries: CountryConfig[];
     selectedCountry: CountryConfig | null;
     onSelectCountry: (countryCode: string) => void;
+    allowedCostBasisMethods: CostBasisMethod[];
+    selectedCostBasisMethod: CostBasisMethod | null;
+    onSelectCostBasisMethod: (method: CostBasisMethod) => void;
   }
 
-  const { onNavigate, availableCountries, selectedCountry, onSelectCountry }: Props = $props();
+  const {
+    onNavigate,
+    availableCountries,
+    selectedCountry,
+    onSelectCountry,
+    allowedCostBasisMethods,
+    selectedCostBasisMethod,
+    onSelectCostBasisMethod,
+  }: Props = $props();
 
   let howSection: HTMLElement | undefined = $state();
 
@@ -81,6 +93,17 @@
             Get started
           </button>
         </div>
+
+        {#if selectedCountry && selectedCostBasisMethod}
+          <div class="mt-section-sm">
+            <CostBasisPicker
+              country={selectedCountry}
+              allowedMethods={allowedCostBasisMethods}
+              selectedMethod={selectedCostBasisMethod}
+              onSelect={onSelectCostBasisMethod}
+            />
+          </div>
+        {/if}
 
         <div class="mt-section-sm">
           <button
