@@ -1,6 +1,13 @@
 import type BigNumber from 'bignumber.js';
 import type { Transaction } from '$lib/types/transaction';
 
+export interface LotUsage {
+  lot: LotRecord;
+  amountUsed: BigNumber;
+  holdingDays: number;
+  isLongTerm: boolean;
+}
+
 export interface TaxableEvent {
   transactionId: string;
   date: Date;
@@ -12,6 +19,7 @@ export interface TaxableEvent {
   holdingDays: number;
   isLongTerm: boolean;
   type: 'disposal' | 'income';
+  lots: LotUsage[];
 }
 
 export interface TaxSummary {
@@ -36,7 +44,7 @@ export interface LotRecord {
   amount: BigNumber;
   costBasisPerUnit: BigNumber;
   dateAcquired: Date;
-  source: string; // transaction id
+  source: string; // exchange name, or transaction id as fallback
 }
 
 export interface DisposalResult {

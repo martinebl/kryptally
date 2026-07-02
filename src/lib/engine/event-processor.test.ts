@@ -275,6 +275,103 @@ describe('processTransaction', () => {
     });
   });
 
+  describe('lot usages', () => {
+    it('attaches lot usages to a single-lot disposal event', () => {
+      const tracker = new LotTracker(rules.costBasis.default);
+      processTransaction(
+        makeTx({ id: 'buy-1', type: 'buy', date: new Date('2024-01-15'), toAsset: 'BTC', toAmount: bn(2), fiatValue: bn(200000) }),
+        rules, tracker,
+      );
+
+      const events = processTransaction(
+        makeTx({ id: 'sell-1', type: 'sell', date: new Date('2024-06-15'), fromAsset: 'BTC', fromAmount: bn(1), fiatValue: bn(150000) }),
+        rules, tracker,
+      );
+
+      expect(events[0].lots).toHaveLength(1);
+      expect(events[0].lots[0].amountUsed.toNumber()).toBe(1);
+      expect(events[0].lots[0].lot.costBasisPerUnit.toNumber()).toBe(100000);
+      expect(events[0].lots[0].holdingDays).toBeGreaterThan(0);
+      expect(events[0].lots[0].isLongTerm).toBe(false);
+    });
+
+    it('attaches all lot usages to an aggregated multi-lot disposal event', () => {
+      const tracker = new LotTracker(rules.costBasis.default);
+      processTransaction(
+        makeTx({ id: 'buy-1', type: 'buy', date: new Date('2024-01-10'), toAsset: 'ETH', toAmount: bn(1), fiatValue: bn(20000) }),
+        rules, tracker,
+      );
+      processTransaction(
+        makeTx({ id: 'buy-2', type: 'buy', date: new Date('2024-02-10'), toAsset: 'ETH', toAmount: bn(1), fiatValue: bn(25000) }),
+        rules, tracker,
+      );
+
+      const events = processTransaction(
+        makeTx({ id: 'sell-1', type: 'sell', date: new Date('2024-08-01'), fromAsset: 'ETH', fromAmount: bn(2), fiatValue: bn(60000) }),
+        rules, tracker,
+      );
+
+      expect(events).toHaveLength(1);
+      expect(events[0].lots).toHaveLength(2);
+      expect(events[0].lots[0].amountUsed.toNumber()).toBe(1);
+      expect(events[0].lots[1].amountUsed.toNumber()).toBe(1);
+    });
+
+    it('marks partial lot consumption correctly', () => {
+      const tracker = new LotTracker(rules.costBasis.default);
+      processTransaction(
+        makeTx({ id: 'buy-1', type: 'buy', date: new Date('2024-01-10'), toAsset: 'ETH', toAmount: bn(5), fiatValue: bn(50000) }),
+        rules, tracker,
+      );
+
+      const events = processTransaction(
+        makeTx({ id: 'sell-1', type: 'sell', date: new Date('2024-06-01'), fromAsset: 'ETH', fromAmount: bn(2), fiatValue: bn(25000) }),
+        rules, tracker,
+      );
+
+      expect(events[0].lots).toHaveLength(1);
+      expect(events[0].lots[0].amountUsed.toNumber()).toBe(2);
+      expect(events[0].lots[0].lot.amount.toNumber()).toBe(5);
+    });
+
+    it('attaches empty lots to income events', () => {
+      const tracker = new LotTracker(rules.costBasis.default);
+      const events = processTransaction(
+        makeTx({ id: 'mine-1', type: 'mining', date: new Date('2024-03-01'), toAsset: 'BTC', toAmount: bn(0.1), fiatValue: bn(50000) }),
+        rules, tracker,
+      );
+
+      expect(events[0].lots).toHaveLength(0);
+    });
+
+    it('attaches one lot per per-lot event when holding period splits disposal', () => {
+      const longTermRules: TaxRules = {
+        ...rules,
+        holdingPeriod: { enabled: true, thresholdDays: 1095, exemptFromTax: true },
+      };
+      const tracker = new LotTracker(rules.costBasis.default);
+      processTransaction(
+        makeTx({ id: 'buy-1', type: 'buy', date: new Date('2019-06-15'), toAsset: 'BTC', toAmount: bn(0.5), fiatValue: bn(25000) }),
+        longTermRules, tracker,
+      );
+      processTransaction(
+        makeTx({ id: 'buy-2', type: 'buy', date: new Date('2023-06-15'), toAsset: 'BTC', toAmount: bn(0.5), fiatValue: bn(75000) }),
+        longTermRules, tracker,
+      );
+
+      const events = processTransaction(
+        makeTx({ id: 'sell-1', type: 'sell', date: new Date('2024-06-15'), fromAsset: 'BTC', fromAmount: bn(1), fiatValue: bn(200000) }),
+        longTermRules, tracker,
+      );
+
+      expect(events).toHaveLength(2);
+      expect(events[0].lots).toHaveLength(1);
+      expect(events[0].lots[0].isLongTerm).toBe(true);
+      expect(events[1].lots).toHaveLength(1);
+      expect(events[1].lots[0].isLongTerm).toBe(false);
+    });
+  });
+
   describe('fee', () => {
     it('creates a disposal event for fees paid in crypto', () => {
       const tracker = new LotTracker(rules.costBasis.default);

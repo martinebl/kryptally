@@ -1,7 +1,7 @@
 import BigNumber from 'bignumber.js';
 import type { Transaction, TransactionType } from '$lib/types/transaction';
 import type { TaxRules, TaxableEventType } from '$lib/types/tax-rules';
-import type { ILotTracker, TaxableEvent } from '$lib/types/results';
+import type { ILotTracker, LotUsage, TaxableEvent } from '$lib/types/results';
 
 const ZERO = new BigNumber(0);
 
@@ -16,6 +16,21 @@ export const transactionTypeToTaxEvent: Partial<Record<TransactionType, TaxableE
 
 const daysBetween = (from: Date, to: Date): number =>
   Math.floor((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24));
+
+const makeLotUsage = (
+  lot: ReturnType<ILotTracker['dispose']>['lots'][number]['lot'],
+  amountUsed: BigNumber,
+  txDate: Date,
+  rules: TaxRules,
+): LotUsage => {
+  const holdingDays = daysBetween(lot.dateAcquired, txDate);
+  return {
+    lot,
+    amountUsed,
+    holdingDays,
+    isLongTerm: rules.holdingPeriod.enabled && holdingDays >= rules.holdingPeriod.thresholdDays,
+  };
+};
 
 const processDisposal = (
   tx: Transaction,
@@ -38,6 +53,7 @@ const processDisposal = (
       ? daysBetween(disposal.lots[0].lot.dateAcquired, tx.date)
       : 0;
     const isLongTerm = rules.holdingPeriod.enabled && holdingDays >= rules.holdingPeriod.thresholdDays;
+    const lots = disposal.lots.map(({ lot, amountUsed }) => makeLotUsage(lot, amountUsed, tx.date, rules));
 
     return [{
       transactionId: tx.id,
@@ -50,6 +66,7 @@ const processDisposal = (
       holdingDays,
       isLongTerm,
       type: 'disposal',
+      lots,
     }];
   }
 
@@ -71,6 +88,7 @@ const processDisposal = (
       holdingDays,
       isLongTerm,
       type: 'disposal' as const,
+      lots: [{ lot, amountUsed, holdingDays, isLongTerm }],
     };
   });
 };
@@ -91,6 +109,7 @@ const processIncome = (tx: Transaction): TaxableEvent[] => {
     holdingDays: 0,
     isLongTerm: false,
     type: 'income',
+    lots: [],
   }];
 };
 
@@ -104,7 +123,7 @@ const addLotFromTransaction = (tx: Transaction, lotTracker: ILotTracker): void =
     amount,
     costBasisPerUnit: (tx.fiatValue ?? ZERO).div(amount),
     dateAcquired: tx.date,
-    source: tx.id,
+    source: tx.exchange ?? tx.id,
   });
 };
 
