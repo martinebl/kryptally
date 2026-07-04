@@ -84,6 +84,7 @@
         {#snippet expandedRow(event)}
             {@const totalConsumed = event.lots.reduce((s, u) => s.plus(u.amountUsed), new BigNumber(0))}
             {@const totalBasis = event.lots.reduce((s, u) => s.plus(u.amountUsed.times(u.lot.costBasisPerUnit)), new BigNumber(0))}
+            {@const isPooled = event.lots.some((u) => isPooledAverage(u.lot.source))}
             <td colspan="8" class="p-0">
                 <div class="border-t-2 border-accent">
                     <!-- Event summary header -->
@@ -107,7 +108,7 @@
                             </div>
                         </div>
                     </div>
-                    {#if method === 'average'}
+                    {#if isPooled}
                     <div class="border-b border-border bg-accent-bg px-5 py-2 font-mono text-[11px] text-accent">
                         Cost basis pooled as a weighted average across all {event.asset} holdings at the time of sale.
                         Pooled disposals never qualify for a long-term holding exemption.
@@ -117,7 +118,7 @@
                     <table class="w-full text-left text-sm">
                         <thead>
                             <tr class="border-b border-border bg-bg-card/50 font-mono text-[10px] font-semibold uppercase tracking-wider text-text-muted">
-                                <th class="px-5 py-2 font-semibold">{method === 'average' ? 'Pooled Since' : 'Acquired'}</th>
+                                <th class="px-5 py-2 font-semibold">{isPooled ? 'Pooled Since' : 'Acquired'}</th>
                                 <th class="px-5 py-2 font-semibold text-right">Lot Size</th>
                                 <th class="px-5 py-2 font-semibold text-right">Consumed</th>
                                 <th class="px-5 py-2 font-semibold text-right">Cost / Unit</th>

@@ -13,7 +13,7 @@
 
   const pillClass = (active: boolean) =>
     `cursor-pointer rounded-full border px-3 py-1 text-tag font-semibold transition-colors
-      ${active ? 'border-accent bg-accent text-white' : 'border-border bg-surface text-text hover:text-text-heading'}`;
+      ${active ? 'border-accent bg-accent text-on-accent' : 'border-border bg-surface text-text hover:text-text-heading'}`;
 </script>
 
 {#if allowedMethods.length > 0}
