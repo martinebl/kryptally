@@ -17,6 +17,19 @@ export const transactionTypeToTaxEvent: Partial<Record<TransactionType, TaxableE
 const daysBetween = (from: Date, to: Date): number =>
   Math.floor((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24));
 
+// A lot with source 'average' is a blended pool of multiple purchases (see
+// LotTracker.consolidateToAverage), so its single dateAcquired doesn't represent any one
+// real acquisition. No Czech guidance (GFŘ/KDP coordination committee) reconciles averaging
+// with the per-unit holding-period test, so averaged disposals never qualify as long-term.
+const resolveIsLongTerm = (
+  rules: TaxRules,
+  source: string,
+  holdingDays: number,
+): boolean =>
+  rules.holdingPeriod.enabled &&
+  source !== 'average' &&
+  holdingDays >= rules.holdingPeriod.thresholdDays;
+
 const makeLotUsage = (
   lot: ReturnType<ILotTracker['dispose']>['lots'][number]['lot'],
   amountUsed: BigNumber,
@@ -28,7 +41,7 @@ const makeLotUsage = (
     lot,
     amountUsed,
     holdingDays,
-    isLongTerm: rules.holdingPeriod.enabled && holdingDays >= rules.holdingPeriod.thresholdDays,
+    isLongTerm: resolveIsLongTerm(rules, lot.source, holdingDays),
   };
 };
 
@@ -52,7 +65,9 @@ const processDisposal = (
     const holdingDays = disposal.lots.length === 1
       ? daysBetween(disposal.lots[0].lot.dateAcquired, tx.date)
       : 0;
-    const isLongTerm = rules.holdingPeriod.enabled && holdingDays >= rules.holdingPeriod.thresholdDays;
+    const isLongTerm = disposal.lots.length === 1
+      ? resolveIsLongTerm(rules, disposal.lots[0].lot.source, holdingDays)
+      : false;
     const lots = disposal.lots.map(({ lot, amountUsed }) => makeLotUsage(lot, amountUsed, tx.date, rules));
 
     return [{
@@ -73,7 +88,7 @@ const processDisposal = (
   // Multiple lots — split into per-lot events with proportional proceeds
   return disposal.lots.map(({ lot, amountUsed }) => {
     const holdingDays = daysBetween(lot.dateAcquired, tx.date);
-    const isLongTerm = holdingDays >= rules.holdingPeriod.thresholdDays;
+    const isLongTerm = resolveIsLongTerm(rules, lot.source, holdingDays);
     const proportion = amountUsed.div(amount);
     const lotProceeds = proceeds.times(proportion);
     const lotCostBasis = amountUsed.times(lot.costBasisPerUnit);

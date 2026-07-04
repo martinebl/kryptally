@@ -43,6 +43,8 @@
         if (months > 0) return `${months} mo`;
         return `${days} d`;
     };
+
+    const isPooledAverage = (source: string) => source === 'average';
 </script>
 
 <div class="mb-10">
@@ -105,11 +107,17 @@
                             </div>
                         </div>
                     </div>
+                    {#if method === 'average'}
+                    <div class="border-b border-border bg-accent-bg px-5 py-2 font-mono text-[11px] text-accent">
+                        Cost basis pooled as a weighted average across all {event.asset} holdings at the time of sale.
+                        Pooled disposals never qualify for a long-term holding exemption.
+                    </div>
+                    {/if}
                     <!-- Lot table: column widths are determined by content + padding, no explicit sizes needed -->
                     <table class="w-full text-left text-sm">
                         <thead>
                             <tr class="border-b border-border bg-bg-card/50 font-mono text-[10px] font-semibold uppercase tracking-wider text-text-muted">
-                                <th class="px-5 py-2 font-semibold">Acquired</th>
+                                <th class="px-5 py-2 font-semibold">{method === 'average' ? 'Pooled Since' : 'Acquired'}</th>
                                 <th class="px-5 py-2 font-semibold text-right">Lot Size</th>
                                 <th class="px-5 py-2 font-semibold text-right">Consumed</th>
                                 <th class="px-5 py-2 font-semibold text-right">Cost / Unit</th>
@@ -146,8 +154,12 @@
                                         {/if}
                                     </div>
                                 </td>
-                                <td class="px-5 py-3 text-xs text-text" title={usage.lot.source}>
-                                    {usage.lot.source}
+                                <td class="px-5 py-3 text-xs text-text">
+                                    {#if isPooledAverage(usage.lot.source)}
+                                        <Badge color="purple" variant="outlined" dot>Weighted avg</Badge>
+                                    {:else}
+                                        <span title={usage.lot.source}>{usage.lot.source}</span>
+                                    {/if}
                                 </td>
                             </tr>
                             {/each}
