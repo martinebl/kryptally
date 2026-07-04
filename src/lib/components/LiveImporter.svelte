@@ -62,7 +62,8 @@
     rateLimitSeconds: 0,
     error: '',
     info: '',
-    symbols: '',
+    symbols: [],
+    symbolInput: '',
     discovering: false,
   });
 
@@ -120,7 +121,7 @@
     const st = states[source.exchangeName];
     st.open = !st.open;
     st.error = '';
-    if (st.open && st.hasCreds && source.discoverSymbols && !st.symbols) {
+    if (st.open && st.hasCreds && source.discoverSymbols && st.symbols.length === 0) {
       discoverSymbols(source);
     }
   };
@@ -131,7 +132,7 @@
     st.discovering = true;
     st.error = '';
     try {
-      st.symbols = (await source.discoverSymbols()).join(', ');
+      st.symbols = await source.discoverSymbols();
     } catch (e) {
       st.error = e instanceof Error ? e.message : String(e);
     } finally {
@@ -167,7 +168,8 @@
       st.error = '';
       st.credsKey = '';
       st.credsSecret = '';
-      st.symbols = '';
+      st.symbols = [];
+      st.symbolInput = '';
       st.newCount = 0;
       st.dupCount = 0;
       st.fetchedTotal = 0;
@@ -214,10 +216,7 @@
     st.progTotal = 0;
 
     try {
-      const symbols = st.symbols
-        .split(',')
-        .map((s) => s.trim().toUpperCase())
-        .filter((s) => s.length > 0);
+      const symbols = st.symbols;
 
       if ((source.requiresSymbols ?? true) && symbols.length === 0) {
         st.phase = 'idle';
@@ -246,8 +245,8 @@
 
       if (fetched.length === 0) {
         st.phase = 'idle';
-        st.info = (source.requiresSymbols ?? true)
-          ? `No transactions found for: ${symbols.join(', ')}. Check the pair symbols and date range.`
+        st.info = symbols.length > 0
+          ? `No transactions found for: ${symbols.join(', ')}. Check the trading pairs and date range.`
           : `No ${name} exchange activity found in the selected date range.`;
         return;
       }

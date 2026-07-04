@@ -178,6 +178,7 @@ export class RevolutXLiveSource implements ILiveSource {
   ];
   readonly keyLabel = 'API key';
   readonly secretLabel = 'Ed25519 private key (PEM)';
+  readonly symbolPlaceholder = 'BTC-USD, ETH-USD';
 
   isAvailable(): boolean {
     return isTauri();
@@ -196,7 +197,7 @@ export class RevolutXLiveSource implements ILiveSource {
   }
 
   /** Active pairs whose base asset the user currently holds, as `BASE-QUOTE`. */
-  private async heldPairSymbols(): Promise<string[]> {
+  async discoverSymbols(): Promise<string[]> {
     const [balances, pairs] = await Promise.all([
       invoke<RevolutBalance[]>('revolut_x_fetch_balances'),
       invoke<Record<string, RevolutPair>>('revolut_x_fetch_pairs'),
@@ -237,7 +238,7 @@ export class RevolutXLiveSource implements ILiveSource {
     startMs: number,
     endMs: number,
   ): Promise<Transaction[]> {
-    const symbols = await this.heldPairSymbols();
+    const symbols = params.symbols ?? [];
     const chunks = dateChunks(startMs, endMs);
 
     // Progress is reported per date period (chunk); within a period we still

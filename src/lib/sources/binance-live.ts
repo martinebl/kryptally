@@ -37,6 +37,26 @@ interface BinanceWithdrawal {
   txId?: string;
 }
 
+interface BinanceBalance {
+  asset: string;
+  free: string;
+  locked: string;
+}
+
+interface BinanceAccount {
+  balances: BinanceBalance[];
+}
+
+interface BinanceExchangeSymbol {
+  baseAsset: string;
+  quoteAsset: string;
+  status: string;
+}
+
+interface BinanceExchangeInfo {
+  symbols: BinanceExchangeSymbol[];
+}
+
 /** Known Binance quote assets, ordered longest-first so multi-char suffixes match before shorter ones. */
 const KNOWN_QUOTE_ASSETS = [
   'FDUSD', 'TUSD', 'BUSD', 'USDC', 'USDT', 'DAI',
@@ -134,6 +154,43 @@ export class BinanceLiveSource implements ILiveSource {
 
   async clearCredentials(): Promise<void> {
     await invoke('binance_clear_credentials');
+  }
+
+  /**
+   * Guess one trading pair per currently-held asset: the first quote asset
+   * (in `KNOWN_QUOTE_ASSETS` preference order) that Binance actually lists a
+   * live symbol for against that base. Binance has no "symbols I've traded"
+   * endpoint, so this is a starting guess — the UI lets the user add any
+   * other pairs they've actually traded.
+   */
+  async discoverSymbols(): Promise<string[]> {
+    const [account, exchangeInfo] = await Promise.all([
+      invoke<BinanceAccount>('binance_fetch_account'),
+      invoke<BinanceExchangeInfo>('binance_fetch_exchange_info'),
+    ]);
+
+    const held = new Set(
+      account.balances
+        .filter((b) => new BigNumber(b.free).plus(b.locked).isGreaterThan(0))
+        .map((b) => b.asset),
+    );
+
+    const quotesByBase = new Map<string, Set<string>>();
+    for (const s of exchangeInfo.symbols) {
+      if (s.status !== 'TRADING') continue;
+      if (!quotesByBase.has(s.baseAsset)) quotesByBase.set(s.baseAsset, new Set());
+      quotesByBase.get(s.baseAsset)!.add(s.quoteAsset);
+    }
+
+    const symbols = [...held]
+      .map((asset) => {
+        const quotes = quotesByBase.get(asset);
+        const quote = quotes && KNOWN_QUOTE_ASSETS.find((q) => quotes.has(q));
+        return quote ? `${asset}${quote}` : null;
+      })
+      .filter((s): s is string => s !== null);
+
+    return [...new Set(symbols)];
   }
 
   async fetch(params: LiveSourceFetchParams): Promise<Transaction[]> {

@@ -70,6 +70,36 @@ pub async fn binance_fetch_account() -> Result<Value, String> {
     signed_get("/api/v3/account", vec![]).await
 }
 
+/// Public reference data (no signing needed): every symbol Binance lists, with
+/// its base/quote assets and trading status. Used to guess a held asset's most
+/// likely quote when suggesting trading pairs to fetch.
+#[tauri::command]
+pub async fn binance_fetch_exchange_info() -> Result<Value, String> {
+    let url = format!("{BASE_URL}/api/v3/exchangeInfo");
+    let client = reqwest::Client::new();
+    let response = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| format!("http request: {e}"))?;
+
+    let status = response.status();
+    let body = response
+        .text()
+        .await
+        .map_err(|e| format!("read body: {e}"))?;
+
+    if !status.is_success() {
+        return Err(format!(
+            "Binance /api/v3/exchangeInfo {}: {}",
+            status.as_u16(),
+            body
+        ));
+    }
+
+    serde_json::from_str::<Value>(&body).map_err(|e| format!("parse json: {e}"))
+}
+
 #[tauri::command]
 pub async fn binance_fetch_trades(
     symbol: String,
