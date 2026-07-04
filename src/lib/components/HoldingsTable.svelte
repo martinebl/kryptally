@@ -2,6 +2,7 @@
     import BigNumber from 'bignumber.js';
     import type { LotTracker } from '$lib/engine/lot-tracker';
     import Table from '$lib/components/Table.svelte';
+    import { valueColor } from '$lib/components/valueColor';
 
     type Holding = ReturnType<LotTracker['getHoldings']>[number];
 
@@ -31,8 +32,6 @@
         v.abs().lt(1) ? v.toFormat(8) : v.toFormat(2);
     const signed = (v: BigNumber) =>
         `${v.gt(0) ? '+' : v.lt(0) ? '−' : ''}${v.abs().toFormat(2)}`;
-    const gainColor = (v: BigNumber) =>
-        v.gt(0) ? 'text-green-600' : v.lt(0) ? 'text-red-500' : 'text-text';
 
     const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
@@ -82,7 +81,7 @@
                 {:else if value}{fmt(value)} <span class="text-text/50">{currency}</span>
                 {:else}<span class="text-text/40">—</span>{/if}
             </td>
-            <td class="px-4 py-3 text-right font-mono font-medium {!pricesLoading && value ? gainColor(value.minus(holding.totalCostBasis)) : 'text-text/40'}">
+            <td class="px-4 py-3 text-right font-mono font-medium {!pricesLoading && value ? valueColor(value.minus(holding.totalCostBasis)) : 'text-text/40'}">
                 {#if pricesLoading}<span class="inline-block h-4 w-16 animate-pulse rounded bg-text/10 align-middle"></span>
                 {:else if value}{signed(value.minus(holding.totalCostBasis))}
                 {:else}—{/if}

@@ -13,6 +13,7 @@
   import type { TaxSummary } from '$lib/types/results';
   import { filterDustHoldings } from '$lib/engine/dust-filter';
   import ActivitiesTable from '$lib/components/ActivitiesTable.svelte';
+  import { valueColor } from '$lib/components/valueColor';
 
   interface Props {
     transactions: Transaction[];
@@ -167,12 +168,9 @@
       : { visible: holdings, dust: [] as typeof holdings },
   );
 
-  const gainColor = (v: BigNumber) =>
-    v.gt(0) ? 'text-green-600' : v.lt(0) ? 'text-red-500' : 'text-text';
-
   const yearButtonClass = (active: boolean) =>
     `cursor-pointer rounded-md border-none px-4 py-1.5 text-sm font-semibold transition-colors ${
-      active ? 'bg-accent text-white' : 'bg-transparent text-text hover:text-text-heading'
+      active ? 'bg-accent text-on-accent' : 'bg-transparent text-text hover:text-text-heading'
     }`;
 </script>
 
@@ -218,19 +216,19 @@
         <div class="text-xs font-semibold uppercase tracking-wider text-text">
           {summary.netGainLoss.gte(0) ? 'Net realized gain' : 'Net realized loss'} · {periodLabel}
         </div>
-        <div class="mt-2.5 font-mono text-5xl font-semibold leading-none tracking-tight {gainColor(summary.netGainLoss)}">
+        <div class="mt-2.5 font-mono text-5xl font-semibold leading-none tracking-tight {valueColor(summary.netGainLoss)}">
           {signed(summary.netGainLoss)}<span class="ml-2 text-xl text-text/40">{countryConfig.currency}</span>
         </div>
 
         <!-- Gains / losses bar -->
         <div class="mt-6">
           <div class="mb-1.5 flex justify-between text-meta">
-            <span class="font-medium text-green-600">Gains <span class="font-mono">{fmt(summary.totalGains)}</span></span>
-            <span class="font-medium text-red-500">Losses <span class="font-mono">{fmt(summary.totalLosses)}</span></span>
+            <span class="font-medium text-positive">Gains <span class="font-mono">{fmt(summary.totalGains)}</span></span>
+            <span class="font-medium text-negative">Losses <span class="font-mono">{fmt(summary.totalLosses)}</span></span>
           </div>
           <div class="flex h-2.5 overflow-hidden rounded-md bg-bg-card">
-            <div class="bg-green-500" style="width: {gainPct}%"></div>
-            <div class="bg-red-400" style="width: {100 - gainPct}%"></div>
+            <div class="bg-positive" style="width: {gainPct}%"></div>
+            <div class="bg-negative" style="width: {100 - gainPct}%"></div>
           </div>
         </div>
       </div>
@@ -264,7 +262,7 @@
         <h3 class="mb-3.5 font-heading text-nav font-semibold text-text-heading">Capital Gains</h3>
         <div class="flex justify-between py-1.5 text-sm text-text"><span>Proceeds</span><span class="font-mono text-text-heading">{fmt(summary.totalProceeds)}</span></div>
         <div class="flex justify-between py-1.5 text-sm text-text"><span>Cost basis</span><span class="font-mono text-text-heading">{fmt(summary.totalCostBasis)}</span></div>
-        <div class="mt-2 flex justify-between border-t border-border pt-2.5 text-sm font-semibold"><span class="text-text-heading">Net gain/loss</span><span class="font-mono {gainColor(summary.netGainLoss)}">{signed(summary.netGainLoss)}</span></div>
+        <div class="mt-2 flex justify-between border-t border-border pt-2.5 text-sm font-semibold"><span class="text-text-heading">Net gain/loss</span><span class="font-mono {valueColor(summary.netGainLoss)}">{signed(summary.netGainLoss)}</span></div>
       </div>
       <div class="rounded-2xl border border-border bg-bg-card p-6">
         <h3 class="mb-3.5 font-heading text-nav font-semibold text-text-heading">Income</h3>

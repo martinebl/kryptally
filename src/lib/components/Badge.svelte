@@ -2,7 +2,7 @@
   import type { Snippet } from 'svelte';
 
   type Variant = 'solid' | 'outlined';
-  type Color = 'default' | 'success' | 'warning' | 'danger' | 'accent' | 'purple' | 'blue' | 'amber';
+  type Color = 'default' | 'success' | 'danger' | 'accent' | 'purple' | 'blue' | 'amber';
 
   interface Props {
     variant?: Variant;
@@ -14,36 +14,33 @@
   let { variant = 'solid', color = 'default', dot = false, children }: Props = $props();
 
   const solidBg: Record<Color, string> = {
-    default: 'bg-gray-100 text-gray-700',
-    success: 'bg-green-100 text-green-700',
-    warning: 'bg-amber-100 text-amber-700',
-    danger:  'bg-red-100 text-red-700',
-    accent:  'bg-accent text-white',
-    purple:  'bg-purple-100 text-purple-700',
-    blue:    'bg-blue-100 text-blue-700',
-    amber:   'bg-amber-100 text-amber-700',
+    default: 'bg-badge-default-bg text-badge-default',
+    success: 'bg-badge-success-bg text-badge-success',
+    danger:  'bg-badge-danger-bg text-badge-danger',
+    accent:  'bg-accent text-on-accent',
+    purple:  'bg-badge-purple-bg text-badge-purple',
+    blue:    'bg-badge-blue-bg text-badge-blue',
+    amber:   'bg-badge-amber-bg text-badge-amber',
   };
 
   const outlinedBg: Record<Color, string> = {
-    default: 'border border-border bg-bg-card text-text',
-    success: 'border border-green-200 bg-green-50 text-green-700',
-    warning: 'border border-amber-200 bg-amber-50 text-amber-700',
-    danger:  'border border-red-200 bg-red-50 text-red-700',
+    default: 'border border-badge-default-border bg-badge-default-bg text-badge-default',
+    success: 'border border-badge-success-border bg-badge-success-bg text-badge-success',
+    danger:  'border border-badge-danger-border bg-badge-danger-bg text-badge-danger',
     accent:  'border border-accent-border bg-accent-bg text-accent',
-    purple:  'border border-purple-200 bg-purple-50 text-purple-700',
-    blue:    'border border-blue-200 bg-blue-50 text-blue-700',
-    amber:   'border border-amber-300 bg-amber-50 text-amber-700',
+    purple:  'border border-badge-purple-border bg-badge-purple-bg text-badge-purple',
+    blue:    'border border-badge-blue-border bg-badge-blue-bg text-badge-blue',
+    amber:   'border border-badge-amber-border bg-badge-amber-bg text-badge-amber',
   };
 
   const dotColor: Record<Color, string> = {
-    default: 'bg-border',
-    success: 'bg-green-500',
-    warning: 'bg-amber-500',
-    danger:  'bg-red-500',
+    default: 'bg-badge-default',
+    success: 'bg-badge-success',
+    danger:  'bg-badge-danger',
     accent:  'bg-accent',
-    purple:  'bg-purple-500',
-    blue:    'bg-blue-500',
-    amber:   'bg-amber-500',
+    purple:  'bg-badge-purple',
+    blue:    'bg-badge-blue',
+    amber:   'bg-badge-amber',
   };
 
   const styleClass = $derived(

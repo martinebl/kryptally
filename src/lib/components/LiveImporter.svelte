@@ -289,7 +289,7 @@
   {#if addableSources.length > 0 && !pendingAdd}
     <div class="flex flex-wrap items-center gap-3">
       <select
-        class="min-w-43 cursor-pointer appearance-none rounded-lg border border-border bg-white px-4 py-2 pr-9 text-sm text-text-heading focus:border-accent focus:outline-none"
+        class="min-w-43 cursor-pointer appearance-none rounded-lg border border-border bg-surface px-4 py-2 pr-9 text-sm text-text-heading focus:border-accent focus:outline-none"
         value={selectedToAdd}
         onchange={(e) => { selectedToAdd = (e.currentTarget as HTMLSelectElement).value; }}
       >
@@ -300,7 +300,7 @@
       </select>
       <button
         type="button"
-        class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+        class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
         disabled={!selectedToAdd}
         onclick={onAdd}
       >

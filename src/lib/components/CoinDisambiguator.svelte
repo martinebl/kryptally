@@ -53,7 +53,7 @@
 
   <div class="mt-5 flex justify-end">
     <button
-      class="rounded-lg bg-accent px-6 py-2 text-sm font-medium text-white disabled:opacity-40 hover:opacity-90 transition-opacity"
+      class="rounded-lg bg-accent px-6 py-2 text-sm font-medium text-on-accent disabled:opacity-40 hover:opacity-90 transition-opacity"
       disabled={!allSelected}
       onclick={() => onConfirm(selections)}
     >

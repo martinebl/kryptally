@@ -152,7 +152,7 @@
       <p class="text-xs text-text">
         File: <span class="font-medium text-text-heading">{fileName}</span>
         {#if !detectionConfident}
-          <span class="ml-2 text-amber-600">— columns could not be auto-detected, please verify</span>
+          <span class="ml-2 text-warning">— columns could not be auto-detected, please verify</span>
         {/if}
       </p>
 
@@ -228,7 +228,7 @@
 
       <div class="flex gap-2">
         <button
-          class="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent/90"
+          class="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-on-accent transition-colors hover:bg-accent/90"
           onclick={handleLoad}
         >
           Load prices
@@ -244,11 +244,11 @@
   {/if}
 
   {#if error}
-    <p class="mt-3 text-xs text-red-600">{error}</p>
+    <p class="mt-3 text-xs text-danger">{error}</p>
   {/if}
 
   {#if successMessage}
-    <p class="mt-3 text-xs text-green-600">{successMessage}</p>
+    <p class="mt-3 text-xs text-positive">{successMessage}</p>
   {/if}
 
   {#if loadedEntries.length > 0}

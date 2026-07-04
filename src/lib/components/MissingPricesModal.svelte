@@ -32,14 +32,14 @@
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <div
-  class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6"
+  class="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-6"
   onclick={onClose}
   role="presentation"
 >
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
-    class="flex max-h-[86vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+    class="flex max-h-[86vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-surface shadow-2xl"
     onclick={(e) => e.stopPropagation()}
   >
     <!-- Header -->
@@ -76,13 +76,13 @@
     <!-- Footer -->
     <div class="flex items-center justify-between gap-3 border-t border-border px-6 py-4">
       <button
-        class="rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-text-heading transition-colors hover:bg-bg-card"
+        class="rounded-lg border border-border bg-surface px-4 py-2 text-sm font-semibold text-text-heading transition-colors hover:bg-bg-card"
         onclick={downloadCSV}
       >
         Download list (CSV)
       </button>
       <button
-        class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent/90"
+        class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-accent/90"
         onclick={onGoToUploader}
       >
         Go to uploader →

@@ -1,6 +1,7 @@
 <script lang="ts">
   import BigNumber from 'bignumber.js';
   import Card from '$lib/components/Card.svelte';
+  import { valueColor } from '$lib/components/valueColor';
   import type { Transaction } from '$lib/types/transaction';
   import type { CountryConfig } from '$lib/types/tax-rules';
   import type { TaxSummary } from '$lib/types/results';
@@ -30,8 +31,6 @@
   const fmt = (v: BigNumber) => v.toFormat(2);
   const signed = (v: BigNumber) =>
     `${v.gt(0) ? '+' : v.lt(0) ? '−' : ''}${v.abs().toFormat(2)}`;
-  const gainColor = (v: BigNumber) =>
-    v.gt(0) ? 'text-green-600' : v.lt(0) ? 'text-red-500' : 'text-text';
 
   let showDetail = $state(false);
 </script>
@@ -44,7 +43,7 @@
       <div class="mt-2.5 h-4 w-80 max-w-full animate-pulse rounded bg-text/10"></div>
     {:else}
       <div class="mt-2 flex items-baseline gap-2.5">
-        <span class="font-mono text-3xl font-semibold {gainColor(unrealizedTotal)}">{signed(unrealizedTotal)}</span>
+        <span class="font-mono text-3xl font-semibold {valueColor(unrealizedTotal)}">{signed(unrealizedTotal)}</span>
         <span class="text-sm text-text/40">{countryConfig.currency}</span>
       </div>
       <div class="mt-1.5 text-meta text-text/70">
@@ -56,14 +55,14 @@
   <button
     onclick={() => (showDetail = !showDetail)}
     disabled={loading || !simSummary}
-    class="cursor-pointer whitespace-nowrap rounded-xl border border-accent bg-accent px-6 py-3 text-nav font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+    class="cursor-pointer whitespace-nowrap rounded-xl border border-accent bg-accent px-6 py-3 text-nav font-semibold text-on-accent transition hover:opacity-90 disabled:opacity-50"
   >
     {showDetail ? 'Hide Simulation' : 'Simulate Full Sell'}
   </button>
 </div>
 
 {#if unpriced.length > 0}
-  <div class="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+  <div class="mt-4 rounded-xl border border-warning-border bg-warning-bg px-4 py-3 text-sm text-warning">
     Could not fetch price for: {unpriced.join(', ')}. These assets were excluded from the unrealized figures.
   </div>
 {/if}
@@ -87,11 +86,11 @@
         </div>
         <div class="flex justify-between border-t border-border pt-2 text-sm font-medium">
           <span class="text-text-heading">Net gain/loss</span>
-          <span class="font-mono {gainColor(simSummary.netGainLoss)}">{fmt(simSummary.netGainLoss)}</span>
+          <span class="font-mono {valueColor(simSummary.netGainLoss)}">{fmt(simSummary.netGainLoss)}</span>
         </div>
         <div class="flex justify-between text-xs text-text">
           <span>vs. actual</span>
-          <span class="font-mono {gainColor(gainDelta)}">{gainDelta.gt(0) ? '+' : ''}{fmt(gainDelta)}</span>
+          <span class="font-mono {valueColor(gainDelta)}">{gainDelta.gt(0) ? '+' : ''}{fmt(gainDelta)}</span>
         </div>
       </div>
     </Card>
@@ -119,11 +118,11 @@
 
     <Card title="Estimated Tax (Simulated)">
       <div class="flex h-full flex-col justify-center">
-        <p class="text-center font-mono text-3xl font-semibold {gainColor(simSummary.estimatedTax.negated())}">
+        <p class="text-center font-mono text-3xl font-semibold {valueColor(simSummary.estimatedTax.negated())}">
           {fmt(simSummary.estimatedTax)}
         </p>
         <p class="mt-1 text-center text-xs text-text">{countryConfig.currency}</p>
-        <p class="mt-2 text-center font-mono text-xs {gainColor(taxDelta.negated())}">
+        <p class="mt-2 text-center font-mono text-xs {valueColor(taxDelta.negated())}">
           {taxDelta.gt(0) ? '+' : ''}{fmt(taxDelta)} vs. actual
         </p>
       </div>

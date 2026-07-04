@@ -19,6 +19,62 @@
   --color-accent-bg: rgba(239, 138, 22, 0.1);
   --color-accent-border: rgba(239, 138, 22, 0.5);
 
+  /* Financial value coloring (gains/losses in tables & results) */
+  --color-positive: #16a34a;
+  --color-positive-bg: #f0fdf4;
+  --color-positive-border: #bbf7d0;
+
+  --color-negative: #dc2626;
+  --color-negative-bg: #fef2f2;
+  --color-negative-border: #fecaca;
+
+  /* Status banners / messages */
+  --color-success: #16a34a;
+  --color-success-bg: #f0fdf4;
+  --color-success-border: #bbf7d0;
+
+  --color-danger: #dc2626;
+  --color-danger-bg: #fef2f2;
+  --color-danger-border: #fecaca;
+
+  --color-warning: #d97706;
+  --color-warning-bg: #fffbeb;
+  --color-warning-border: #fde68b;
+
+  /* Badge namespace — isolated so each ActivitiesTable badge color is tunable
+     independently of the status / financial tokens above. */
+  --color-badge-default: #374151;
+  --color-badge-default-bg: #f3f4f6;
+  --color-badge-default-border: #e5e7eb;
+
+  --color-badge-success: #15803d;
+  --color-badge-success-bg: #dcfce7;
+  --color-badge-success-border: #bbf7d0;
+
+  --color-badge-danger: #b91c1c;
+  --color-badge-danger-bg: #fee2e2;
+  --color-badge-danger-border: #fecaca;
+
+  --color-badge-purple: #7e22ce;
+  --color-badge-purple-bg: #f3e8ff;
+  --color-badge-purple-border: #e9d5ff;
+
+  --color-badge-amber: #b45309;
+  --color-badge-amber-bg: #fef3c7;
+  --color-badge-amber-border: #fde68b;
+
+  --color-badge-blue: #1d4ed8;
+  --color-badge-blue-bg: #dbeafe;
+  --color-badge-blue-border: #bfdbfe;
+
+  /* Utility */
+  --color-on-accent: #ffffff;
+  --color-overlay: rgba(0, 0, 0, 0.4);
+
+  /* Unique LandingPage surfaces (no semantic equivalent elsewhere) */
+  --color-surface-alt: #f7f9f7;
+  --color-surface-warm: #e6ddcd;
+
   /* Spacing — commonly reused custom pixel values */
   --spacing-page: 1100px;
   --spacing-card-x: 22px;
