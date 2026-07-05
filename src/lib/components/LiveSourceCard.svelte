@@ -16,6 +16,7 @@
     onDisconnect: (source: ILiveSource) => void;
     onFetch: (source: ILiveSource) => void;
     onNavigate: (page: string) => void;
+    onPairsChange?: (symbols: string[], autoDetectedSymbols: string[]) => void;
     /**
      * Optional close affordance for the pending-add form. When provided and the
      * card is not yet connected, the header's Connect toggle is replaced by an
@@ -38,6 +39,7 @@
     onFetch,
     onNavigate,
     onCancel,
+    onPairsChange,
   }: Props = $props();
 
   // Manually-added tickers are never added to autoDetectedSymbols, so they render
@@ -47,11 +49,13 @@
     if (!ticker) return;
     if (!st.symbols.includes(ticker)) st.symbols = [...st.symbols, ticker];
     st.symbolInput = '';
+    onPairsChange?.(st.symbols, st.autoDetectedSymbols);
   };
 
   const removePair = (ticker: string) => {
     st.symbols = st.symbols.filter((s) => s !== ticker);
     st.autoDetectedSymbols = st.autoDetectedSymbols.filter((s) => s !== ticker);
+    onPairsChange?.(st.symbols, st.autoDetectedSymbols);
   };
 
   const onSymbolInputKeydown = (e: KeyboardEvent) => {

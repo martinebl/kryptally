@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Transaction } from '$lib/types';
   import type { CountryConfig } from '$lib/types/tax-rules';
+  import type { IPairRepository } from '$lib/storage';
   import { LedgerImporter } from '$lib/importers/ledger';
   import { BinanceImporter } from '$lib/importers/binance';
   import { RevolutXImporter } from '$lib/importers/revolut-x';
@@ -23,9 +24,10 @@
     countryConfig: CountryConfig;
     storedTransactionCount: number;
     onClearHistory: () => void;
+    pairRepo: IPairRepository;
   }
 
-  const { onImport, onNavigate, pricesByAsset, countryConfig, storedTransactionCount, onClearHistory }: Props = $props();
+  const { onImport, onNavigate, pricesByAsset, countryConfig, storedTransactionCount, onClearHistory, pairRepo }: Props = $props();
 
   const importers = [
     new LedgerImporter(),
@@ -148,7 +150,7 @@
       {:else}
         <!-- Live exchange tab -->
         {#if isTauri()}
-          <LiveImporter {liveSources} onConfirm={handleEnrich} {onNavigate} />
+          <LiveImporter {liveSources} onConfirm={handleEnrich} {onNavigate} {pairRepo} />
         {:else}
           <!-- Browser: desktop-only notice -->
           <div class="mt-2 rounded-xl border border-border bg-bg-card px-7 py-6">
