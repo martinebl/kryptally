@@ -10,7 +10,7 @@
   import CsvPriceUploader from '$lib/components/CsvPriceUploader.svelte';
   import ImportStatus from '$lib/components/ImportStatus.svelte';
   import MissingPricesModal from '$lib/components/MissingPricesModal.svelte';
-  import Badge from '$lib/components/Badge.svelte';
+  import Badge from '$lib/components/common/Badge.svelte';
   import { getCryptoConverter } from '$lib/context';
   import { enrichFiatValues, type MissingPrice } from '$lib/engine/enrich-fiat-values';
   import type { PricesByAsset } from '$lib/converters/csv-prices';

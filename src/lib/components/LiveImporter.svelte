@@ -63,6 +63,7 @@
     error: '',
     info: '',
     symbols: [],
+    autoDetectedSymbols: [],
     symbolInput: '',
     discovering: false,
   });
@@ -133,6 +134,7 @@
     st.error = '';
     try {
       st.symbols = await source.discoverSymbols();
+      st.autoDetectedSymbols = [...st.symbols];
     } catch (e) {
       st.error = e instanceof Error ? e.message : String(e);
     } finally {
@@ -169,6 +171,7 @@
       st.credsKey = '';
       st.credsSecret = '';
       st.symbols = [];
+      st.autoDetectedSymbols = [];
       st.symbolInput = '';
       st.newCount = 0;
       st.dupCount = 0;

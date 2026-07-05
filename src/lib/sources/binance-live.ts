@@ -57,14 +57,31 @@ interface BinanceExchangeInfo {
   symbols: BinanceExchangeSymbol[];
 }
 
-/** Known Binance quote assets, ordered longest-first so multi-char suffixes match before shorter ones. */
-const KNOWN_QUOTE_ASSETS = [
+/**
+ * Every quote asset Binance has ever let someone trade against, including regional
+ * fiat on-ramps (TRY, BRL, EUR, GBP, AUD, JPY, RUB, ZAR). Must stay exhaustive: used
+ * to split a historical trade's raw symbol (e.g. "BTCTRY") back into base/quote, and
+ * a missing entry here means that trade silently fails to parse and gets dropped.
+ * Ordered longest-first so multi-char suffixes (e.g. "BUSD") match before shorter
+ * ones that are also a suffix of them (e.g. "USD").
+ */
+const KNOWN_QUOTE_SUFFIXES = [
   'FDUSD', 'TUSD', 'BUSD', 'USDC', 'USDT', 'DAI',
   'BTC', 'ETH', 'BNB', 'TRY', 'BRL', 'EUR', 'GBP', 'AUD', 'JPY', 'RUB', 'ZAR', 'USD',
 ];
 
+/**
+ * Preferred quote assets for guessing a pair to auto-detect, in priority order.
+ * Deliberately a short list of stablecoins and major cryptos only — no regional
+ * fiat, since a stablecoin pair is available for virtually every held asset and
+ * fiat pairs would never realistically be reached. This is a preference ordering,
+ * not a completeness requirement, so it doesn't need `KNOWN_QUOTE_SUFFIXES`'s fiat
+ * entries.
+ */
+const DISCOVERY_QUOTE_PREFERENCE = ['FDUSD', 'TUSD', 'BUSD', 'USDC', 'USDT', 'DAI', 'BTC', 'ETH', 'BNB'];
+
 const splitSymbol = (symbol: string): { base: string; quote: string } | null => {
-  const quote = KNOWN_QUOTE_ASSETS.find((q) => symbol.endsWith(q) && symbol.length > q.length);
+  const quote = KNOWN_QUOTE_SUFFIXES.find((q) => symbol.endsWith(q) && symbol.length > q.length);
   if (!quote) return null;
   return { base: symbol.slice(0, symbol.length - quote.length), quote };
 };
@@ -158,7 +175,7 @@ export class BinanceLiveSource implements ILiveSource {
 
   /**
    * Guess one trading pair per currently-held asset: the first quote asset
-   * (in `KNOWN_QUOTE_ASSETS` preference order) that Binance actually lists a
+   * (in `DISCOVERY_QUOTE_PREFERENCE` order) that Binance actually lists a
    * live symbol for against that base. Binance has no "symbols I've traded"
    * endpoint, so this is a starting guess — the UI lets the user add any
    * other pairs they've actually traded.
@@ -185,7 +202,7 @@ export class BinanceLiveSource implements ILiveSource {
     const symbols = [...held]
       .map((asset) => {
         const quotes = quotesByBase.get(asset);
-        const quote = quotes && KNOWN_QUOTE_ASSETS.find((q) => quotes.has(q));
+        const quote = quotes && DISCOVERY_QUOTE_PREFERENCE.find((q) => quotes.has(q));
         return quote ? `${asset}${quote}` : null;
       })
       .filter((s): s is string => s !== null);

@@ -2,8 +2,8 @@
     import BigNumber from 'bignumber.js';
     import type { TaxableEvent } from '$lib/types/results';
     import type { CostBasisMethod } from '$lib/types/tax-rules';
-    import Table from '$lib/components/Table.svelte';
-    import Badge from '$lib/components/Badge.svelte';
+    import Table from '$lib/components/common/Table.svelte';
+    import Badge from '$lib/components/common/Badge.svelte';
     import { valueColor } from '$lib/components/valueColor';
 
     interface Props {

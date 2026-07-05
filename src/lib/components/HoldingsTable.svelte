@@ -1,7 +1,7 @@
 <script lang="ts">
     import BigNumber from 'bignumber.js';
     import type { LotTracker } from '$lib/engine/lot-tracker';
-    import Table from '$lib/components/Table.svelte';
+    import Table from '$lib/components/common/Table.svelte';
     import { valueColor } from '$lib/components/valueColor';
 
     type Holding = ReturnType<LotTracker['getHoldings']>[number];

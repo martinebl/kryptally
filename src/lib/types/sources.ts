@@ -44,6 +44,8 @@ export interface SourceState {
   info: string;
   /** Trading pairs to fetch, as committed chips (e.g. "BTC-USD", "BTCUSDT"). */
   symbols: string[];
+  /** Subset of `symbols` last populated by discoverSymbols(); drives the "auto" dot on chips. */
+  autoDetectedSymbols: string[];
   /** Current uncommitted text in the pair-input box. */
   symbolInput: string;
   /** True while a symbol auto-detection request is in flight. */

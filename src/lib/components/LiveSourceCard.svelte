@@ -1,7 +1,8 @@
 <script lang="ts">
   import type { ILiveSource, SourceState } from '$lib/types';
-  import DateField from '$lib/components/DateField.svelte';
-  import Badge from '$lib/components/Badge.svelte';
+  import DateField from '$lib/components/common/DateField.svelte';
+  import Badge from '$lib/components/common/Badge.svelte';
+  import Spinner from '$lib/components/common/Spinner.svelte';
 
   interface Props {
     source: ILiveSource;
@@ -39,6 +40,8 @@
     onCancel,
   }: Props = $props();
 
+  // Manually-added tickers are never added to autoDetectedSymbols, so they render
+  // without the auto-detected dot (see removePair for the reverse case).
   const addPair = (raw: string) => {
     const ticker = raw.trim().toUpperCase();
     if (!ticker) return;
@@ -48,6 +51,7 @@
 
   const removePair = (ticker: string) => {
     st.symbols = st.symbols.filter((s) => s !== ticker);
+    st.autoDetectedSymbols = st.autoDetectedSymbols.filter((s) => s !== ticker);
   };
 
   const onSymbolInputKeydown = (e: KeyboardEvent) => {
@@ -169,7 +173,12 @@
                   disabled={st.discovering}
                   onclick={() => onDiscoverSymbols(source)}
                 >
-                  {st.discovering ? 'Detecting…' : 'Re-detect pairs'}
+                  {#if st.discovering}
+                    <Spinner size="sm" class="mr-1" />
+                    Detecting…
+                  {:else}
+                    Re-detect pairs
+                  {/if}
                 </button>
               {/if}
             </div>
@@ -180,10 +189,13 @@
               </p>
             {/if}
             <div
-              class="flex min-h-[42px] flex-wrap items-center gap-1.5 rounded-lg border border-border bg-surface p-1.5 focus-within:border-accent"
+              class="flex min-h-chip-input flex-wrap items-center gap-1.5 rounded-lg border border-border bg-surface p-1.5 focus-within:border-accent"
             >
               {#each st.symbols as ticker (ticker)}
                 <span class="inline-flex items-center gap-1.5 rounded-full border border-border bg-bg-card py-1 pl-2.5 pr-1.5 text-xs">
+                  {#if st.autoDetectedSymbols.includes(ticker)}
+                    <span class="size-1.5 shrink-0 rounded-full bg-accent"></span>
+                  {/if}
                   <span class="font-mono font-medium text-text-heading">{ticker}</span>
                   <button
                     type="button"
