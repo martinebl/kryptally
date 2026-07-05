@@ -132,6 +132,32 @@ describe('LotTracker', () => {
 
       expect(result.costBasis.toNumber()).toBe(100000);
     });
+
+    it('recomputes the average at each disposal — a later purchase cannot affect an earlier sale', () => {
+      // This is the "moving weighted average" interpretation: the average used by a
+      // disposal only ever pools lots that existed at the time of that disposal, not
+      // lots acquired afterwards. It must be distinguished from a "lifetime average"
+      // (pooling every purchase ever made, regardless of when disposals happened),
+      // which would give different numbers below.
+      const tracker = new LotTracker('average');
+      tracker.addLot(makeLot('BTC', 1, 40000, new Date('2024-01-01')));
+
+      // Only one lot exists so far — average must equal its cost, not some future blend.
+      const first = tracker.dispose('BTC', bn(0.5));
+      expect(first.costBasis.toNumber()).toBe(20000); // 0.5 * 40000
+
+      tracker.addLot(makeLot('BTC', 1, 100000, new Date('2024-03-01')));
+
+      // Remaining 0.5 @ 40000 pools with the new 1 @ 100000:
+      // (0.5*40000 + 1*100000) / 1.5 = 80000 per unit
+      const second = tracker.dispose('BTC', bn(1));
+      expect(second.costBasis.toNumber()).toBe(80000);
+
+      // A lifetime average of every purchase ever made — (1*40000 + 1*100000) / 2 = 70000 —
+      // would have produced 35000 and 70000 instead. Confirm we're not doing that.
+      expect(first.costBasis.toNumber()).not.toBe(35000);
+      expect(second.costBasis.toNumber()).not.toBe(70000);
+    });
   });
 
   describe('getHoldings', () => {

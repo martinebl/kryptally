@@ -84,4 +84,4 @@
   ];
 </script>
 
-<ResultsPage transactions={hardcodedTransactions} countryConfig={findCountry('DK')!} />
+<ResultsPage transactions={hardcodedTransactions} countryConfig={findCountry('DK')!} costBasisMethod="fifo" />

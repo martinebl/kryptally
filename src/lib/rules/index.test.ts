@@ -1,14 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import type { TaxRules } from '$lib/types/tax-rules';
-import { makeResolver, findCountry } from '$lib/rules';
+import type { CostBasisConfig, CountryConfig, TaxRules } from '$lib/types/tax-rules';
+import { makeResolver, findCountry, allowedCostBasisMethods } from '$lib/rules';
 
-const makeStubRules = (taxYear: number): TaxRules => ({
+const makeStubRules = (
+  taxYear: number,
+  costBasis: CostBasisConfig = { allowed: ['fifo'], default: 'fifo' },
+): TaxRules => ({
   country: 'Test',
   countryCode: 'TS',
   currency: 'TST',
   taxYear,
   lastUpdated: '2024-01-01',
-  costBasis: { allowed: ['fifo'], default: 'fifo' },
+  costBasis,
   cryptoToCryptoTaxable: true,
   holdingPeriod: { enabled: false, thresholdDays: 0, exemptFromTax: false },
   incomeTypes: [],
@@ -94,5 +97,30 @@ describe('findCountry', () => {
     expect(rules.holdingPeriod.enabled).toBe(true);
     expect(rules.holdingPeriod.thresholdDays).toBe(1095);
     expect(rules.holdingPeriod.exemptFromTax).toBe(true);
+  });
+});
+
+describe('allowedCostBasisMethods', () => {
+  it("returns DK's allowed methods (fifo only)", () => {
+    expect(allowedCostBasisMethods(findCountry('DK')!)).toEqual(['fifo']);
+  });
+
+  it("returns CZ's allowed methods (fifo + average)", () => {
+    expect(allowedCostBasisMethods(findCountry('CZ')!)).toEqual(['fifo', 'average']);
+  });
+
+  it('resolves allowed methods for the given date, not just "today"', () => {
+    const r2024 = makeStubRules(2024, { allowed: ['fifo'], default: 'fifo' });
+    const r2025 = makeStubRules(2025, { allowed: ['fifo', 'hifo'], default: 'hifo' });
+    const stubCountry: CountryConfig = {
+      countryCode: 'TS',
+      country: 'Test',
+      currency: 'TST',
+      defaultCostBasisMethod: 'fifo',
+      resolve: makeResolver([r2024, r2025]),
+    };
+
+    expect(allowedCostBasisMethods(stubCountry, new Date('2024-06-01'))).toEqual(['fifo']);
+    expect(allowedCostBasisMethods(stubCountry, new Date('2025-06-01'))).toEqual(['fifo', 'hifo']);
   });
 });

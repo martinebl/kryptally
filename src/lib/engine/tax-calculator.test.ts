@@ -184,4 +184,82 @@ describe('TaxCalculator (orchestration)', () => {
       expect(summaries.get(2025)!.events).toHaveLength(1);
     });
   });
+
+  describe('cost-basis method selection', () => {
+    // Two lots of the same asset bought at different prices, then a partial
+    // disposal — this is the scenario where fifo/lifo/hifo/average actually
+    // diverge. Regression guard for the home-page cost-basis picker: confirms
+    // 'average' produces a correct, different result than 'fifo' through the
+    // real TaxCalculator + LotTracker pipeline (not just LotTracker alone).
+    const buildTransactions = (): Transaction[] => [
+      makeTx({ id: 'buy-1', type: 'buy', date: new Date('2024-01-12'), toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(437000) }),
+      makeTx({ id: 'buy-2', type: 'buy', date: new Date('2024-03-04'), toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(913000) }),
+      makeTx({ id: 'sell-1', type: 'sell', date: new Date('2024-08-19'), fromAsset: 'BTC', fromAmount: bn(1), fiatValue: bn(721000) }),
+    ];
+
+    it('fifo consumes the oldest lot\'s cost basis first', () => {
+      const tracker = new LotTracker('fifo');
+      const calc = new TaxCalculator(staticResolver(rules), rules.currency, tracker);
+      const summary = calc.process(buildTransactions()).get(2024)!;
+
+      expect(summary.totalCostBasis.toNumber()).toBe(437000);
+      expect(summary.netGainLoss.toNumber()).toBe(284000);
+    });
+
+    it('average pools both lots into a single weighted cost per unit', () => {
+      const tracker = new LotTracker('average');
+      const calc = new TaxCalculator(staticResolver(rules), rules.currency, tracker);
+      const summary = calc.process(buildTransactions()).get(2024)!;
+
+      // (437000 + 913000) / 2 = 675000 average cost per BTC
+      expect(summary.totalCostBasis.toNumber()).toBe(675000);
+      expect(summary.netGainLoss.toNumber()).toBe(46000);
+    });
+
+    it('fifo and average yield different results for the same transactions', () => {
+      const fifoSummary = new TaxCalculator(staticResolver(rules), rules.currency, new LotTracker('fifo'))
+        .process(buildTransactions()).get(2024)!;
+      const averageSummary = new TaxCalculator(staticResolver(rules), rules.currency, new LotTracker('average'))
+        .process(buildTransactions()).get(2024)!;
+
+      expect(fifoSummary.totalCostBasis.toNumber()).not.toBe(averageSummary.totalCostBasis.toNumber());
+      expect(fifoSummary.netGainLoss.toNumber()).not.toBe(averageSummary.netGainLoss.toNumber());
+    });
+
+    it('averages by transaction date, not by import/array order — buys and sells bundled by exchange', () => {
+      // Simulates importing all buys from one exchange's CSV (bundled together) and all
+      // disposals from a second exchange's CSV, appended afterwards — i.e. the array itself
+      // is NOT in chronological order. TaxCalculator must still sort by date internally before
+      // touching LotTracker, so each disposal only ever averages the lots that existed at its
+      // own transaction date.
+      const tracker = new LotTracker('average');
+      const calc = new TaxCalculator(staticResolver(rules), rules.currency, tracker);
+
+      const transactions: Transaction[] = [
+        // "Exchange A" import: all buys, bundled first in the array.
+        makeTx({ id: 'buy-1', type: 'buy', date: new Date('2022-03-10'), toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(400000) }),
+        makeTx({ id: 'buy-2', type: 'buy', date: new Date('2023-04-18'), toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(800000) }),
+        makeTx({ id: 'buy-3', type: 'buy', date: new Date('2024-06-30'), toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(1200000) }),
+        // "Exchange B" import: both disposals, appended after — despite sell-1 and sell-2
+        // both predating buy-3 (and sell-1 predating buy-2) chronologically.
+        makeTx({ id: 'sell-1', type: 'sell', date: new Date('2022-11-05'), fromAsset: 'BTC', fromAmount: bn(1), fiatValue: bn(600000) }),
+        makeTx({ id: 'sell-2', type: 'sell', date: new Date('2023-12-01'), fromAsset: 'BTC', fromAmount: bn(1), fiatValue: bn(1000000) }),
+      ];
+
+      const summaries = calc.process(transactions);
+
+      // sell-1 (Nov 2022) must only ever see buy-1 — buy-2/buy-3 don't exist yet at that
+      // date, even though they appear earlier in the raw array.
+      const y2022 = summaries.get(2022)!;
+      expect(y2022.totalCostBasis.toNumber()).toBe(400000);
+      expect(y2022.netGainLoss.toNumber()).toBe(200000);
+
+      // sell-2 (Dec 2023) must only see buy-2 (buy-1 was fully consumed by sell-1, buy-3
+      // hasn't happened yet). A naive array-order pool of all 3 buys would give a materially
+      // different (and here, sign-flipping) result for sell-1.
+      const y2023 = summaries.get(2023)!;
+      expect(y2023.totalCostBasis.toNumber()).toBe(800000);
+      expect(y2023.netGainLoss.toNumber()).toBe(200000);
+    });
+  });
 });
