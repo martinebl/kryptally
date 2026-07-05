@@ -17,6 +17,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             binance::binance_fetch_account,
+            binance::binance_fetch_exchange_info,
             binance::binance_fetch_trades,
             binance::binance_fetch_deposits,
             binance::binance_fetch_withdrawals,

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Transaction } from '$lib/types';
   import type { CountryConfig } from '$lib/types/tax-rules';
+  import type { IPairRepository } from '$lib/storage';
   import { LedgerImporter } from '$lib/importers/ledger';
   import { BinanceImporter } from '$lib/importers/binance';
   import { RevolutXImporter } from '$lib/importers/revolut-x';
@@ -10,7 +11,7 @@
   import CsvPriceUploader from '$lib/components/CsvPriceUploader.svelte';
   import ImportStatus from '$lib/components/ImportStatus.svelte';
   import MissingPricesModal from '$lib/components/MissingPricesModal.svelte';
-  import Badge from '$lib/components/Badge.svelte';
+  import Badge from '$lib/components/common/Badge.svelte';
   import { getCryptoConverter } from '$lib/context';
   import { enrichFiatValues, type MissingPrice } from '$lib/engine/enrich-fiat-values';
   import type { PricesByAsset } from '$lib/converters/csv-prices';
@@ -23,9 +24,10 @@
     countryConfig: CountryConfig;
     storedTransactionCount: number;
     onClearHistory: () => void;
+    pairRepo: IPairRepository;
   }
 
-  const { onImport, onNavigate, pricesByAsset, countryConfig, storedTransactionCount, onClearHistory }: Props = $props();
+  const { onImport, onNavigate, pricesByAsset, countryConfig, storedTransactionCount, onClearHistory, pairRepo }: Props = $props();
 
   const importers = [
     new LedgerImporter(),
@@ -148,7 +150,7 @@
       {:else}
         <!-- Live exchange tab -->
         {#if isTauri()}
-          <LiveImporter {liveSources} onConfirm={handleEnrich} {onNavigate} />
+          <LiveImporter {liveSources} onConfirm={handleEnrich} {onNavigate} {pairRepo} />
         {:else}
           <!-- Browser: desktop-only notice -->
           <div class="mt-2 rounded-xl border border-border bg-bg-card px-7 py-6">

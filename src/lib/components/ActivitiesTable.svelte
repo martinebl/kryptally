@@ -1,7 +1,7 @@
 <script lang="ts">
     import type { Transaction } from "$lib/types";
-    import Table from "$lib/components/Table.svelte";
-    import Badge from "$lib/components/Badge.svelte";
+    import Table from "$lib/components/common/Table.svelte";
+    import Badge from "$lib/components/common/Badge.svelte";
 
     interface Props {
         transactions: Transaction[];

@@ -2,7 +2,8 @@
   import type { IExchangeImporter, Transaction } from '$lib/types';
   import { detectExchange } from '$lib/importers';
   import PreprocessorReview from '$lib/components/PreprocessorReview.svelte';
-  import Modal from '$lib/components/Modal.svelte';
+  import Modal from '$lib/components/common/Modal.svelte';
+  import Spinner from '$lib/components/common/Spinner.svelte';
 
   const AUTO_DETECT = '__auto__';
 
@@ -246,10 +247,7 @@
         </p>
         {#if detecting}
           <span class="text-sm text-text">
-            <svg class="mr-2 inline size-4 animate-spin text-accent" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z" />
-            </svg>
+            <Spinner class="mr-2 text-accent" />
             Detecting…
           </span>
         {:else if selectedImporter !== null}

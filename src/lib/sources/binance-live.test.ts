@@ -229,4 +229,63 @@ describe('BinanceLiveSource', () => {
     await source.clearCredentials();
     expect(invokeMock).toHaveBeenCalledWith('binance_clear_credentials');
   });
+
+  describe('discoverSymbols', () => {
+    const setupDiscovery = (opts: {
+      balances?: { asset: string; free: string; locked: string }[];
+      symbols?: { baseAsset: string; quoteAsset: string; status: string }[];
+    }) => {
+      invokeMock.mockImplementation((command: string) => {
+        if (command === 'binance_fetch_account') {
+          return Promise.resolve({ balances: opts.balances ?? [] });
+        }
+        if (command === 'binance_fetch_exchange_info') {
+          return Promise.resolve({ symbols: opts.symbols ?? [] });
+        }
+        return Promise.resolve(null);
+      });
+    };
+
+    it('picks the preferred quote asset for each held base asset', async () => {
+      setupDiscovery({
+        balances: [
+          { asset: 'BTC', free: '0.01', locked: '0' },
+          { asset: 'ETH', free: '0', locked: '1.5' },
+        ],
+        symbols: [
+          { baseAsset: 'BTC', quoteAsset: 'EUR', status: 'TRADING' },
+          { baseAsset: 'BTC', quoteAsset: 'USDT', status: 'TRADING' },
+          { baseAsset: 'ETH', quoteAsset: 'BTC', status: 'TRADING' },
+        ],
+      });
+
+      await expect(new BinanceLiveSource().discoverSymbols()).resolves.toEqual(
+        expect.arrayContaining(['BTCUSDT', 'ETHBTC']),
+      );
+    });
+
+    it('ignores assets with zero balance and pairs that are not trading', async () => {
+      setupDiscovery({
+        balances: [
+          { asset: 'BTC', free: '0', locked: '0' },
+          { asset: 'SOL', free: '2', locked: '0' },
+        ],
+        symbols: [
+          { baseAsset: 'BTC', quoteAsset: 'USDT', status: 'TRADING' },
+          { baseAsset: 'SOL', quoteAsset: 'USDT', status: 'BREAK' },
+        ],
+      });
+
+      await expect(new BinanceLiveSource().discoverSymbols()).resolves.toEqual([]);
+    });
+
+    it('skips a held asset with no listed trading pair', async () => {
+      setupDiscovery({
+        balances: [{ asset: 'SHIB', free: '1000', locked: '0' }],
+        symbols: [],
+      });
+
+      await expect(new BinanceLiveSource().discoverSymbols()).resolves.toEqual([]);
+    });
+  });
 });

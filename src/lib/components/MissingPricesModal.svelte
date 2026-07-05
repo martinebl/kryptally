@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { MissingPrice } from '$lib/engine/enrich-fiat-values';
   import { groupMissingPrices } from '$lib/engine/missing-prices';
-  import Badge from '$lib/components/Badge.svelte';
+  import Badge from '$lib/components/common/Badge.svelte';
 
   interface Props {
     missingPrices: MissingPrice[];

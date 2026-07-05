@@ -4,3 +4,5 @@ export type { IPriceRepository } from './price-repository';
 export { createPriceRepository } from './price-repository';
 export type { ITransactionRepository } from './transaction-repository';
 export { createTransactionRepository } from './transaction-repository';
+export type { IPairRepository, PairData } from './pair-repository';
+export { createPairRepository } from './pair-repository';

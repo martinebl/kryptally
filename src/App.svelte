@@ -13,7 +13,7 @@
   import TestResultsPage from '$lib/components/TestResultsPage.svelte'
   import CoinDisambiguator from '$lib/components/CoinDisambiguator.svelte'
   import { availableCountries, findCountry, allowedCostBasisMethods } from '$lib/rules';
-  import { createLocalStorageStorage, createPriceRepository, createTransactionRepository } from '$lib/storage';
+  import { createLocalStorageStorage, createPriceRepository, createTransactionRepository, createPairRepository } from '$lib/storage';
   import { version } from '../version.json';
 
   const storage = createLocalStorageStorage();
@@ -77,6 +77,7 @@
   const effectiveCostBasisMethod = $derived(costBasisMethod ?? countryConfig?.defaultCostBasisMethod ?? 'fifo');
 
   const priceRepo = createPriceRepository(storage);
+  const pairRepo = createPairRepository(storage);
 
   let pricesByAsset = $state(loadCsvPrices());
 
@@ -152,7 +153,7 @@
         class="flex cursor-pointer items-center gap-2.5 border-none bg-transparent"
         onclick={() => navigate('home')}
       >
-        <span class="flex size-[30px] items-center justify-center rounded-full bg-text-heading text-nav font-bold text-accent">K</span>
+        <span class="flex size-7.5 items-center justify-center rounded-full bg-text-heading text-nav font-bold text-accent">K</span>
         <span class="text-[19px] font-bold tracking-tight text-text-heading">Kryptax</span>
       </button>
       <div class="flex items-center gap-7 text-nav max-md:gap-5">
@@ -204,6 +205,7 @@
         {countryConfig}
         storedTransactionCount={transactions.length}
         onClearHistory={clearTransactions}
+        {pairRepo}
       />
     {:else if currentPage === 'results' && countryConfig}
       <ResultsPage {transactions} {countryConfig} costBasisMethod={effectiveCostBasisMethod} />
