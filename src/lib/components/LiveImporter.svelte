@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { ILiveSource, SourceState, Transaction } from '$lib/types';
-  import { createLastFetchRepository, type IStorage } from '$lib/storage';
+  import { createLastFetchRepository, createPairRepository, type IStorage } from '$lib/storage';
   import LiveSourceCard from '$lib/components/LiveSourceCard.svelte';
   import AddExchangeSelector from '$lib/components/AddExchangeSelector.svelte';
   import { createRateLimitTimers } from '$lib/components/rate-limit-timers';
@@ -18,6 +18,7 @@
   const today = new Date().toISOString().slice(0, 10);
 
   const lastFetchRepo = createLastFetchRepository(storage);
+  const pairRepo = createPairRepository(storage);
 
   const formatLastFetch = (date: Date | null): string => {
     if (!date) return 'Never fetched';
@@ -51,7 +52,9 @@
     rateLimitSeconds: 0,
     error: '',
     info: '',
-    symbols: '',
+    symbols: [],
+    autoDetectedSymbols: [],
+    symbolInput: '',
     discovering: false,
   });
 
@@ -90,13 +93,18 @@
         states[s.exchangeName].lastFetch = loaded;
       }
     });
+    liveSources.forEach(async (s) => {
+      const stored = await pairRepo.load(s.exchangeName);
+      states[s.exchangeName].symbols = stored.symbols;
+      states[s.exchangeName].autoDetectedSymbols = stored.autoDetectedSymbols;
+    });
   });
 
   const toggleOpen = (source: ILiveSource) => {
     const st = states[source.exchangeName];
     st.open = !st.open;
     st.error = '';
-    if (st.open && st.hasCreds && source.discoverSymbols && !st.symbols) {
+    if (st.open && st.hasCreds && source.discoverSymbols && st.symbols.length === 0) {
       discoverSymbols(source);
     }
   };
@@ -107,13 +115,19 @@
     st.discovering = true;
     st.error = '';
     try {
-      st.symbols = (await source.discoverSymbols()).join(', ');
+      const detected = await source.discoverSymbols();
+      st.symbols = [...new Set([...st.symbols, ...detected])];
+      st.autoDetectedSymbols = [...new Set([...st.autoDetectedSymbols, ...detected])];
+      await pairRepo.save(source.exchangeName, { symbols: st.symbols, autoDetectedSymbols: st.autoDetectedSymbols });
     } catch (e) {
       st.error = e instanceof Error ? e.message : String(e);
     } finally {
       st.discovering = false;
     }
   };
+
+  const handlePairsChange = (source: ILiveSource, symbols: string[], autoDetectedSymbols: string[]) =>
+    pairRepo.save(source.exchangeName, { symbols, autoDetectedSymbols });
 
   const handleSaveCredentials = async (source: ILiveSource) => {
     const st = states[source.exchangeName];
@@ -142,11 +156,14 @@
       st.error = '';
       st.credsKey = '';
       st.credsSecret = '';
-      st.symbols = '';
+      st.symbols = [];
+      st.autoDetectedSymbols = [];
+      st.symbolInput = '';
       st.newCount = 0;
       st.dupCount = 0;
       st.fetchedTotal = 0;
       st.info = '';
+      await pairRepo.clear(source.exchangeName);
     } catch (e) {
       st.error = e instanceof Error ? e.message : String(e);
     }
@@ -184,10 +201,7 @@
     st.progTotal = 0;
 
     try {
-      const symbols = st.symbols
-        .split(',')
-        .map((s) => s.trim().toUpperCase())
-        .filter((s) => s.length > 0);
+      const symbols = st.symbols;
 
       if ((source.requiresSymbols ?? true) && symbols.length === 0) {
         st.phase = 'idle';
@@ -216,8 +230,8 @@
 
       if (fetched.length === 0) {
         st.phase = 'idle';
-        st.info = (source.requiresSymbols ?? true)
-          ? `No transactions found for: ${symbols.join(', ')}. Check the pair symbols and date range.`
+        st.info = symbols.length > 0
+          ? `No transactions found for: ${symbols.join(', ')}. Check the trading pairs and date range.`
           : `No ${name} exchange activity found in the selected date range.`;
         return;
       }
@@ -276,6 +290,7 @@
         onDisconnect={handleDisconnect}
         onFetch={handleFetch}
         onCancel={cancelAdd}
+        onPairsChange={(symbols, autoDetectedSymbols) => handlePairsChange(addSource, symbols, autoDetectedSymbols)}
       />
     {/if}
   {/if}
@@ -293,6 +308,7 @@
       onSaveCredentials={handleSaveCredentials}
       onDisconnect={handleDisconnect}
       onFetch={handleFetch}
+      onPairsChange={(symbols, autoDetectedSymbols) => handlePairsChange(source, symbols, autoDetectedSymbols)}
     />
   {/each}
 </div>

@@ -10,7 +10,7 @@
   import CsvPriceUploader from '$lib/components/CsvPriceUploader.svelte';
   import ImportStatus from '$lib/components/ImportStatus.svelte';
   import MissingPricesModal from '$lib/components/MissingPricesModal.svelte';
-  import Badge from '$lib/components/Badge.svelte';
+  import Badge from '$lib/components/common/Badge.svelte';
   import { getCryptoConverter } from '$lib/context';
   import { enrichFiatValues, type MissingPrice } from '$lib/engine/enrich-fiat-values';
   import type { PricesByAsset } from '$lib/converters/csv-prices';
@@ -158,7 +158,7 @@
             <h3 class="mt-4 text-lg font-bold tracking-tight text-text-heading">Connect an exchange directly</h3>
             <p class="mt-2.5 max-w-lg text-sm leading-relaxed text-text">
               Browsers block the cross-origin requests needed to reach exchange APIs, so live import isn't available on the web.
-              The Kryptax desktop app stores your API keys in your operating system's keychain and pulls trades straight from
+              The Kryptally desktop app stores your API keys in your operating system's keychain and pulls trades straight from
               Binance, Revolut X and others — nothing leaves your machine.
             </p>
             <p class="mt-3 text-sm leading-relaxed text-text">
@@ -169,7 +169,7 @@
               >CSV import</button> tab.
             </p>
             <a
-              href="https://github.com/martinebl/kryptax/releases"
+              href="https://github.com/martinebl/kryptally/releases"
               target="_blank"
               rel="noopener noreferrer"
               class="mt-5 inline-block rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent transition-colors hover:bg-accent/90"

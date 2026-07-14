@@ -2,7 +2,7 @@ import BigNumber from 'bignumber.js';
 import type { Transaction } from '$lib/types';
 import type { IStorage } from './storage';
 
-const KEY = 'kryptax-transactions';
+const KEY = 'kryptally-transactions';
 
 type SerializedTransaction = {
   id: string;

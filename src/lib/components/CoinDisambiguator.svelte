@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Modal from '$lib/components/Modal.svelte';
+  import Modal from '$lib/components/common/Modal.svelte';
   import type { CoinListEntry } from '$lib/converters/coingecko';
 
   interface Props {

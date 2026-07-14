@@ -2,7 +2,7 @@ import BigNumber from 'bignumber.js';
 import type { PricesByAsset, PriceData } from '$lib/converters/csv-prices';
 import type { IStorage } from './storage';
 
-const KEY = 'kryptax-price-data';
+const KEY = 'kryptally-price-data';
 
 type SerializedPriceData = { prices: Record<string, string>; currency: string };
 type SerializedStore = Record<string, SerializedPriceData>;

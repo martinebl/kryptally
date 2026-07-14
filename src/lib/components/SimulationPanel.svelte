@@ -1,6 +1,6 @@
 <script lang="ts">
   import BigNumber from 'bignumber.js';
-  import Card from '$lib/components/Card.svelte';
+  import Card from '$lib/components/common/Card.svelte';
   import { valueColor } from '$lib/components/valueColor';
   import type { Transaction } from '$lib/types/transaction';
   import type { CountryConfig } from '$lib/types/tax-rules';

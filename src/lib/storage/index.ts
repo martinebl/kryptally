@@ -6,3 +6,5 @@ export type { ITransactionRepository } from './transaction-repository';
 export { createTransactionRepository } from './transaction-repository';
 export type { ILastFetchRepository } from './last-fetch-repository';
 export { createLastFetchRepository } from './last-fetch-repository';
+export type { IPairRepository, PairData } from './pair-repository';
+export { createPairRepository } from './pair-repository';

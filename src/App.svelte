@@ -17,14 +17,15 @@
   import { version } from '../version.json';
 
   const storage = createIndexedDBStorage();
-  const COST_BASIS_METHOD_KEY = 'kryptax-cost-basis-method';
+  const COST_BASIS_METHOD_KEY = 'kryptally-cost-basis-method';
+
 
   let countryConfig = $state<CountryConfig | null>(null);
   let costBasisMethod = $state<CostBasisMethod | null>(null);
 
   // Loaded together (not two independent .then()s) so the method is never
   // validated against an allowed-list before the country itself is known.
-  Promise.all([storage.get('kryptax-country'), storage.get(COST_BASIS_METHOD_KEY)]).then(
+  Promise.all([storage.get('kryptally-country'), storage.get(COST_BASIS_METHOD_KEY)]).then(
     ([savedCountry, savedMethod]) => {
       if (!savedCountry || countryConfig) return;
       const found = findCountry(savedCountry);
@@ -54,7 +55,7 @@
     }
 
     countryConfig = found;
-    storage.set('kryptax-country', countryCode).catch((e) => console.error('Failed to save country selection', e));
+    storage.set('kryptally-country', countryCode).catch((e) => console.error('Failed to save country selection', e));
 
     const allowed = allowedCostBasisMethods(found);
     const nextMethod = costBasisMethod && (allowed as string[]).includes(costBasisMethod)
@@ -152,8 +153,8 @@
         class="flex cursor-pointer items-center gap-2.5 border-none bg-transparent"
         onclick={() => navigate('home')}
       >
-        <span class="flex size-[30px] items-center justify-center rounded-full bg-text-heading text-nav font-bold text-accent">K</span>
-        <span class="text-[19px] font-bold tracking-tight text-text-heading">Kryptax</span>
+        <span class="flex size-7.5 items-center justify-center rounded-full bg-text-heading text-nav font-bold text-accent">K</span>
+        <span class="text-[19px] font-bold tracking-tight text-text-heading">Kryptally</span>
       </button>
       <div class="flex items-center gap-7 text-nav max-md:gap-5">
         <button
@@ -222,7 +223,7 @@
   <!-- Footer -->
   <footer class="mt-auto border-t border-border bg-surface">
     <div class="mx-auto flex max-w-page flex-wrap items-center justify-between gap-4 px-6 py-7 text-meta text-text-muted">
-      <span>Kryptax</span>
+      <span>Kryptally</span>
       <span class="font-mono text-text-faint">v{version} · Apache-2.0 licensed</span>
     </div>
   </footer>

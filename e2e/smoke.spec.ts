@@ -4,7 +4,7 @@ test('app loads and renders landing page', async ({ page }) => {
   await page.goto('/');
 
   // Brand name is visible
-  await expect(page.locator('text=Kryptax').first()).toBeVisible();
+  await expect(page.locator('text=Kryptally').first()).toBeVisible();
 
   // Hero heading renders
   await expect(page.locator('h1')).toBeVisible();

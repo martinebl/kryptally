@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Kryptax is a local-first, privacy-first cryptocurrency tax calculator. Tax rules are defined as JSON files so the community can contribute rules for any country. The app runs in the browser or in Tauri — no private data leaves the user's machine.
+Kryptally is a local-first, privacy-first cryptocurrency tax calculator. Tax rules are defined as JSON files so the community can contribute rules for any country. The app runs in the browser or in Tauri — no private data leaves the user's machine.
 
 ## Commands
 
