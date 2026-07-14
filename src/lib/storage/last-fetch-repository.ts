@@ -1,6 +1,6 @@
 import type { IStorage } from './storage';
 
-const keyFor = (exchangeName: string) => `kryptax-last-fetch-${exchangeName}`;
+const keyFor = (exchangeName: string) => `kryptally-last-fetch-${exchangeName}`;
 
 export interface ILastFetchRepository {
   get(exchangeName: string): Promise<Date | null>;
