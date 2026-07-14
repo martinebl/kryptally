@@ -14,6 +14,7 @@
   import { getCryptoConverter } from '$lib/context';
   import { enrichFiatValues, type MissingPrice } from '$lib/engine/enrich-fiat-values';
   import type { PricesByAsset } from '$lib/converters/csv-prices';
+  import type { IStorage } from '$lib/storage';
   import { isTauri } from '$lib/runtime';
 
   interface Props {
@@ -23,9 +24,10 @@
     countryConfig: CountryConfig;
     storedTransactionCount: number;
     onClearHistory: () => void;
+    storage: IStorage;
   }
 
-  const { onImport, onNavigate, pricesByAsset, countryConfig, storedTransactionCount, onClearHistory }: Props = $props();
+  const { onImport, onNavigate, pricesByAsset, countryConfig, storedTransactionCount, onClearHistory, storage }: Props = $props();
 
   const importers = [
     new LedgerImporter(),
@@ -148,7 +150,7 @@
       {:else}
         <!-- Live exchange tab -->
         {#if isTauri()}
-          <LiveImporter {liveSources} onConfirm={handleEnrich} {onNavigate} />
+          <LiveImporter {liveSources} onConfirm={handleEnrich} {onNavigate} {storage} />
         {:else}
           <!-- Browser: desktop-only notice -->
           <div class="mt-2 rounded-xl border border-border bg-bg-card px-7 py-6">
