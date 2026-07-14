@@ -7,7 +7,7 @@ export interface PairData {
 
 const EMPTY: PairData = { symbols: [], autoDetectedSymbols: [] };
 
-const key = (exchangeName: string) => `kryptax-pairs-${exchangeName}`;
+const key = (exchangeName: string) => `kryptally-pairs-${exchangeName}`;
 
 const parse = (raw: string | null): PairData => {
   if (!raw) return EMPTY;

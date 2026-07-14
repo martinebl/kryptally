@@ -15,7 +15,7 @@
 
   const today = new Date().toISOString().slice(0, 10);
 
-  const lastFetchKey = (name: string) => `kryptax-last-fetch-${name}`;
+  const lastFetchKey = (name: string) => `kryptally-last-fetch-${name}`;
 
   const loadLastFetch = (name: string): Date | null => {
     try {

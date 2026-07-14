@@ -115,7 +115,7 @@ describe('createPriceRepository', () => {
 
   it('ignores corrupted stored data instead of throwing', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const repo = createPriceRepository(createInMemoryStorage({ 'kryptax-price-data': '{not valid json' }));
+    const repo = createPriceRepository(createInMemoryStorage({ 'kryptally-price-data': '{not valid json' }));
 
     const target: PricesByAsset = new Map([
       ['ethereum', { prices: new Map([['2024-07-04', new BigNumber('3100')]]), currency: 'EUR' }],

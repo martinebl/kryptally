@@ -21,7 +21,7 @@ describe('createPairRepository', () => {
   });
 
   it('returns empty arrays when the stored value is corrupt JSON', async () => {
-    const repo = createPairRepository(createInMemoryStorage({ 'kryptax-pairs-Binance': 'not json' }));
+    const repo = createPairRepository(createInMemoryStorage({ 'kryptally-pairs-Binance': 'not json' }));
 
     const result = await repo.load('Binance');
 

@@ -47,7 +47,7 @@
   ];
 
   const steps = [
-    { no: '1', title: 'Configure', body: 'Select your country. Kryptax applies the local rules.' },
+    { no: '1', title: 'Configure', body: 'Select your country. Kryptally applies the local rules.' },
     { no: '2', title: 'Import', body: 'Upload your exchange CSV exports. Optionally add price CSVs to keep lookups fully offline.' },
     { no: '3', title: 'Calculate', body: 'Get a clear breakdown of realised gains, losses and taxable events — ready to file.' },
   ];
@@ -66,7 +66,7 @@
     </h1>
 
     <p class="mt-5 max-w-[46ch] text-base leading-relaxed text-text">
-      Your keys, your data, your taxes. Kryptax never sends your transactions to a server — every calculation runs on your own machine.
+      Your keys, your data, your taxes. Kryptally never sends your transactions to a server — every calculation runs on your own machine.
     </p>
 
     <!-- controls -->
@@ -142,7 +142,7 @@
 
 <!-- ================= FEATURES ================= -->
 <section class="pt-16 pb-2">
-  <div class="font-mono text-xs font-medium tracking-[0.07em] text-accent">WHY KRYPTAX</div>
+  <div class="font-mono text-xs font-medium tracking-[0.07em] text-accent">WHY KRYPTALLY</div>
       <h2 class="mt-3 max-w-[20ch] text-section-heading font-bold tracking-[-0.02em] text-text-heading">
         Built for people who'd rather not hand their trade history to anyone else.
       </h2>
