@@ -48,6 +48,7 @@ interface BinanceAccount {
 }
 
 interface BinanceExchangeSymbol {
+  symbol: string;
   baseAsset: string;
   quoteAsset: string;
   status: string;
@@ -173,6 +174,12 @@ export class BinanceLiveSource implements ILiveSource {
     await invoke('binance_clear_credentials');
   }
 
+  /** Every symbol Binance currently lists as tradable (`status === 'TRADING'`). */
+  private async fetchTradingSymbols(): Promise<BinanceExchangeSymbol[]> {
+    const exchangeInfo = await invoke<BinanceExchangeInfo>('binance_fetch_exchange_info');
+    return exchangeInfo.symbols.filter((s) => s.status === 'TRADING');
+  }
+
   /**
    * Guess one trading pair per currently-held asset: the first quote asset
    * (in `DISCOVERY_QUOTE_PREFERENCE` order) that Binance actually lists a
@@ -181,9 +188,9 @@ export class BinanceLiveSource implements ILiveSource {
    * other pairs they've actually traded.
    */
   async discoverSymbols(): Promise<string[]> {
-    const [account, exchangeInfo] = await Promise.all([
+    const [account, tradingSymbols] = await Promise.all([
       invoke<BinanceAccount>('binance_fetch_account'),
-      invoke<BinanceExchangeInfo>('binance_fetch_exchange_info'),
+      this.fetchTradingSymbols(),
     ]);
 
     const held = new Set(
@@ -192,22 +199,27 @@ export class BinanceLiveSource implements ILiveSource {
         .map((b) => b.asset),
     );
 
-    const quotesByBase = new Map<string, Set<string>>();
-    for (const s of exchangeInfo.symbols) {
-      if (s.status !== 'TRADING') continue;
-      if (!quotesByBase.has(s.baseAsset)) quotesByBase.set(s.baseAsset, new Set());
-      quotesByBase.get(s.baseAsset)!.add(s.quoteAsset);
+    const symbolByBaseAndQuote = new Map<string, Map<string, string>>();
+    for (const s of tradingSymbols) {
+      if (!symbolByBaseAndQuote.has(s.baseAsset)) symbolByBaseAndQuote.set(s.baseAsset, new Map());
+      symbolByBaseAndQuote.get(s.baseAsset)!.set(s.quoteAsset, s.symbol);
     }
 
     const symbols = [...held]
       .map((asset) => {
-        const quotes = quotesByBase.get(asset);
+        const quotes = symbolByBaseAndQuote.get(asset);
         const quote = quotes && DISCOVERY_QUOTE_PREFERENCE.find((q) => quotes.has(q));
-        return quote ? `${asset}${quote}` : null;
+        return quote ? quotes!.get(quote)! : null;
       })
       .filter((s): s is string => s !== null);
 
     return [...new Set(symbols)];
+  }
+
+  /** All symbols Binance currently lists as tradable, for pair-input suggestions. */
+  async listSymbols(): Promise<string[]> {
+    const tradingSymbols = await this.fetchTradingSymbols();
+    return [...new Set(tradingSymbols.map((s) => s.symbol))];
   }
 
   async fetch(params: LiveSourceFetchParams): Promise<Transaction[]> {

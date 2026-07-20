@@ -68,6 +68,8 @@
     autoDetectedSymbols: [],
     symbolInput: '',
     discovering: false,
+    availableSymbols: [],
+    catalogLoading: false,
   });
 
   let states = $state<Record<string, SourceState>>(
@@ -132,6 +134,24 @@
     if (st.open && st.hasCreds && source.discoverSymbols && st.symbols.length === 0) {
       discoverSymbols(source);
     }
+    if (st.open && st.hasCreds) {
+      ensureSymbolCatalog(source);
+    }
+  };
+
+  const ensureSymbolCatalog = async (source: ILiveSource) => {
+    if (!source.listSymbols) return;
+    const st = states[source.exchangeName];
+    if (st.catalogLoading || st.availableSymbols.length > 0) return;
+    st.catalogLoading = true;
+    try {
+      st.availableSymbols = await source.listSymbols();
+    } catch {
+      // Suggestions are a convenience; fail silently and leave the
+      // (already working) manual pair-entry flow untouched.
+    } finally {
+      st.catalogLoading = false;
+    }
   };
 
   const discoverSymbols = async (source: ILiveSource) => {
@@ -166,6 +186,7 @@
       pendingAdd = null;
       selectedToAdd = '';
       if (source.discoverSymbols) discoverSymbols(source);
+      ensureSymbolCatalog(source);
     } catch (e) {
       st.error = e instanceof Error ? e.message : String(e);
     }

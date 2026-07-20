@@ -196,22 +196,37 @@ export class RevolutXLiveSource implements ILiveSource {
     await invoke('revolut_x_clear_credentials');
   }
 
+  /** Every pair Revolut X currently lists as active. */
+  private async fetchActivePairs(): Promise<RevolutPair[]> {
+    const pairs = await invoke<Record<string, RevolutPair>>('revolut_x_fetch_pairs');
+    return Object.values(pairs).filter((p) => p.status === 'active');
+  }
+
+  /** The `BASE-QUOTE` string the rest of the source (and the Rust backend) expects. */
+  private static toSymbol(p: RevolutPair): string {
+    return `${p.base}-${p.quote}`;
+  }
+
   /** Active pairs whose base asset the user currently holds, as `BASE-QUOTE`. */
   async discoverSymbols(): Promise<string[]> {
-    const [balances, pairs] = await Promise.all([
+    const [balances, activePairs] = await Promise.all([
       invoke<RevolutBalance[]>('revolut_x_fetch_balances'),
-      invoke<Record<string, RevolutPair>>('revolut_x_fetch_pairs'),
+      this.fetchActivePairs(),
     ]);
 
     const held = new Set(
       balances.filter((b) => new BigNumber(b.total || '0').isGreaterThan(0)).map((b) => b.currency),
     );
 
-    const symbols = Object.values(pairs)
-      .filter((p) => p.status === 'active' && held.has(p.base))
-      .map((p) => `${p.base}-${p.quote}`);
+    const symbols = activePairs.filter((p) => held.has(p.base)).map(RevolutXLiveSource.toSymbol);
 
     return [...new Set(symbols)];
+  }
+
+  /** All pairs Revolut X currently lists as active, for pair-input suggestions. */
+  async listSymbols(): Promise<string[]> {
+    const activePairs = await this.fetchActivePairs();
+    return [...new Set(activePairs.map(RevolutXLiveSource.toSymbol))];
   }
 
   async fetch(params: LiveSourceFetchParams): Promise<Transaction[]> {
