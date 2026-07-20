@@ -13,11 +13,12 @@
   import TestResultsPage from '$lib/components/TestResultsPage.svelte'
   import CoinDisambiguator from '$lib/components/CoinDisambiguator.svelte'
   import { availableCountries, findCountry, allowedCostBasisMethods } from '$lib/rules';
-  import { createLocalStorageStorage, createPriceRepository, createTransactionRepository, createPairRepository } from '$lib/storage';
+  import { createIndexedDBStorage, createPriceRepository, createTransactionRepository } from '$lib/storage';
   import { version } from '../version.json';
 
-  const storage = createLocalStorageStorage();
+  const storage = createIndexedDBStorage();
   const COST_BASIS_METHOD_KEY = 'kryptally-cost-basis-method';
+
 
   let countryConfig = $state<CountryConfig | null>(null);
   let costBasisMethod = $state<CostBasisMethod | null>(null);
@@ -77,7 +78,6 @@
   const effectiveCostBasisMethod = $derived(costBasisMethod ?? countryConfig?.defaultCostBasisMethod ?? 'fifo');
 
   const priceRepo = createPriceRepository(storage);
-  const pairRepo = createPairRepository(storage);
 
   let pricesByAsset = $state(loadCsvPrices());
 
@@ -205,7 +205,7 @@
         {countryConfig}
         storedTransactionCount={transactions.length}
         onClearHistory={clearTransactions}
-        {pairRepo}
+        {storage}
       />
     {:else if currentPage === 'results' && countryConfig}
       <ResultsPage {transactions} {countryConfig} costBasisMethod={effectiveCostBasisMethod} />

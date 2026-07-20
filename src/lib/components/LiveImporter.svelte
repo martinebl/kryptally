@@ -1,36 +1,24 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { ILiveSource, SourceState, Transaction } from '$lib/types';
-  import type { IPairRepository } from '$lib/storage';
+  import { createLastFetchRepository, createPairRepository, type IStorage } from '$lib/storage';
   import LiveSourceCard from '$lib/components/LiveSourceCard.svelte';
+  import AddExchangeSelector from '$lib/components/AddExchangeSelector.svelte';
+  import { createRateLimitTimers } from '$lib/components/rate-limit-timers';
 
   interface Props {
     liveSources: ILiveSource[];
     onConfirm: (transactions: Transaction[], sourceName: string) => Promise<{ newCount: number; dupCount: number }>;
     onNavigate: (page: string) => void;
-    pairRepo: IPairRepository;
+    storage: IStorage;
   }
 
-  const { liveSources, onConfirm, onNavigate, pairRepo }: Props = $props();
+  const { liveSources, onConfirm, onNavigate, storage }: Props = $props();
 
   const today = new Date().toISOString().slice(0, 10);
 
-  const lastFetchKey = (name: string) => `kryptally-last-fetch-${name}`;
-
-  const loadLastFetch = (name: string): Date | null => {
-    try {
-      const raw = localStorage.getItem(lastFetchKey(name));
-      return raw ? new Date(raw) : null;
-    } catch {
-      return null;
-    }
-  };
-
-  const saveLastFetch = (name: string, date: Date) => {
-    try {
-      localStorage.setItem(lastFetchKey(name), date.toISOString());
-    } catch {}
-  };
+  const lastFetchRepo = createLastFetchRepository(storage);
+  const pairRepo = createPairRepository(storage);
 
   const formatLastFetch = (date: Date | null): string => {
     if (!date) return 'Never fetched';
@@ -50,7 +38,7 @@
   const defaultState = (name: string): SourceState => ({
     open: false,
     hasCreds: undefined,
-    lastFetch: loadLastFetch(name),
+    lastFetch: null,
     credsKey: '',
     credsSecret: '',
     fromDate: '',
@@ -77,8 +65,6 @@
   // The exchange name the user just picked from the "Add exchange" dropdown,
   // for which the credential form is currently shown inline (not yet connected).
   let pendingAdd = $state<string | null>(null);
-  // Currently selected option in the "Add exchange" <select>.
-  let selectedToAdd = $state<string>('');
 
   // Sources whose credentials are already on file — rendered as connected cards.
   const connectedSources = $derived(
@@ -93,29 +79,18 @@
     )
   );
 
-  const rateLimitTimers: Record<string, ReturnType<typeof setInterval>> = {};
-
-  const stopRateLimit = (name: string) => {
-    if (rateLimitTimers[name]) {
-      clearInterval(rateLimitTimers[name]);
-      delete rateLimitTimers[name];
-    }
-    states[name].rateLimitSeconds = 0;
-  };
-
-  const startRateLimit = (name: string, waitMs: number) => {
-    stopRateLimit(name);
-    states[name].rateLimitSeconds = Math.max(1, Math.ceil(waitMs / 1000));
-    rateLimitTimers[name] = setInterval(() => {
-      states[name].rateLimitSeconds -= 1;
-      if (states[name].rateLimitSeconds <= 0) stopRateLimit(name);
-    }, 1000);
-  };
+  const rateLimitTimers = createRateLimitTimers(states);
 
   onMount(() => {
     liveSources.forEach(async (s) => {
       if (s.isAvailable() && states[s.exchangeName].hasCreds === undefined) {
         states[s.exchangeName].hasCreds = await s.hasCredentials();
+      }
+      const loaded = await lastFetchRepo.get(s.exchangeName);
+      // A fetch completed while this load was in flight already set a fresher
+      // value — don't clobber it with the stale one this read started with.
+      if (states[s.exchangeName].lastFetch === null) {
+        states[s.exchangeName].lastFetch = loaded;
       }
     });
     liveSources.forEach(async (s) => {
@@ -164,7 +139,6 @@
       st.credsSecret = '';
       st.error = '';
       pendingAdd = null;
-      selectedToAdd = '';
       if (source.discoverSymbols) discoverSymbols(source);
     } catch (e) {
       st.error = e instanceof Error ? e.message : String(e);
@@ -195,20 +169,15 @@
     }
   };
 
-  const onAdd = () => {
-    if (!selectedToAdd) return;
-    if (!liveSources.some((s) => s.exchangeName === selectedToAdd)) return;
+  const handleAddExchange = (exchangeName: string) => {
+    if (!liveSources.some((s) => s.exchangeName === exchangeName)) return;
     // Defensive guard: the onMount keychain probe may resolve between the user
     // picking an exchange and clicking Add, flipping hasCreds to true. In that
     // case the source is already connected and shouldn't enter the add flow.
-    if (states[selectedToAdd].hasCreds === true) {
-      selectedToAdd = '';
-      return;
-    }
-    pendingAdd = selectedToAdd;
-    states[selectedToAdd].open = true;
-    states[selectedToAdd].error = '';
-    selectedToAdd = '';
+    if (states[exchangeName].hasCreds === true) return;
+    pendingAdd = exchangeName;
+    states[exchangeName].open = true;
+    states[exchangeName].error = '';
   };
 
   const cancelAdd = () => {
@@ -254,10 +223,10 @@
           st.progDone = completed;
           st.progTotal = total;
         },
-        onRateLimit: ({ waitMs }) => startRateLimit(name, waitMs),
+        onRateLimit: ({ waitMs }) => rateLimitTimers.start(name, waitMs),
       });
 
-      stopRateLimit(name);
+      rateLimitTimers.stop(name);
 
       if (fetched.length === 0) {
         st.phase = 'idle';
@@ -269,14 +238,14 @@
 
       const counts = await onConfirm(fetched, name);
       const fetchedAt = new Date();
-      saveLastFetch(name, fetchedAt);
       st.lastFetch = fetchedAt;
+      lastFetchRepo.set(name, fetchedAt);
       st.fetchedTotal = fetched.length;
       st.newCount = counts.newCount;
       st.dupCount = counts.dupCount;
       st.phase = 'done';
     } catch (e) {
-      stopRateLimit(name);
+      rateLimitTimers.stop(name);
       st.phase = 'idle';
       st.error = e instanceof Error ? e.message : String(e);
     }
@@ -301,27 +270,8 @@
     </div>
   {/if}
 
-  {#if addableSources.length > 0 && !pendingAdd}
-    <div class="flex flex-wrap items-center gap-3">
-      <select
-        class="min-w-43 cursor-pointer appearance-none rounded-lg border border-border bg-surface px-4 py-2 pr-9 text-sm text-text-heading focus:border-accent focus:outline-none"
-        value={selectedToAdd}
-        onchange={(e) => { selectedToAdd = (e.currentTarget as HTMLSelectElement).value; }}
-      >
-        <option value="" disabled>Add an exchange…</option>
-        {#each addableSources as s}
-          <option value={s.exchangeName}>{s.exchangeName}</option>
-        {/each}
-      </select>
-      <button
-        type="button"
-        class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
-        disabled={!selectedToAdd}
-        onclick={onAdd}
-      >
-        Add
-      </button>
-    </div>
+  {#if !pendingAdd}
+    <AddExchangeSelector {addableSources} onAdd={handleAddExchange} />
   {/if}
 
   {#if pendingAdd}
