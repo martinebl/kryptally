@@ -21,7 +21,7 @@ export const suggestSymbols = (available: string[], query: string, exclude: stri
     .sort((a, b) => {
       const aRank = a.startsWith(q) ? 0 : 1;
       const bRank = b.startsWith(q) ? 0 : 1;
-      return aRank !== bRank ? aRank - bRank : a.localeCompare(b);
+      return aRank !== bRank ? aRank - bRank : a < b ? -1 : a > b ? 1 : 0;
     })
     .slice(0, MAX_SUGGESTIONS);
 };

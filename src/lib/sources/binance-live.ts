@@ -59,12 +59,13 @@ interface BinanceExchangeInfo {
 }
 
 /**
- * Every quote asset Binance has ever let someone trade against, including regional
- * fiat on-ramps (TRY, BRL, EUR, GBP, AUD, JPY, RUB, ZAR). Must stay exhaustive: used
- * to split a historical trade's raw symbol (e.g. "BTCTRY") back into base/quote, and
- * a missing entry here means that trade silently fails to parse and gets dropped.
- * Ordered longest-first so multi-char suffixes (e.g. "BUSD") match before shorter
- * ones that are also a suffix of them (e.g. "USD").
+ * Fallback quote-asset guesses for trades whose symbol isn't in the exchange's
+ * current symbol list (e.g. a delisted pair, or the exchange-info fetch failed).
+ * `tradeToTransaction` prefers the real `quoteAsset` from exchange info whenever
+ * the traded symbol is known; this list only matters when it isn't, so an
+ * incomplete list here no longer silently drops trades for any currently-listed
+ * pair. Ordered longest-first so multi-char suffixes (e.g. "BUSD") match before
+ * shorter ones that are also a suffix of them (e.g. "USD").
  */
 const KNOWN_QUOTE_SUFFIXES = [
   'FDUSD', 'TUSD', 'BUSD', 'USDC', 'USDT', 'DAI',
@@ -81,9 +82,9 @@ const KNOWN_QUOTE_SUFFIXES = [
  */
 const DISCOVERY_QUOTE_PREFERENCE = ['FDUSD', 'TUSD', 'BUSD', 'USDC', 'USDT', 'DAI', 'BTC', 'ETH', 'BNB'];
 
-const splitSymbol = (symbol: string): { base: string; quote: string } | null => {
-  const quote = KNOWN_QUOTE_SUFFIXES.find((q) => symbol.endsWith(q) && symbol.length > q.length);
-  if (!quote) return null;
+const splitSymbol = (symbol: string, knownQuote?: string): { base: string; quote: string } | null => {
+  const quote = knownQuote ?? KNOWN_QUOTE_SUFFIXES.find((q) => symbol.endsWith(q) && symbol.length > q.length);
+  if (!quote || symbol.length <= quote.length) return null;
   return { base: symbol.slice(0, symbol.length - quote.length), quote };
 };
 
@@ -93,8 +94,8 @@ const parseWithdrawalTime = (raw: string): Date => {
   return new Date(`${datePart}T${timePart ?? '00:00:00'}Z`);
 };
 
-const tradeToTransaction = (trade: BinanceTrade): Transaction | null => {
-  const split = splitSymbol(trade.symbol);
+const tradeToTransaction = (trade: BinanceTrade, quoteBySymbol: Map<string, string>): Transaction | null => {
+  const split = splitSymbol(trade.symbol, quoteBySymbol.get(trade.symbol));
   if (!split) return null;
 
   const { base, quote } = split;
@@ -174,10 +175,28 @@ export class BinanceLiveSource implements ILiveSource {
     await invoke('binance_clear_credentials');
   }
 
+  private exchangeSymbolsPromise: Promise<BinanceExchangeSymbol[]> | null = null;
+
+  /**
+   * All symbols Binance's exchange info currently lists, of any status.
+   * Memoized per instance so `discoverSymbols`, `listSymbols`, and `fetch`
+   * (each of which needs this data) share one request instead of one each.
+   */
+  private async fetchExchangeSymbols(): Promise<BinanceExchangeSymbol[]> {
+    if (!this.exchangeSymbolsPromise) {
+      this.exchangeSymbolsPromise = invoke<BinanceExchangeInfo>('binance_fetch_exchange_info')
+        .then((info) => info.symbols)
+        .catch((e) => {
+          this.exchangeSymbolsPromise = null;
+          throw e;
+        });
+    }
+    return this.exchangeSymbolsPromise;
+  }
+
   /** Every symbol Binance currently lists as tradable (`status === 'TRADING'`). */
   private async fetchTradingSymbols(): Promise<BinanceExchangeSymbol[]> {
-    const exchangeInfo = await invoke<BinanceExchangeInfo>('binance_fetch_exchange_info');
-    return exchangeInfo.symbols.filter((s) => s.status === 'TRADING');
+    return (await this.fetchExchangeSymbols()).filter((s) => s.status === 'TRADING');
   }
 
   /**
@@ -227,8 +246,8 @@ export class BinanceLiveSource implements ILiveSource {
     const endMs = params.to ? params.to.getTime() : null;
     const symbols = params.symbols ?? [];
 
-    const trades = (
-      await Promise.all(
+    const [trades, exchangeSymbols] = await Promise.all([
+      Promise.all(
         symbols.map((symbol) =>
           invoke<BinanceTrade[]>('binance_fetch_trades', {
             symbol,
@@ -236,8 +255,9 @@ export class BinanceLiveSource implements ILiveSource {
             endMs,
           }),
         ),
-      )
-    ).flat();
+      ).then((results) => results.flat()),
+      this.fetchExchangeSymbols(),
+    ]);
 
     const deposits = await invoke<BinanceDeposit[]>('binance_fetch_deposits', {
       startMs,
@@ -249,8 +269,10 @@ export class BinanceLiveSource implements ILiveSource {
       endMs,
     });
 
+    const quoteBySymbol = new Map(exchangeSymbols.map((s) => [s.symbol, s.quoteAsset]));
+
     const tradeTxs = trades
-      .map(tradeToTransaction)
+      .map((trade) => tradeToTransaction(trade, quoteBySymbol))
       .filter((tx): tx is Transaction => tx !== null);
     const depositTxs = deposits.map(depositToTransaction);
     const withdrawalTxs = withdrawals.map(withdrawalToTransaction);

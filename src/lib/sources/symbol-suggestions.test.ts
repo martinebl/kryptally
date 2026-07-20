@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { suggestSymbols, MIN_SUGGESTION_QUERY_LENGTH, MAX_SUGGESTIONS } from './symbol-suggestions';
+import { suggestSymbols, MIN_SUGGESTION_QUERY_LENGTH, MAX_SUGGESTIONS } from '$lib/sources/symbol-suggestions';
 
 describe('suggestSymbols', () => {
   it('returns nothing below the minimum query length', () => {

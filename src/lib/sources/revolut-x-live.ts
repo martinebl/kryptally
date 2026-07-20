@@ -196,9 +196,25 @@ export class RevolutXLiveSource implements ILiveSource {
     await invoke('revolut_x_clear_credentials');
   }
 
+  private pairsPromise: Promise<Record<string, RevolutPair>> | null = null;
+
+  /**
+   * All pairs Revolut X's API currently returns. Memoized per instance so
+   * `discoverSymbols` and `listSymbols` share one request instead of one each.
+   */
+  private async fetchPairs(): Promise<Record<string, RevolutPair>> {
+    if (!this.pairsPromise) {
+      this.pairsPromise = invoke<Record<string, RevolutPair>>('revolut_x_fetch_pairs').catch((e) => {
+        this.pairsPromise = null;
+        throw e;
+      });
+    }
+    return this.pairsPromise;
+  }
+
   /** Every pair Revolut X currently lists as active. */
   private async fetchActivePairs(): Promise<RevolutPair[]> {
-    const pairs = await invoke<Record<string, RevolutPair>>('revolut_x_fetch_pairs');
+    const pairs = await this.fetchPairs();
     return Object.values(pairs).filter((p) => p.status === 'active');
   }
 

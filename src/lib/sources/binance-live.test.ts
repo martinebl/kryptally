@@ -17,6 +17,7 @@ const setupResponses = (responses: {
   trades?: Record<string, unknown[]>;
   deposits?: unknown[];
   withdrawals?: unknown[];
+  exchangeSymbols?: { symbol: string; baseAsset: string; quoteAsset: string; status: string }[];
 }) => {
   invokeMock.mockImplementation((command: string, args?: { symbol?: string }) => {
     if (command === 'binance_fetch_trades') {
@@ -27,6 +28,9 @@ const setupResponses = (responses: {
     }
     if (command === 'binance_fetch_withdrawals') {
       return Promise.resolve(responses.withdrawals ?? []);
+    }
+    if (command === 'binance_fetch_exchange_info') {
+      return Promise.resolve({ symbols: responses.exchangeSymbols ?? [] });
     }
     return Promise.resolve(null);
   });
@@ -127,6 +131,32 @@ describe('BinanceLiveSource', () => {
 
     const txs = await new BinanceLiveSource().fetch({ symbols: ['FOOBAR'] });
     expect(txs).toHaveLength(0);
+  });
+
+  it('splits a symbol using the exchange\'s own quoteAsset, even for a quote not in the static fallback list', async () => {
+    setupResponses({
+      trades: {
+        BTCIDR: [
+          {
+            symbol: 'BTCIDR',
+            id: 55,
+            price: '900000000',
+            qty: '0.001',
+            quoteQty: '900000',
+            commission: '0',
+            commissionAsset: 'IDR',
+            time: Date.UTC(2025, 3, 10),
+            isBuyer: true,
+          },
+        ],
+      },
+      exchangeSymbols: [{ symbol: 'BTCIDR', baseAsset: 'BTC', quoteAsset: 'IDR', status: 'TRADING' }],
+    });
+
+    const [tx] = await new BinanceLiveSource().fetch({ symbols: ['BTCIDR'] });
+
+    expect(tx.fromAsset).toBe('IDR');
+    expect(tx.toAsset).toBe('BTC');
   });
 
   it('maps deposits as transfers with toAsset/toAmount only', async () => {

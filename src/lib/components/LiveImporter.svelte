@@ -206,6 +206,8 @@
       st.symbols = [];
       st.autoDetectedSymbols = [];
       st.symbolInput = '';
+      st.availableSymbols = [];
+      st.catalogLoading = false;
       st.newCount = 0;
       st.dupCount = 0;
       st.fetchedTotal = 0;
