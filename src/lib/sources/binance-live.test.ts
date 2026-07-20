@@ -17,6 +17,7 @@ const setupResponses = (responses: {
   trades?: Record<string, unknown[]>;
   deposits?: unknown[];
   withdrawals?: unknown[];
+  exchangeSymbols?: { symbol: string; baseAsset: string; quoteAsset: string; status: string }[];
 }) => {
   invokeMock.mockImplementation((command: string, args?: { symbol?: string }) => {
     if (command === 'binance_fetch_trades') {
@@ -27,6 +28,9 @@ const setupResponses = (responses: {
     }
     if (command === 'binance_fetch_withdrawals') {
       return Promise.resolve(responses.withdrawals ?? []);
+    }
+    if (command === 'binance_fetch_exchange_info') {
+      return Promise.resolve({ symbols: responses.exchangeSymbols ?? [] });
     }
     return Promise.resolve(null);
   });
@@ -127,6 +131,32 @@ describe('BinanceLiveSource', () => {
 
     const txs = await new BinanceLiveSource().fetch({ symbols: ['FOOBAR'] });
     expect(txs).toHaveLength(0);
+  });
+
+  it('splits a symbol using the exchange\'s own quoteAsset, even for a quote not in the static fallback list', async () => {
+    setupResponses({
+      trades: {
+        BTCIDR: [
+          {
+            symbol: 'BTCIDR',
+            id: 55,
+            price: '900000000',
+            qty: '0.001',
+            quoteQty: '900000',
+            commission: '0',
+            commissionAsset: 'IDR',
+            time: Date.UTC(2025, 3, 10),
+            isBuyer: true,
+          },
+        ],
+      },
+      exchangeSymbols: [{ symbol: 'BTCIDR', baseAsset: 'BTC', quoteAsset: 'IDR', status: 'TRADING' }],
+    });
+
+    const [tx] = await new BinanceLiveSource().fetch({ symbols: ['BTCIDR'] });
+
+    expect(tx.fromAsset).toBe('IDR');
+    expect(tx.toAsset).toBe('BTC');
   });
 
   it('maps deposits as transfers with toAsset/toAmount only', async () => {
@@ -233,7 +263,7 @@ describe('BinanceLiveSource', () => {
   describe('discoverSymbols', () => {
     const setupDiscovery = (opts: {
       balances?: { asset: string; free: string; locked: string }[];
-      symbols?: { baseAsset: string; quoteAsset: string; status: string }[];
+      symbols?: { symbol: string; baseAsset: string; quoteAsset: string; status: string }[];
     }) => {
       invokeMock.mockImplementation((command: string) => {
         if (command === 'binance_fetch_account') {
@@ -253,9 +283,9 @@ describe('BinanceLiveSource', () => {
           { asset: 'ETH', free: '0', locked: '1.5' },
         ],
         symbols: [
-          { baseAsset: 'BTC', quoteAsset: 'EUR', status: 'TRADING' },
-          { baseAsset: 'BTC', quoteAsset: 'USDT', status: 'TRADING' },
-          { baseAsset: 'ETH', quoteAsset: 'BTC', status: 'TRADING' },
+          { symbol: 'BTCEUR', baseAsset: 'BTC', quoteAsset: 'EUR', status: 'TRADING' },
+          { symbol: 'BTCUSDT', baseAsset: 'BTC', quoteAsset: 'USDT', status: 'TRADING' },
+          { symbol: 'ETHBTC', baseAsset: 'ETH', quoteAsset: 'BTC', status: 'TRADING' },
         ],
       });
 
@@ -271,8 +301,8 @@ describe('BinanceLiveSource', () => {
           { asset: 'SOL', free: '2', locked: '0' },
         ],
         symbols: [
-          { baseAsset: 'BTC', quoteAsset: 'USDT', status: 'TRADING' },
-          { baseAsset: 'SOL', quoteAsset: 'USDT', status: 'BREAK' },
+          { symbol: 'BTCUSDT', baseAsset: 'BTC', quoteAsset: 'USDT', status: 'TRADING' },
+          { symbol: 'SOLUSDT', baseAsset: 'SOL', quoteAsset: 'USDT', status: 'BREAK' },
         ],
       });
 
@@ -286,6 +316,39 @@ describe('BinanceLiveSource', () => {
       });
 
       await expect(new BinanceLiveSource().discoverSymbols()).resolves.toEqual([]);
+    });
+  });
+
+  describe('listSymbols', () => {
+    const setupExchangeInfo = (symbols: { symbol: string; baseAsset: string; quoteAsset: string; status: string }[]) => {
+      invokeMock.mockImplementation((command: string) => {
+        if (command === 'binance_fetch_exchange_info') {
+          return Promise.resolve({ symbols });
+        }
+        return Promise.resolve(null);
+      });
+    };
+
+    it('returns only symbols currently marked as trading', async () => {
+      setupExchangeInfo([
+        { symbol: 'BTCUSDT', baseAsset: 'BTC', quoteAsset: 'USDT', status: 'TRADING' },
+        { symbol: 'ETHUSDT', baseAsset: 'ETH', quoteAsset: 'USDT', status: 'TRADING' },
+        { symbol: 'FOOBAR', baseAsset: 'FOO', quoteAsset: 'BAR', status: 'BREAK' },
+      ]);
+
+      await expect(new BinanceLiveSource().listSymbols()).resolves.toEqual(
+        expect.arrayContaining(['BTCUSDT', 'ETHUSDT']),
+      );
+      await expect(new BinanceLiveSource().listSymbols()).resolves.not.toContain('FOOBAR');
+    });
+
+    it('dedupes repeated symbols', async () => {
+      setupExchangeInfo([
+        { symbol: 'BTCUSDT', baseAsset: 'BTC', quoteAsset: 'USDT', status: 'TRADING' },
+        { symbol: 'BTCUSDT', baseAsset: 'BTC', quoteAsset: 'USDT', status: 'TRADING' },
+      ]);
+
+      await expect(new BinanceLiveSource().listSymbols()).resolves.toEqual(['BTCUSDT']);
     });
   });
 });

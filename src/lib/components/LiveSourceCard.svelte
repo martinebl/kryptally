@@ -3,6 +3,7 @@
   import DateField from '$lib/components/common/DateField.svelte';
   import Badge from '$lib/components/common/Badge.svelte';
   import Spinner from '$lib/components/common/Spinner.svelte';
+  import PairSymbolInput from '$lib/components/PairSymbolInput.svelte';
 
   interface Props {
     source: ILiveSource;
@@ -41,35 +42,6 @@
     onCancel,
     onPairsChange,
   }: Props = $props();
-
-  // Manually-added tickers are never added to autoDetectedSymbols, so they render
-  // without the auto-detected dot (see removePair for the reverse case).
-  const addPair = (raw: string) => {
-    const ticker = raw.trim().toUpperCase();
-    if (!ticker) return;
-    if (!st.symbols.includes(ticker)) st.symbols = [...st.symbols, ticker];
-    st.symbolInput = '';
-    onPairsChange?.(st.symbols, st.autoDetectedSymbols);
-  };
-
-  const removePair = (ticker: string) => {
-    st.symbols = st.symbols.filter((s) => s !== ticker);
-    st.autoDetectedSymbols = st.autoDetectedSymbols.filter((s) => s !== ticker);
-    onPairsChange?.(st.symbols, st.autoDetectedSymbols);
-  };
-
-  const onSymbolInputKeydown = (e: KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault();
-      addPair(st.symbolInput);
-    } else if (e.key === 'Backspace' && !st.symbolInput && st.symbols.length > 0) {
-      removePair(st.symbols[st.symbols.length - 1]);
-    }
-  };
-
-  const onSymbolInputBlur = () => {
-    if (st.symbolInput.trim()) addPair(st.symbolInput);
-  };
 </script>
 
 <div class="overflow-hidden rounded-xl border bg-surface transition-colors border-border">
@@ -192,35 +164,9 @@
                 Detected from your current holdings — add any others you've traded.
               </p>
             {/if}
-            <div
-              class="flex min-h-chip-input flex-wrap items-center gap-1.5 rounded-lg border border-border bg-surface p-1.5 focus-within:border-accent"
-            >
-              {#each st.symbols as ticker (ticker)}
-                <span class="inline-flex items-center gap-1.5 rounded-full border border-border bg-bg-card py-1 pl-2.5 pr-1.5 text-xs">
-                  {#if st.autoDetectedSymbols.includes(ticker)}
-                    <span class="size-1.5 shrink-0 rounded-full bg-accent"></span>
-                  {/if}
-                  <span class="font-mono font-medium text-text-heading">{ticker}</span>
-                  <button
-                    type="button"
-                    onclick={() => removePair(ticker)}
-                    class="leading-none text-text hover:text-danger"
-                    aria-label="Remove {ticker}"
-                  >✕</button>
-                </span>
-              {/each}
-              <input
-                id="live-symbols-{source.exchangeName}"
-                type="text"
-                bind:value={st.symbolInput}
-                onkeydown={onSymbolInputKeydown}
-                onblur={onSymbolInputBlur}
-                placeholder={source.symbolPlaceholder ?? ''}
-                class="min-w-24 flex-1 border-none bg-transparent px-1 py-1 font-mono text-sm text-text-heading outline-none"
-              />
-            </div>
+            <PairSymbolInput {source} state={st} {onPairsChange} />
             <p class="mt-1.5 text-xs text-text/60">
-              Press Enter or comma to add a pair.{#if source.symbolsNote} {source.symbolsNote}{/if}
+              Press Enter or comma to add a pair.{#if source.listSymbols} Start typing to see available pairs.{/if}{#if source.symbolsNote} {source.symbolsNote}{/if}
             </p>
           </div>
         {/if}

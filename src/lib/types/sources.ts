@@ -50,6 +50,14 @@ export interface SourceState {
   symbolInput: string;
   /** True while a symbol auto-detection request is in flight. */
   discovering: boolean;
+  /**
+   * Full catalog of tradable pairs for this exchange, fetched lazily via
+   * `listSymbols()` the first time a connected card is opened this session.
+   * Powers pair-input suggestions; empty until loaded (or if unsupported).
+   */
+  availableSymbols: string[];
+  /** True while `listSymbols()` is in flight, to avoid duplicate fetches. */
+  catalogLoading: boolean;
 }
 
 export interface LiveSourceFetchParams {
@@ -138,6 +146,14 @@ export interface ILiveSource {
    * Optional: sources that can't or needn't auto-discover omit this.
    */
   discoverSymbols?(): Promise<string[]>;
+
+  /**
+   * All tradable pair symbols currently listed on the exchange, in the same
+   * string format `symbols`/`discoverSymbols` use (e.g. "BTCUSDT", "BTC-USD").
+   * Powers suggestions in the pair input. Optional: sources that can't or
+   * needn't enumerate their full catalog omit this.
+   */
+  listSymbols?(): Promise<string[]>;
 
   /** Fetch and map remote transactions for the given window. */
   fetch(params: LiveSourceFetchParams): Promise<Transaction[]>;

@@ -397,6 +397,34 @@ describe('RevolutXLiveSource', () => {
       await expect(new RevolutXLiveSource().discoverSymbols()).resolves.toEqual([]);
     });
   });
+
+  describe('listSymbols', () => {
+    it('returns only active pairs, as BASE-QUOTE', async () => {
+      setup({
+        pairs: {
+          'BTC/USD': { base: 'BTC', quote: 'USD', status: 'active' },
+          'ETH/EUR': { base: 'ETH', quote: 'EUR', status: 'active' },
+          'SOL/USD': { base: 'SOL', quote: 'USD', status: 'inactive' },
+        },
+      });
+
+      await expect(new RevolutXLiveSource().listSymbols()).resolves.toEqual(
+        expect.arrayContaining(['BTC-USD', 'ETH-EUR']),
+      );
+      await expect(new RevolutXLiveSource().listSymbols()).resolves.not.toContain('SOL-USD');
+    });
+
+    it('dedupes repeated pairs', async () => {
+      setup({
+        pairs: {
+          'BTC/USD': { base: 'BTC', quote: 'USD', status: 'active' },
+          'BTC-USD-DUP': { base: 'BTC', quote: 'USD', status: 'active' },
+        },
+      });
+
+      await expect(new RevolutXLiveSource().listSymbols()).resolves.toEqual(['BTC-USD']);
+    });
+  });
 });
 
 describe('dateChunks', () => {
