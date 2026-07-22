@@ -46,7 +46,7 @@
     --date-picker-highlight-border: var(--color-accent);
     --date-picker-highlight-shadow: var(--color-accent-bg);
     --date-picker-selected-background: var(--color-accent);
-    --date-picker-selected-color: #ffffff;
+    --date-picker-selected-color: var(--color-on-accent);
     --date-picker-today-border: var(--color-accent-border);
   }
 

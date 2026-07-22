@@ -12,9 +12,13 @@
   import ResultsPage from '$lib/components/ResultsPage.svelte'
   import TestResultsPage from '$lib/components/TestResultsPage.svelte'
   import CoinDisambiguator from '$lib/components/CoinDisambiguator.svelte'
+  import ThemeToggle from '$lib/components/common/ThemeToggle.svelte'
   import { availableCountries, findCountry, allowedCostBasisMethods } from '$lib/rules';
   import { createIndexedDBStorage, createPriceRepository, createTransactionRepository } from '$lib/storage';
+  import { initTheme } from '$lib/theme';
   import { version } from '../version.json';
+
+  initTheme();
 
   const storage = createIndexedDBStorage();
   const COST_BASIS_METHOD_KEY = 'kryptally-cost-basis-method';
@@ -182,6 +186,7 @@
         >
           Results
         </button>
+        <ThemeToggle />
       </div>
     </nav>
   </header>

@@ -75,6 +75,8 @@
   --color-surface-alt: #f7f9f7;
   --color-surface-warm: #e6ddcd;
 
+  --color-shadow-card: rgba(0, 0, 0, 0.03);
+
   /* Spacing — commonly reused custom pixel values */
   --spacing-page: 1100px;
   --spacing-card-x: 22px;
@@ -98,7 +100,82 @@
   --radius-btn: 11px;
 }
 
+:root.dark {
+  --color-bg: #1c1a17;
+  --color-surface: #24211d;
+  --color-bg-card: #29251f;
+  --color-modal: #2c2822;
+  --color-text: #d8d3c9;
+  --color-text-muted: #a39c8f;
+  --color-text-faint: #756e62;
+  --color-text-heading: #f5f2ea;
+  --color-border: #3a352d;
+  --color-border-soft: #322e27;
+  --color-accent: #f2a13d;
+  --color-accent-bg: rgba(242, 161, 61, 0.15);
+  --color-accent-border: rgba(242, 161, 61, 0.5);
+
+  --color-positive: #4ade80;
+  --color-positive-bg: rgba(22, 163, 74, 0.15);
+  --color-positive-border: rgba(74, 222, 128, 0.35);
+
+  --color-negative: #f87171;
+  --color-negative-bg: rgba(220, 38, 38, 0.15);
+  --color-negative-border: rgba(248, 113, 113, 0.35);
+
+  --color-success: #4ade80;
+  --color-success-bg: rgba(22, 163, 74, 0.15);
+  --color-success-border: rgba(74, 222, 128, 0.35);
+
+  --color-danger: #f87171;
+  --color-danger-bg: rgba(220, 38, 38, 0.15);
+  --color-danger-border: rgba(248, 113, 113, 0.35);
+
+  --color-warning: #fbbf24;
+  --color-warning-bg: rgba(217, 119, 6, 0.15);
+  --color-warning-border: rgba(251, 191, 36, 0.35);
+
+  --color-badge-default: #d1d5db;
+  --color-badge-default-bg: rgba(156, 163, 175, 0.15);
+  --color-badge-default-border: rgba(156, 163, 175, 0.3);
+
+  --color-badge-success: #4ade80;
+  --color-badge-success-bg: rgba(21, 128, 61, 0.18);
+  --color-badge-success-border: rgba(74, 222, 128, 0.3);
+
+  --color-badge-danger: #f87171;
+  --color-badge-danger-bg: rgba(185, 28, 28, 0.18);
+  --color-badge-danger-border: rgba(248, 113, 113, 0.3);
+
+  --color-badge-purple: #c084fc;
+  --color-badge-purple-bg: rgba(126, 34, 206, 0.2);
+  --color-badge-purple-border: rgba(192, 132, 252, 0.3);
+
+  --color-badge-amber: #fbbf24;
+  --color-badge-amber-bg: rgba(180, 83, 9, 0.2);
+  --color-badge-amber-border: rgba(251, 191, 36, 0.3);
+
+  --color-badge-blue: #60a5fa;
+  --color-badge-blue-bg: rgba(29, 78, 216, 0.2);
+  --color-badge-blue-border: rgba(96, 165, 250, 0.3);
+
+  --color-overlay: rgba(0, 0, 0, 0.6);
+
+  --color-surface-alt: #211e1a;
+  --color-surface-warm: #332c22;
+
+  --color-shadow-card: rgba(0, 0, 0, 0.4);
+}
+
 @layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  :root.dark {
+    color-scheme: dark;
+  }
+
   body {
     @apply m-0 bg-bg text-text antialiased;
   }

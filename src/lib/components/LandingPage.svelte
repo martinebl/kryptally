@@ -120,7 +120,7 @@
   </div>
 
   <!-- right: data-residency proof panel -->
-      <div class="overflow-hidden rounded-[18px] border border-border bg-surface shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+      <div class="overflow-hidden rounded-[18px] border border-border bg-surface shadow-[0_1px_2px_var(--color-shadow-card)]">
         <div class="flex items-center justify-between border-b border-border-soft px-card-x py-section-sm">
       <span class="font-mono text-[11px] font-medium tracking-[0.07em] text-text-faint">WHAT LEAVES YOUR DEVICE</span>
     </div>
