@@ -1,4 +1,4 @@
-import type { TaxRules, CountryConfig } from '$lib/types/tax-rules';
+import type { TaxRules, CountryConfig, CostBasisMethod } from '$lib/types/tax-rules';
 import dkRules2024 from './dk/dk-2024.json';
 import dkRules2025 from './dk/dk-2025.json';
 import dkRules2026 from './dk/dk-2026.json';
@@ -41,3 +41,11 @@ export const availableCountries: CountryConfig[] = [
 
 export const findCountry = (countryCode: string): CountryConfig | undefined =>
   availableCountries.find((c) => c.countryCode === countryCode);
+
+/** Cost-basis methods a country's tax rules allow, resolved for `date` (defaults to today). */
+export const allowedCostBasisMethods = (
+  country: CountryConfig,
+  date: Date = new Date(),
+): CostBasisMethod[] => country.resolve(date).costBasis.allowed;
+
+export { costBasisMethodDescriptions } from './cost-basis-methods';

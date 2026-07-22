@@ -22,7 +22,7 @@
 <dialog
   bind:this={dialog}
   onclose={() => onClose?.()}
-  class="m-auto w-full max-w-2xl rounded-xl border border-border bg-modal p-0 shadow-2xl backdrop:bg-black/50"
+  class="m-auto w-full max-w-2xl rounded-xl border border-border bg-modal p-0 shadow-2xl backdrop:bg-overlay"
 >
   <div class="flex items-center justify-between border-b border-border px-6 py-4">
     <h2 class="font-heading text-lg font-medium text-text-heading">{title}</h2>

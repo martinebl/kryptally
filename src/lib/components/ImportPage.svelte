@@ -10,10 +10,11 @@
   import CsvPriceUploader from '$lib/components/CsvPriceUploader.svelte';
   import ImportStatus from '$lib/components/ImportStatus.svelte';
   import MissingPricesModal from '$lib/components/MissingPricesModal.svelte';
-  import Badge from '$lib/components/Badge.svelte';
+  import Badge from '$lib/components/common/Badge.svelte';
   import { getCryptoConverter } from '$lib/context';
   import { enrichFiatValues, type MissingPrice } from '$lib/engine/enrich-fiat-values';
   import type { PricesByAsset } from '$lib/converters/csv-prices';
+  import type { IStorage } from '$lib/storage';
   import { isTauri } from '$lib/runtime';
 
   interface Props {
@@ -23,9 +24,10 @@
     countryConfig: CountryConfig;
     storedTransactionCount: number;
     onClearHistory: () => void;
+    storage: IStorage;
   }
 
-  const { onImport, onNavigate, pricesByAsset, countryConfig, storedTransactionCount, onClearHistory }: Props = $props();
+  const { onImport, onNavigate, pricesByAsset, countryConfig, storedTransactionCount, onClearHistory, storage }: Props = $props();
 
   const importers = [
     new LedgerImporter(),
@@ -107,12 +109,7 @@
     <div class="lg:col-span-2">
       <h2 class="mb-2 font-heading text-2xl font-medium text-text-heading">Import transactions</h2>
       <p class="mb-4 text-sm leading-relaxed text-text">
-        Upload a CSV export from your exchange. Your data stays in your browser and is never sent anywhere.
-      </p>
-
-      <!-- Context bar -->
-      <p class="mb-3 rounded-lg border border-border bg-bg-card px-3 py-2 text-sm text-text">
-        {countryConfig.country} · {countryConfig.currency} · {countryConfig.defaultCostBasisMethod.toUpperCase()}
+        Upload a CSV export or connect directly to your exchange. Your data stays in your browser and is never sent anywhere.
       </p>
 
       <!-- Stored transactions -->
@@ -122,7 +119,7 @@
             {storedTransactionCount} transaction{storedTransactionCount === 1 ? '' : 's'} stored in your browser
           </p>
           <button
-            class="cursor-pointer rounded-lg border border-border bg-transparent px-3 py-1.5 text-sm text-text transition-colors hover:border-red-300 hover:text-red-600"
+            class="cursor-pointer rounded-lg border border-border bg-transparent px-3 py-1.5 text-sm text-text transition-colors hover:border-danger-border hover:text-danger"
             onclick={onClearHistory}
           >
             Clear history
@@ -153,7 +150,7 @@
       {:else}
         <!-- Live exchange tab -->
         {#if isTauri()}
-          <LiveImporter {liveSources} onConfirm={handleEnrich} {onNavigate} />
+          <LiveImporter {liveSources} onConfirm={handleEnrich} {onNavigate} {storage} />
         {:else}
           <!-- Browser: desktop-only notice -->
           <div class="mt-2 rounded-xl border border-border bg-bg-card px-7 py-6">
@@ -161,7 +158,7 @@
             <h3 class="mt-4 text-lg font-bold tracking-tight text-text-heading">Connect an exchange directly</h3>
             <p class="mt-2.5 max-w-lg text-sm leading-relaxed text-text">
               Browsers block the cross-origin requests needed to reach exchange APIs, so live import isn't available on the web.
-              The Kryptax desktop app stores your API keys in your operating system's keychain and pulls trades straight from
+              The Kryptally desktop app stores your API keys in your operating system's keychain and pulls trades straight from
               Binance, Revolut X and others — nothing leaves your machine.
             </p>
             <p class="mt-3 text-sm leading-relaxed text-text">
@@ -172,10 +169,10 @@
               >CSV import</button> tab.
             </p>
             <a
-              href="https://github.com/martinebl/kryptax/releases"
+              href="https://github.com/martinebl/kryptally/releases"
               target="_blank"
               rel="noopener noreferrer"
-              class="mt-5 inline-block rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent/90"
+              class="mt-5 inline-block rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent transition-colors hover:bg-accent/90"
             >
               Get the desktop app →
             </a>
@@ -203,7 +200,7 @@
     <!-- ===== RIGHT: PRICE DATA ===== -->
     <div
       bind:this={pricePanel}
-      class="rounded-2xl border bg-white p-6 transition-all duration-300 lg:sticky lg:top-8
+      class="rounded-2xl border bg-surface p-6 transition-all duration-300 lg:sticky lg:top-8
         {highlightPricePanel ? 'border-accent ring-4 ring-accent/20' : 'border-border'}"
     >
       <h2 class="mb-2 font-heading text-xl font-semibold text-text-heading">Price data</h2>

@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Transaction } from '$lib/types';
-  import type { CountryConfig } from '$lib/types/tax-rules';
+  import type { CostBasisMethod, CountryConfig } from '$lib/types/tax-rules';
   import { setCryptoConverter, setCurrentPriceFetcher, setPersistPriceEntry } from '$lib/context';
   import { createCoinGeckoCryptoToFiatConverter, preflightResolve, setUserResolutions, type CoinListEntry } from '$lib/converters/coingecko';
   import { createCsvCryptoToFiatConverter, loadCsvPrices } from '$lib/converters/csv-prices';
@@ -12,16 +12,34 @@
   import ResultsPage from '$lib/components/ResultsPage.svelte'
   import TestResultsPage from '$lib/components/TestResultsPage.svelte'
   import CoinDisambiguator from '$lib/components/CoinDisambiguator.svelte'
-  import { availableCountries, findCountry } from '$lib/rules';
-  import { createLocalStorageStorage, createPriceRepository, createTransactionRepository } from '$lib/storage';
+  import { availableCountries, findCountry, allowedCostBasisMethods } from '$lib/rules';
+  import { createIndexedDBStorage, createPriceRepository, createTransactionRepository } from '$lib/storage';
   import { version } from '../version.json';
 
-  const storage = createLocalStorageStorage();
+  const storage = createIndexedDBStorage();
+  const COST_BASIS_METHOD_KEY = 'kryptally-cost-basis-method';
+
 
   let countryConfig = $state<CountryConfig | null>(null);
-  storage.get('kryptax-country').then((saved) => {
-    if (saved && !countryConfig) countryConfig = findCountry(saved) ?? null;
-  });
+  let costBasisMethod = $state<CostBasisMethod | null>(null);
+
+  // Loaded together (not two independent .then()s) so the method is never
+  // validated against an allowed-list before the country itself is known.
+  Promise.all([storage.get('kryptally-country'), storage.get(COST_BASIS_METHOD_KEY)]).then(
+    ([savedCountry, savedMethod]) => {
+      if (!savedCountry || countryConfig) return;
+      const found = findCountry(savedCountry);
+      if (!found) return;
+
+      countryConfig = found;
+      const allowed = allowedCostBasisMethods(found);
+      const isValid = !!savedMethod && (allowed as string[]).includes(savedMethod);
+      costBasisMethod = isValid ? (savedMethod as CostBasisMethod) : found.resolve(new Date()).costBasis.default;
+      if (!isValid) {
+        storage.set(COST_BASIS_METHOD_KEY, costBasisMethod).catch((e) => console.error('Failed to save cost-basis method', e));
+      }
+    },
+  );
 
   const selectCountry = (countryCode: string) => {
     const found = findCountry(countryCode);
@@ -37,8 +55,27 @@
     }
 
     countryConfig = found;
-    storage.set('kryptax-country', countryCode).catch((e) => console.error('Failed to save country selection', e));
+    storage.set('kryptally-country', countryCode).catch((e) => console.error('Failed to save country selection', e));
+
+    const allowed = allowedCostBasisMethods(found);
+    const nextMethod = costBasisMethod && (allowed as string[]).includes(costBasisMethod)
+      ? costBasisMethod
+      : found.resolve(new Date()).costBasis.default;
+    if (nextMethod !== costBasisMethod) {
+      costBasisMethod = nextMethod;
+      storage.set(COST_BASIS_METHOD_KEY, nextMethod).catch((e) => console.error('Failed to save cost-basis method', e));
+    }
   };
+
+  const selectCostBasisMethod = (method: CostBasisMethod) => {
+    if (!countryConfig) return;
+    if (!allowedCostBasisMethods(countryConfig).includes(method)) return;
+    costBasisMethod = method;
+    storage.set(COST_BASIS_METHOD_KEY, method).catch((e) => console.error('Failed to save cost-basis method', e));
+  };
+
+  const allowedMethodsForCountry = $derived(countryConfig ? allowedCostBasisMethods(countryConfig) : []);
+  const effectiveCostBasisMethod = $derived(costBasisMethod ?? countryConfig?.defaultCostBasisMethod ?? 'fifo');
 
   const priceRepo = createPriceRepository(storage);
 
@@ -116,8 +153,8 @@
         class="flex cursor-pointer items-center gap-2.5 border-none bg-transparent"
         onclick={() => navigate('home')}
       >
-        <span class="flex size-[30px] items-center justify-center rounded-full bg-text-heading text-nav font-bold text-accent">K</span>
-        <span class="text-[19px] font-bold tracking-tight text-text-heading">Kryptax</span>
+        <span class="flex size-7.5 items-center justify-center rounded-full bg-text-heading text-nav font-bold text-accent">K</span>
+        <span class="text-[19px] font-bold tracking-tight text-text-heading">Kryptally</span>
       </button>
       <div class="flex items-center gap-7 text-nav max-md:gap-5">
         <button
@@ -151,7 +188,15 @@
 
   <main class="mx-auto w-full max-w-page px-6">
     {#if currentPage === 'home'}
-      <LandingPage onNavigate={navigate} {availableCountries} selectedCountry={countryConfig} onSelectCountry={selectCountry} />
+      <LandingPage
+        onNavigate={navigate}
+        {availableCountries}
+        selectedCountry={countryConfig}
+        onSelectCountry={selectCountry}
+        allowedCostBasisMethods={allowedMethodsForCountry}
+        selectedCostBasisMethod={costBasisMethod}
+        onSelectCostBasisMethod={selectCostBasisMethod}
+      />
     {:else if currentPage === 'import' && countryConfig}
       <ImportPage
         onImport={handleImport}
@@ -160,9 +205,10 @@
         {countryConfig}
         storedTransactionCount={transactions.length}
         onClearHistory={clearTransactions}
+        {storage}
       />
     {:else if currentPage === 'results' && countryConfig}
-      <ResultsPage {transactions} {countryConfig} />
+      <ResultsPage {transactions} {countryConfig} costBasisMethod={effectiveCostBasisMethod} />
     <!-- {:else if currentPage === 'test-results'}
       <TestResultsPage /> -->
     {/if}
@@ -177,7 +223,7 @@
   <!-- Footer -->
   <footer class="mt-auto border-t border-border bg-surface">
     <div class="mx-auto flex max-w-page flex-wrap items-center justify-between gap-4 px-6 py-7 text-meta text-text-muted">
-      <span>Kryptax</span>
+      <span>Kryptally</span>
       <span class="font-mono text-text-faint">v{version} · Apache-2.0 licensed</span>
     </div>
   </footer>

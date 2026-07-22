@@ -142,18 +142,13 @@ describe('RevolutXLiveSource', () => {
   it('uses the quote leg as the fiat value, mapping stablecoins to USD and leaving crypto quotes unpriced', async () => {
     setup({
       orders: [],
-      balances: [{ currency: 'BTC', total: '1' }, { currency: 'ETH', total: '1' }],
-      pairs: {
-        'BTC/USDC': { base: 'BTC', quote: 'USDC', status: 'active' },
-        'ETH/BTC': { base: 'ETH', quote: 'BTC', status: 'active' },
-      },
       tradesBySymbol: {
         'BTC-USDC': [makeTrade({ tid: 'stable', s: 'buy', qc: 'BTC', q: '0.02', pc: 'USDC', p: '50000' })],
         'ETH-BTC': [makeTrade({ tid: 'crypto', s: 'buy', qc: 'ETH', q: '3', pc: 'BTC', p: '0.05' })],
       },
     });
 
-    const txs = await new RevolutXLiveSource().fetch({});
+    const txs = await new RevolutXLiveSource().fetch({ symbols: ['BTC-USDC', 'ETH-BTC'] });
     const byId = Object.fromEntries(txs.map((t) => [t.id, t]));
 
     // Stablecoin quote → valued 1:1 in USD.
@@ -218,17 +213,9 @@ describe('RevolutXLiveSource', () => {
     expect(txs[0].id).toBe('revolut-x-live-order-filled');
   });
 
-  it('pulls private trade fills for held pairs when there are no historical orders', async () => {
+  it('pulls private trade fills for the given symbols when there are no historical orders', async () => {
     setup({
       orders: [],
-      balances: [
-        { currency: 'BTC', total: '0.0012' },
-        { currency: 'USD', total: '0' },
-      ],
-      pairs: {
-        'BTC/USD': { base: 'BTC', quote: 'USD', status: 'active' },
-        'ETH/USD': { base: 'ETH', quote: 'USD', status: 'active' }, // not held
-      },
       tradesBySymbol: {
         'BTC-USD': [
           makeTrade({ tid: 'f-1', s: 'buy', qc: 'BTC', q: '0.0012', pc: 'USD', p: '50000' }),
@@ -236,7 +223,7 @@ describe('RevolutXLiveSource', () => {
       },
     });
 
-    const txs = await new RevolutXLiveSource().fetch({});
+    const txs = await new RevolutXLiveSource().fetch({ symbols: ['BTC-USD'] });
 
     expect(txs).toHaveLength(1);
     const [tx] = txs;
@@ -251,8 +238,6 @@ describe('RevolutXLiveSource', () => {
   it('does not double-count a fill already represented by a fetched order', async () => {
     setup({
       orders: [makeOrder({ id: 'order-42', symbol: 'BTC/USD', filled_quantity: '0.01', filled_amount: '650' })],
-      balances: [{ currency: 'BTC', total: '0.01' }],
-      pairs: { 'BTC/USD': { base: 'BTC', quote: 'USD', status: 'active' } },
       tradesBySymbol: {
         'BTC-USD': [
           makeTrade({ tid: 'fill-of-42', oid: 'order-42' }), // same order → deduped
@@ -261,7 +246,7 @@ describe('RevolutXLiveSource', () => {
       },
     });
 
-    const txs = await new RevolutXLiveSource().fetch({});
+    const txs = await new RevolutXLiveSource().fetch({ symbols: ['BTC-USD'] });
 
     expect(txs.map((t) => t.id).sort()).toEqual([
       'revolut-x-live-order-order-42',
@@ -305,8 +290,6 @@ describe('RevolutXLiveSource', () => {
   it('chunks a wide range into ≤30-day windows, paces requests, and reports progress', async () => {
     setup({
       orders: [],
-      balances: [{ currency: 'BTC', total: '0.5' }],
-      pairs: { 'BTC/USD': { base: 'BTC', quote: 'USD', status: 'active' } },
       tradesBySymbol: {},
     });
 
@@ -316,7 +299,12 @@ describe('RevolutXLiveSource', () => {
     expect(expectedChunks.length).toBeGreaterThan(1);
 
     const progress: { completed: number; total: number }[] = [];
-    await new RevolutXLiveSource().fetch({ from, to, onProgress: (p) => progress.push(p) });
+    await new RevolutXLiveSource().fetch({
+      from,
+      to,
+      symbols: ['BTC-USD'],
+      onProgress: (p) => progress.push(p),
+    });
 
     const orderCalls = invokeMock.mock.calls.filter((c) => c[0] === 'revolut_x_fetch_orders');
     const tradeCalls = invokeMock.mock.calls.filter((c) => c[0] === 'revolut_x_fetch_trades');
@@ -371,6 +359,71 @@ describe('RevolutXLiveSource', () => {
     invokeMock.mockResolvedValue(undefined);
     await source.clearCredentials();
     expect(invokeMock).toHaveBeenCalledWith('revolut_x_clear_credentials');
+  });
+
+  describe('discoverSymbols', () => {
+    it('returns active pairs whose base asset is currently held', async () => {
+      setup({
+        balances: [
+          { currency: 'BTC', total: '0.0012' },
+          { currency: 'USD', total: '0' },
+        ],
+        pairs: {
+          'BTC/USD': { base: 'BTC', quote: 'USD', status: 'active' },
+          'ETH/USD': { base: 'ETH', quote: 'USD', status: 'active' }, // not held
+        },
+      });
+
+      await expect(new RevolutXLiveSource().discoverSymbols()).resolves.toEqual(['BTC-USD']);
+    });
+
+    it('excludes inactive pairs and zero-balance assets', async () => {
+      setup({
+        balances: [
+          { currency: 'BTC', total: '1' },
+          { currency: 'ETH', total: '0' },
+        ],
+        pairs: {
+          'BTC/USD': { base: 'BTC', quote: 'USD', status: 'inactive' },
+          'ETH/USD': { base: 'ETH', quote: 'USD', status: 'active' },
+        },
+      });
+
+      await expect(new RevolutXLiveSource().discoverSymbols()).resolves.toEqual([]);
+    });
+
+    it('returns an empty list when nothing is held', async () => {
+      setup({ balances: [], pairs: {} });
+      await expect(new RevolutXLiveSource().discoverSymbols()).resolves.toEqual([]);
+    });
+  });
+
+  describe('listSymbols', () => {
+    it('returns only active pairs, as BASE-QUOTE', async () => {
+      setup({
+        pairs: {
+          'BTC/USD': { base: 'BTC', quote: 'USD', status: 'active' },
+          'ETH/EUR': { base: 'ETH', quote: 'EUR', status: 'active' },
+          'SOL/USD': { base: 'SOL', quote: 'USD', status: 'inactive' },
+        },
+      });
+
+      await expect(new RevolutXLiveSource().listSymbols()).resolves.toEqual(
+        expect.arrayContaining(['BTC-USD', 'ETH-EUR']),
+      );
+      await expect(new RevolutXLiveSource().listSymbols()).resolves.not.toContain('SOL-USD');
+    });
+
+    it('dedupes repeated pairs', async () => {
+      setup({
+        pairs: {
+          'BTC/USD': { base: 'BTC', quote: 'USD', status: 'active' },
+          'BTC-USD-DUP': { base: 'BTC', quote: 'USD', status: 'active' },
+        },
+      });
+
+      await expect(new RevolutXLiveSource().listSymbols()).resolves.toEqual(['BTC-USD']);
+    });
   });
 });
 

@@ -2,8 +2,9 @@
     import BigNumber from 'bignumber.js';
     import type { TaxableEvent } from '$lib/types/results';
     import type { CostBasisMethod } from '$lib/types/tax-rules';
-    import Table from '$lib/components/Table.svelte';
-    import Badge from '$lib/components/Badge.svelte';
+    import Table from '$lib/components/common/Table.svelte';
+    import Badge from '$lib/components/common/Badge.svelte';
+    import { valueColor } from '$lib/components/valueColor';
 
     interface Props {
         events: TaxableEvent[];
@@ -24,9 +25,6 @@
     const signed = (v: BigNumber) =>
         `${v.gt(0) ? '+' : v.lt(0) ? '−' : ''}${v.abs().toFormat(2)}`;
 
-    const gainColor = (v: BigNumber) =>
-        v.gt(0) ? 'text-green-600' : v.lt(0) ? 'text-red-500' : 'text-text';
-
     const eventTypeLabel = (e: TaxableEvent) =>
         e.type === 'income' ? 'Income' : 'Disposal';
 
@@ -45,6 +43,8 @@
         if (months > 0) return `${months} mo`;
         return `${days} d`;
     };
+
+    const isPooledAverage = (source: string) => source === 'average';
 </script>
 
 <div class="mb-10">
@@ -77,13 +77,14 @@
             <td class="px-4 py-3 text-right font-mono text-text-heading">
                 {fmt(event.costBasis)} <span class="text-text/40">{currency}</span>
             </td>
-            <td class="px-4 py-3 text-right font-mono font-medium {gainColor(event.gainLoss)}">
+            <td class="px-4 py-3 text-right font-mono font-medium {valueColor(event.gainLoss)}">
                 {signed(event.gainLoss)} <span class="text-text/40">{currency}</span>
             </td>
         {/snippet}
         {#snippet expandedRow(event)}
             {@const totalConsumed = event.lots.reduce((s, u) => s.plus(u.amountUsed), new BigNumber(0))}
             {@const totalBasis = event.lots.reduce((s, u) => s.plus(u.amountUsed.times(u.lot.costBasisPerUnit)), new BigNumber(0))}
+            {@const isPooled = event.lots.some((u) => isPooledAverage(u.lot.source))}
             <td colspan="8" class="p-0">
                 <div class="border-t-2 border-accent">
                     <!-- Event summary header -->
@@ -103,15 +104,21 @@
                             </div>
                             <div>
                                 <div class="font-mono text-[10px] font-semibold uppercase tracking-wider text-text-muted">Gain / Loss</div>
-                                <div class="font-mono text-sm font-semibold {gainColor(event.gainLoss)}">{signed(event.gainLoss)} <span class="text-text/40">{currency}</span></div>
+                                <div class="font-mono text-sm font-semibold {valueColor(event.gainLoss)}">{signed(event.gainLoss)} <span class="text-text/40">{currency}</span></div>
                             </div>
                         </div>
                     </div>
+                    {#if isPooled}
+                    <div class="border-b border-border bg-accent-bg px-5 py-2 font-mono text-[11px] text-accent">
+                        Cost basis pooled as a weighted average across all {event.asset} holdings at the time of sale.
+                        Pooled disposals never qualify for a long-term holding exemption.
+                    </div>
+                    {/if}
                     <!-- Lot table: column widths are determined by content + padding, no explicit sizes needed -->
                     <table class="w-full text-left text-sm">
                         <thead>
                             <tr class="border-b border-border bg-bg-card/50 font-mono text-[10px] font-semibold uppercase tracking-wider text-text-muted">
-                                <th class="px-5 py-2 font-semibold">Acquired</th>
+                                <th class="px-5 py-2 font-semibold">{isPooled ? 'Pooled Since' : 'Acquired'}</th>
                                 <th class="px-5 py-2 font-semibold text-right">Lot Size</th>
                                 <th class="px-5 py-2 font-semibold text-right">Consumed</th>
                                 <th class="px-5 py-2 font-semibold text-right">Cost / Unit</th>
@@ -140,7 +147,7 @@
                                 </td>
                                 <td class="px-5 py-3">
                                     <div class="flex items-center gap-1.5">
-                                        <span class="font-mono text-xs {usage.isLongTerm ? 'text-green-600' : 'text-text'}">
+                                        <span class="font-mono text-xs {usage.isLongTerm ? 'text-positive' : 'text-text'}">
                                             {heldDuration(usage.holdingDays)}
                                         </span>
                                         {#if usage.isLongTerm}
@@ -148,14 +155,18 @@
                                         {/if}
                                     </div>
                                 </td>
-                                <td class="px-5 py-3 text-xs text-text" title={usage.lot.source}>
-                                    {usage.lot.source}
+                                <td class="px-5 py-3 text-xs text-text">
+                                    {#if isPooledAverage(usage.lot.source)}
+                                        <Badge color="purple" variant="outlined" dot>Weighted avg</Badge>
+                                    {:else}
+                                        <span title={usage.lot.source}>{usage.lot.source}</span>
+                                    {/if}
                                 </td>
                             </tr>
                             {/each}
                         </tbody>
                         <tfoot>
-                            <tr class="border-t border-border bg-bg">
+                            <tr class="border-t border-border bg-surface">
                                 <td class="px-5 py-2 font-mono text-[11px] text-text-muted">
                                     {event.lots.length} lot{event.lots.length !== 1 ? 's' : ''}
                                 </td>

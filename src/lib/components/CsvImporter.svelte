@@ -2,7 +2,8 @@
   import type { IExchangeImporter, Transaction } from '$lib/types';
   import { detectExchange } from '$lib/importers';
   import PreprocessorReview from '$lib/components/PreprocessorReview.svelte';
-  import Modal from '$lib/components/Modal.svelte';
+  import Modal from '$lib/components/common/Modal.svelte';
+  import Spinner from '$lib/components/common/Spinner.svelte';
 
   const AUTO_DETECT = '__auto__';
 
@@ -246,15 +247,12 @@
         </p>
         {#if detecting}
           <span class="text-sm text-text">
-            <svg class="mr-2 inline size-4 animate-spin text-accent" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z" />
-            </svg>
+            <Spinner class="mr-2 text-accent" />
             Detecting…
           </span>
         {:else if selectedImporter !== null}
           <button
-            class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90"
+            class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-accent transition-colors hover:bg-accent/90"
             onclick={handleParse}
           >
             Import
@@ -296,7 +294,7 @@
 
 <!-- CSV parse error -->
 {#if error}
-  <div class="mt-4 rounded-lg border border-red-300 bg-red-50 p-4">
-    <p class="text-sm text-red-700">{error}</p>
+  <div class="mt-4 rounded-lg border border-danger-border bg-danger-bg p-4">
+    <p class="text-sm text-danger">{error}</p>
   </div>
 {/if}

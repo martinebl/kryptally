@@ -1,7 +1,7 @@
 <script lang="ts">
     import type { Transaction } from "$lib/types";
-    import Table from "$lib/components/Table.svelte";
-    import Badge from "$lib/components/Badge.svelte";
+    import Table from "$lib/components/common/Table.svelte";
+    import Badge from "$lib/components/common/Badge.svelte";
 
     interface Props {
         transactions: Transaction[];
@@ -65,20 +65,20 @@
         </td>
         <td class="px-4 py-3 font-medium text-text-heading">
             {#if isTrade(tx)}
-                <span class="text-red-500">{tx.fromAsset}</span>
+                <span class="text-negative">{tx.fromAsset}</span>
                 <span class="text-text mx-1">→</span>
-                <span class="text-green-600">{tx.toAsset}</span>
+                <span class="text-positive">{tx.toAsset}</span>
             {:else}
                 {txAsset(tx)}
             {/if}
         </td>
         <td class="px-4 py-3 text-right font-mono text-text-heading">
             {#if isTrade(tx)}
-                <span class="text-red-500">-{tx.fromAmount?.toFormat(8)}</span>
+                <span class="text-negative">-{tx.fromAmount?.toFormat(8)}</span>
                 <span class="text-text mx-1">/</span>
-                <span class="text-green-600">+{tx.toAmount?.toFormat(8)}</span>
+                <span class="text-positive">+{tx.toAmount?.toFormat(8)}</span>
             {:else if amount}
-                <span class={txDirection(tx) === '+' ? 'text-green-600' : txDirection(tx) === '-' ? 'text-red-500' : ''}>
+                <span class={txDirection(tx) === '+' ? 'text-positive' : txDirection(tx) === '-' ? 'text-negative' : ''}>
                     {txDirection(tx)}{amount.toFormat(8)}
                 </span>
             {:else}

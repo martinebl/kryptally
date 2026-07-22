@@ -180,6 +180,7 @@ export class RevolutXLiveSource implements ILiveSource {
     { id: 'apiKey', label: 'API key' },
     { id: 'secret', label: 'Ed25519 private key (PEM)', multiline: true },
   ];
+  readonly symbolPlaceholder = 'BTC-USD, ETH-USD';
 
   isAvailable(): boolean {
     return isTauri();
@@ -197,22 +198,53 @@ export class RevolutXLiveSource implements ILiveSource {
     await invoke('revolut_x_clear_credentials');
   }
 
+  private pairsPromise: Promise<Record<string, RevolutPair>> | null = null;
+
+  /**
+   * All pairs Revolut X's API currently returns. Memoized per instance so
+   * `discoverSymbols` and `listSymbols` share one request instead of one each.
+   */
+  private async fetchPairs(): Promise<Record<string, RevolutPair>> {
+    if (!this.pairsPromise) {
+      this.pairsPromise = invoke<Record<string, RevolutPair>>('revolut_x_fetch_pairs').catch((e) => {
+        this.pairsPromise = null;
+        throw e;
+      });
+    }
+    return this.pairsPromise;
+  }
+
+  /** Every pair Revolut X currently lists as active. */
+  private async fetchActivePairs(): Promise<RevolutPair[]> {
+    const pairs = await this.fetchPairs();
+    return Object.values(pairs).filter((p) => p.status === 'active');
+  }
+
+  /** The `BASE-QUOTE` string the rest of the source (and the Rust backend) expects. */
+  private static toSymbol(p: RevolutPair): string {
+    return `${p.base}-${p.quote}`;
+  }
+
   /** Active pairs whose base asset the user currently holds, as `BASE-QUOTE`. */
-  private async heldPairSymbols(): Promise<string[]> {
-    const [balances, pairs] = await Promise.all([
+  async discoverSymbols(): Promise<string[]> {
+    const [balances, activePairs] = await Promise.all([
       invoke<RevolutBalance[]>('revolut_x_fetch_balances'),
-      invoke<Record<string, RevolutPair>>('revolut_x_fetch_pairs'),
+      this.fetchActivePairs(),
     ]);
 
     const held = new Set(
       balances.filter((b) => new BigNumber(b.total || '0').isGreaterThan(0)).map((b) => b.currency),
     );
 
-    const symbols = Object.values(pairs)
-      .filter((p) => p.status === 'active' && held.has(p.base))
-      .map((p) => `${p.base}-${p.quote}`);
+    const symbols = activePairs.filter((p) => held.has(p.base)).map(RevolutXLiveSource.toSymbol);
 
     return [...new Set(symbols)];
+  }
+
+  /** All pairs Revolut X currently lists as active, for pair-input suggestions. */
+  async listSymbols(): Promise<string[]> {
+    const activePairs = await this.fetchActivePairs();
+    return [...new Set(activePairs.map(RevolutXLiveSource.toSymbol))];
   }
 
   async fetch(params: LiveSourceFetchParams): Promise<Transaction[]> {
@@ -239,7 +271,7 @@ export class RevolutXLiveSource implements ILiveSource {
     startMs: number,
     endMs: number,
   ): Promise<Transaction[]> {
-    const symbols = await this.heldPairSymbols();
+    const symbols = params.symbols ?? [];
     const chunks = dateChunks(startMs, endMs);
 
     // Progress is reported per date period (chunk); within a period we still

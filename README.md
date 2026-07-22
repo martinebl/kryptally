@@ -1,20 +1,20 @@
-# Kryptax
+# Kryptally
 
 An open-source, local-first cryptocurrency tax reporting tool that runs in your browser or as a desktop app. Your transaction data stays on your machine — the only external requests are for historical exchange rates (crypto and fiat prices) needed to compute gains and losses.
 
-The core feature is **gains and losses tracking** — Kryptax computes your realized gains and losses across all your crypto transactions using industry-standard cost basis methods. This gives you the numbers you need to fill in your tax return.
+The core feature is **gains and losses tracking** — Kryptally computes your realized gains and losses across all your crypto transactions using industry-standard cost basis methods. This gives you the numbers you need to fill in your tax return.
 
-> **Disclaimer:** Any tax estimates shown by Kryptax are rough approximations for informational purposes only. They are **not** legal or financial advice. Accurate tax calculation depends on your full financial picture (salary, other income, deductions, etc.), which is outside the scope of this tool. Always consult a qualified tax professional for your specific situation.
+> **Disclaimer:** Any tax estimates shown by Kryptally are rough approximations for informational purposes only. They are **not** legal or financial advice. Accurate tax calculation depends on your full financial picture (salary, other income, deductions, etc.), which is outside the scope of this tool. Always consult a qualified tax professional for your specific situation.
 
-## Using Kryptax
+## Using Kryptally
 
-There are two ways to use Kryptax — no account or signup required for either.
+There are two ways to use Kryptally — no account or signup required for either.
 
 ### 1. Web app (no install)
 
-The quickest way to try Kryptax. Open it directly in your browser and import your transaction history from CSV exports:
+The quickest way to try Kryptally. Open it directly in your browser and import your transaction history from CSV exports:
 
-**[https://martinebl.github.io/kryptax/](https://martinebl.github.io/kryptax/)**
+**[https://martinebl.github.io/kryptally/](https://martinebl.github.io/kryptally/)**
 
 The web app supports CSV import and full tax computation. Because browsers block cross-origin requests to exchange APIs, direct exchange connections are only available in the desktop app below.
 
@@ -22,7 +22,7 @@ The web app supports CSV import and full tax computation. Because browsers block
 
 The desktop app ([Tauri](https://tauri.app)) adds the ability to connect directly to exchanges (Binance, Revolut X) via their APIs and pull your transaction history automatically. Your API keys are stored in your operating system's keyring and never leave your machine.
 
-Download the latest installer for your operating system from the **[releases page](https://github.com/martinebl/kryptax/releases)**. Pick the asset that matches your platform:
+Download the latest installer for your operating system from the **[releases page](https://github.com/martinebl/kryptally/releases)**. Pick the asset that matches your platform:
 
 - **Linux** — `.AppImage` runs on most distributions (make it executable and launch it). Use `.deb` on Debian/Ubuntu, or `.rpm` on Fedora/RHEL, if you prefer a package manager install.
 - **macOS** — `.dmg`. If multiple are listed, choose `aarch64` for Apple Silicon (M-series) Macs, or `x64` for Intel Macs.
@@ -40,11 +40,11 @@ Download the latest installer for your operating system from the **[releases pag
 
 ## Data sources & accuracy
 
-Kryptax resolves historical prices through two sources, tried in order:
+Kryptally resolves historical prices through two sources, tried in order:
 
-1. **Local CSV files** — you can import daily crypto price CSVs in the UI, and Kryptax will use those first. This is the fastest and most reliable option, and it keeps all matching crypto price lookups fully offline. These files can be constructed with data from Yahoo Finance or Investing.com.
+1. **Local CSV files** — you can import daily crypto price CSVs in the UI, and Kryptally will use those first. This is the fastest and most reliable option, and it keeps all matching crypto price lookups fully offline. These files can be constructed with data from Yahoo Finance or Investing.com.
 
-2. **CoinGecko API** — for any asset not covered by a local CSV, Kryptax falls back to the [CoinGecko API](https://www.coingecko.com/en/api) (free tier, no API key required). Requests are rate-limited and cached per asset per date, so importing large files may take a moment. Note that the free tier is limited to one year of historical data, so any asset prices from > 1 year ago that are not found in CSV price files will result in a failed call to CoinGecko and a 0 cost basis.
+2. **CoinGecko API** — for any asset not covered by a local CSV, Kryptally falls back to the [CoinGecko API](https://www.coingecko.com/en/api) (free tier, no API key required). Requests are rate-limited and cached per asset per date, so importing large files may take a moment. Note that the free tier is limited to one year of historical data, so any asset prices from > 1 year ago that are not found in CSV price files will result in a failed call to CoinGecko and a 0 cost basis.
 
 Fiat-to-fiat conversions (e.g. USD → DKK) are handled by the [Frankfurter API](https://www.frankfurter.app), backed by European Central Bank data — free and no API key required.
 
@@ -60,8 +60,8 @@ Prices are **daily snapshots** — intra-day price movements are not captured, s
 ### Web app (development)
 
 ```bash
-git clone https://github.com/martinebl/kryptax.git
-cd kryptax
+git clone https://github.com/martinebl/kryptally.git
+cd kryptally
 npm install
 npm run dev
 ```

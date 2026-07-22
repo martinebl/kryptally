@@ -232,6 +232,59 @@ describe('processTransaction', () => {
     });
   });
 
+  describe('holding period — average cost basis', () => {
+    it('still grants long-term status for a single never-blended lot', () => {
+      const longTermRules: TaxRules = {
+        ...rules,
+        holdingPeriod: { enabled: true, thresholdDays: 1095, exemptFromTax: true },
+      };
+      const tracker = new LotTracker('average');
+
+      // Only one purchase ever — LotTracker's average consolidation is a no-op for a
+      // single lot, so its real acquisition date is unambiguous.
+      processTransaction(
+        makeTx({ id: 'buy-1', type: 'buy', date: new Date('2019-06-15'), toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(50000) }),
+        longTermRules, tracker,
+      );
+
+      const events = processTransaction(
+        makeTx({ id: 'sell-1', type: 'sell', date: new Date('2024-06-15'), fromAsset: 'BTC', fromAmount: bn(0.5), fiatValue: bn(100000) }),
+        longTermRules, tracker,
+      );
+
+      expect(events[0].isLongTerm).toBe(true);
+    });
+
+    it('never grants long-term status once a disposal draws from a blended average pool', () => {
+      const longTermRules: TaxRules = {
+        ...rules,
+        holdingPeriod: { enabled: true, thresholdDays: 1095, exemptFromTax: true },
+      };
+      const tracker = new LotTracker('average');
+
+      // Bought 5 years ago — well past the 3-year threshold on its own.
+      processTransaction(
+        makeTx({ id: 'buy-1', type: 'buy', date: new Date('2019-06-15'), toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(50000) }),
+        longTermRules, tracker,
+      );
+      // A second purchase joins the pool, forcing a real blend.
+      processTransaction(
+        makeTx({ id: 'buy-2', type: 'buy', date: new Date('2024-06-16'), toAsset: 'BTC', toAmount: bn(1), fiatValue: bn(200000) }),
+        longTermRules, tracker,
+      );
+
+      const events = processTransaction(
+        makeTx({ id: 'sell-1', type: 'sell', date: new Date('2024-06-17'), fromAsset: 'BTC', fromAmount: bn(1), fiatValue: bn(150000) }),
+        longTermRules, tracker,
+      );
+
+      // Even though half the pool is still the 5-year-old holding, the pool is now blended —
+      // no long-term exemption is granted for an averaged disposal.
+      expect(events[0].isLongTerm).toBe(false);
+      expect(events[0].lots[0].isLongTerm).toBe(false);
+    });
+  });
+
   describe('transfer', () => {
     it('is a no-op for lot tracking — inbound transfers do not add a new lot', () => {
       const tracker = new LotTracker(rules.costBasis.default);

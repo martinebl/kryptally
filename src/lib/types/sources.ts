@@ -43,10 +43,22 @@ export interface SourceState {
   error: string;
   /** Last informational note, shown in an amber banner; '' = no note. */
   info: string;
-  /** Comma-separated pair symbols to fetch. */
-  symbols: string;
+  /** Trading pairs to fetch, as committed chips (e.g. "BTC-USD", "BTCUSDT"). */
+  symbols: string[];
+  /** Subset of `symbols` last populated by discoverSymbols(); drives the "auto" dot on chips. */
+  autoDetectedSymbols: string[];
+  /** Current uncommitted text in the pair-input box. */
+  symbolInput: string;
   /** True while a symbol auto-detection request is in flight. */
   discovering: boolean;
+  /**
+   * Full catalog of tradable pairs for this exchange, fetched lazily via
+   * `listSymbols()` the first time a connected card is opened this session.
+   * Powers pair-input suggestions; empty until loaded (or if unsupported).
+   */
+  availableSymbols: string[];
+  /** True while `listSymbols()` is in flight, to avoid duplicate fetches. */
+  catalogLoading: boolean;
 }
 
 export interface LiveSourceFetchParams {
@@ -54,7 +66,11 @@ export interface LiveSourceFetchParams {
   from?: Date;
   /** Inclusive upper bound for transaction dates. */
   to?: Date;
-  /** Optional pair symbols, used by exchanges that require pair-by-pair queries (e.g. Binance). */
+  /**
+   * Pair symbols to fetch, used by exchanges that require pair-by-pair queries.
+   * Always exactly what the UI shows — sources must not fall back to their own
+   * detection inside `fetch()`; that belongs in `discoverSymbols()`.
+   */
   symbols?: string[];
   /**
    * Called as fetching progresses, for sources that fan out into many requests
@@ -102,9 +118,10 @@ export interface ILiveSource {
   readonly preprocessors: IImportPreprocessor[];
 
   /**
-   * Whether the user must supply pair symbols to fetch. Defaults to true.
-   * Sources that pull account-wide (e.g. Revolut X orders) set this false so
-   * the UI hides the symbols input.
+   * Whether the user must supply at least one pair symbol before fetching. Defaults
+   * to true. Sources that pull account-wide (e.g. Revolut X orders) set this false;
+   * the trading-pairs input still shows (and still prefills via `discoverSymbols`)
+   * whenever it's defined, but an empty list no longer blocks the fetch button.
    */
   readonly requiresSymbols?: boolean;
 
@@ -154,6 +171,14 @@ export interface ILiveSource {
    * Optional: sources that can't or needn't auto-discover omit this.
    */
   discoverSymbols?(): Promise<string[]>;
+
+  /**
+   * All tradable pair symbols currently listed on the exchange, in the same
+   * string format `symbols`/`discoverSymbols` use (e.g. "BTCUSDT", "BTC-USD").
+   * Powers suggestions in the pair input. Optional: sources that can't or
+   * needn't enumerate their full catalog omit this.
+   */
+  listSymbols?(): Promise<string[]>;
 
   /** Fetch and map remote transactions for the given window. */
   fetch(params: LiveSourceFetchParams): Promise<Transaction[]>;

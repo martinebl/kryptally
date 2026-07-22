@@ -1,7 +1,9 @@
 <script lang="ts">
   import type { ILiveSource, SourceState } from '$lib/types';
-  import DateField from '$lib/components/DateField.svelte';
-  import Badge from '$lib/components/Badge.svelte';
+  import DateField from '$lib/components/common/DateField.svelte';
+  import Badge from '$lib/components/common/Badge.svelte';
+  import Spinner from '$lib/components/common/Spinner.svelte';
+  import PairSymbolInput from '$lib/components/PairSymbolInput.svelte';
 
   interface Props {
     source: ILiveSource;
@@ -15,6 +17,7 @@
     onDisconnect: (source: ILiveSource) => void;
     onFetch: (source: ILiveSource) => void;
     onNavigate: (page: string) => void;
+    onPairsChange?: (symbols: string[], autoDetectedSymbols: string[]) => void;
     /**
      * Optional close affordance for the pending-add form. When provided and the
      * card is not yet connected, the header's Connect toggle is replaced by an
@@ -37,10 +40,11 @@
     onFetch,
     onNavigate,
     onCancel,
+    onPairsChange,
   }: Props = $props();
 </script>
 
-<div class="overflow-hidden rounded-xl border bg-white transition-colors border-border">
+<div class="overflow-hidden rounded-xl border bg-surface transition-colors border-border">
   <div class="flex items-center justify-between gap-4 px-5 py-4">
     <div>
       <div class="flex items-center gap-2.5">
@@ -68,7 +72,7 @@
       >✕</button>
     {:else}
       <button
-        class="flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-text-heading transition-colors hover:bg-bg-card"
+        class="flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-semibold text-text-heading transition-colors hover:bg-bg-card"
         onclick={() => onToggleOpen(source)}
       >
         {#if connected}
@@ -97,7 +101,7 @@
                   rows="3"
                   placeholder={field.placeholder ?? ''}
                   bind:value={st.creds[field.id]}
-                  class="w-full rounded-lg border border-border bg-white px-3 py-2.5 font-mono text-xs text-text-heading focus:border-accent focus:outline-none"
+                  class="w-full rounded-lg border border-border bg-surface px-3 py-2.5 font-mono text-xs text-text-heading focus:border-accent focus:outline-none"
                 ></textarea>
               {:else}
                 <input
@@ -105,13 +109,13 @@
                   type="password"
                   placeholder={field.placeholder ?? ''}
                   bind:value={st.creds[field.id]}
-                  class="w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-text-heading focus:border-accent focus:outline-none"
+                  class="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-heading focus:border-accent focus:outline-none"
                 />
               {/if}
             </div>
           {/each}
           <button
-            class="rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+            class="rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-on-accent transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={source.credentialFields.some((f) => !st.creds[f.id])}
             onclick={() => onSaveCredentials(source)}
           >
@@ -126,7 +130,7 @@
             <div class="space-y-2">
               {#each source.whatFetches as item}
                 <div class="flex gap-2.5 text-sm leading-relaxed">
-                  <span class={item.included ? 'text-green-600' : 'text-border'}>{item.included ? '✓' : '✕'}</span>
+                  <span class={item.included ? 'text-success' : 'text-border'}>{item.included ? '✓' : '✕'}</span>
                   <span class={item.included ? 'text-text-heading' : 'text-text'}>{item.label}</span>
                 </div>
               {/each}
@@ -134,11 +138,11 @@
           </div>
         {/if}
 
-        {#if source.requiresSymbols ?? true}
+        {#if (source.requiresSymbols ?? true) || source.discoverSymbols}
           <div class="mb-4">
             <div class="mb-1 flex items-center justify-between">
               <label for="live-symbols-{source.exchangeName}" class="text-sm font-semibold text-text-heading">
-                Pair symbols
+                Trading pairs{#if source.requiresSymbols ?? true}<span class="ml-0.5 text-warning">*</span>{/if}
               </label>
               {#if source.discoverSymbols}
                 <button
@@ -147,17 +151,25 @@
                   disabled={st.discovering}
                   onclick={() => onDiscoverSymbols(source)}
                 >
-                  {st.discovering ? 'Detecting…' : 'Re-detect pairs'}
+                  {#if st.discovering}
+                    <Spinner size="sm" class="mr-1" />
+                    Detecting…
+                  {:else}
+                    Re-detect pairs
+                  {/if}
                 </button>
               {/if}
             </div>
-            <input
-              id="live-symbols-{source.exchangeName}"
-              type="text"
-              placeholder={source.symbolPlaceholder ?? ''}
-              bind:value={st.symbols}
-              class="w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-text-heading focus:border-accent focus:outline-none"
-            />
+            {#if source.discoverSymbols}
+              <p class="mb-2 flex items-center gap-1.5 text-xs text-text/70">
+                <span class="size-1.5 shrink-0 rounded-full bg-accent"></span>
+                Detected from your current holdings — add any others you've traded.
+              </p>
+            {/if}
+            <PairSymbolInput {source} state={st} {onPairsChange} />
+            <p class="mt-1.5 text-xs text-text/60">
+              Press Enter or comma to add a pair.{#if source.listSymbols} Start typing to see available pairs.{/if}{#if source.symbolsNote} {source.symbolsNote}{/if}
+            </p>
           </div>
         {/if}
 
@@ -165,7 +177,7 @@
           <div class="mb-2 flex items-baseline justify-between">
             <p class="text-sm font-semibold text-text-heading">
               Date range{#if source.requiresDateRange}
-                <span class="ml-0.5 text-amber-500">*</span>
+                <span class="ml-0.5 text-warning">*</span>
               {:else}
                 <span class="ml-1 text-xs font-normal text-text">(optional)</span>
               {/if}
@@ -199,7 +211,7 @@
             </div>
           </div>
           {#if source.requiresDateRange}
-            <p class="mt-2 text-xs {!st.fromDate || !st.toDate ? 'text-amber-600' : 'text-text'}">
+            <p class="mt-2 text-xs {!st.fromDate || !st.toDate ? 'text-warning' : 'text-text'}">
               {!st.fromDate || !st.toDate
                 ? `Both From and To are required by ${source.exchangeName}.`
                 : `Both dates are required by ${source.exchangeName}.`}
@@ -210,10 +222,10 @@
         <div class="border-t border-border pt-4">
           {#if st.phase === 'idle'}
             {@const datesOk = !source.requiresDateRange || (!!st.fromDate && !!st.toDate)}
-            {@const symbolsOk = !(source.requiresSymbols ?? true) || st.symbols.trim().length > 0}
+            {@const symbolsOk = !(source.requiresSymbols ?? true) || st.symbols.length > 0}
             <div class="flex items-center gap-3.5">
               <button
-                class="shrink-0 rounded-lg px-5 py-2.5 text-sm font-semibold text-white transition-colors
+                class="shrink-0 rounded-lg px-5 py-2.5 text-sm font-semibold text-on-accent transition-colors
                   {datesOk && symbolsOk ? 'bg-accent hover:bg-accent/90 cursor-pointer' : 'bg-border cursor-not-allowed'}"
                 disabled={!datesOk || !symbolsOk}
                 onclick={() => onFetch(source)}
@@ -239,26 +251,26 @@
               ></div>
             </div>
             {#if st.rateLimitSeconds > 0}
-              <p class="mt-2 text-xs text-amber-600">
+              <p class="mt-2 text-xs text-warning">
                 Rate limited — waiting {st.rateLimitSeconds}s before retrying…
               </p>
             {/if}
 
           {:else}
-            <div class="flex items-start justify-between gap-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3.5">
+            <div class="flex items-start justify-between gap-4 rounded-xl border border-success-border bg-success-bg px-4 py-3.5">
               <div class="flex gap-2.5">
-                <span class="mt-px text-green-600">✓</span>
+                <span class="mt-px text-success">✓</span>
                 <div>
-                  <p class="text-sm font-semibold text-green-700">
+                  <p class="text-sm font-semibold text-success">
                     Fetched {st.fetchedTotal} transactions from {source.exchangeName}
                   </p>
-                  <p class="mt-0.5 text-sm text-green-600">
+                  <p class="mt-0.5 text-sm text-success">
                     {st.newCount} new · {st.dupCount} duplicate{st.dupCount === 1 ? '' : 's'} skipped
                   </p>
                 </div>
               </div>
               <button
-                class="shrink-0 rounded-lg border border-green-300 bg-white px-3 py-1.5 text-sm font-semibold text-green-700 transition-colors hover:bg-green-50"
+                class="shrink-0 rounded-lg border border-success-border bg-surface px-3 py-1.5 text-sm font-semibold text-success transition-colors hover:bg-success-bg"
                 onclick={() => onNavigate('results')}
               >
                 View results →
@@ -275,15 +287,15 @@
         </div>
 
         {#if st.info}
-          <div class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
-            <p class="text-xs text-amber-700">{st.info}</p>
+          <div class="mt-3 rounded-lg border border-warning-border bg-warning-bg p-3">
+            <p class="text-xs text-warning">{st.info}</p>
           </div>
         {/if}
 
         <div class="mt-4 border-t border-border pt-4">
           <button
             type="button"
-            class="text-xs font-medium text-text/60 hover:text-red-600 transition-colors"
+            class="text-xs font-medium text-text/60 hover:text-danger transition-colors"
             onclick={() => onDisconnect(source)}
           >
             Forget API key &amp; disconnect
@@ -292,8 +304,8 @@
       {/if}
 
       {#if st.error}
-        <div class="mt-3 rounded-lg border border-red-200 bg-red-50 p-3">
-          <p class="text-xs text-red-700">{st.error}</p>
+        <div class="mt-3 rounded-lg border border-danger-border bg-danger-bg p-3">
+          <p class="text-xs text-danger">{st.error}</p>
         </div>
       {/if}
     </div>

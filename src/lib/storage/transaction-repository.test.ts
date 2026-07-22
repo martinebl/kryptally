@@ -85,7 +85,7 @@ describe('createTransactionRepository', () => {
   it('ignores corrupted stored data instead of throwing', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const repo = createTransactionRepository(
-      createInMemoryStorage({ 'kryptax-transactions': '{not valid json' })
+      createInMemoryStorage({ 'kryptally-transactions': '{not valid json' })
     );
 
     expect(await repo.load()).toEqual([]);

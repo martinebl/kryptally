@@ -1,8 +1,8 @@
 [package]
 name = "app"
-version = "0.1.0"
-description = "Kryptax desktop wrapper"
-authors = ["Kryptax contributors"]
+version = "0.1.1"
+description = "Kryptally desktop wrapper"
+authors = ["Kryptally contributors"]
 license = ""
 repository = ""
 edition = "2021"
