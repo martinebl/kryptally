@@ -85,8 +85,8 @@
             <span class="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-[11px] text-text-muted">▼</span>
           </div>
           <button
-            class="inline-flex items-center rounded-btn bg-accent px-btn-x py-btn-y text-nav font-semibold text-on-accent transition-shadow
-              {selectedCountry ? 'cursor-pointer hover:shadow-lg' : 'cursor-not-allowed opacity-50'}"
+            class="inline-flex items-center rounded-btn bg-accent px-btn-x py-btn-y text-nav font-semibold text-on-accent transition-colors
+              {selectedCountry ? 'cursor-pointer hover:bg-accent/90' : 'cursor-not-allowed opacity-50'}"
             disabled={!selectedCountry}
             onclick={() => onNavigate('import')}
           >
@@ -120,7 +120,7 @@
   </div>
 
   <!-- right: data-residency proof panel -->
-      <div class="overflow-hidden rounded-[18px] border border-border bg-surface shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+      <div class="overflow-hidden rounded-[18px] border border-border bg-surface shadow-[0_1px_2px_var(--color-shadow-card)]">
         <div class="flex items-center justify-between border-b border-border-soft px-card-x py-section-sm">
       <span class="font-mono text-[11px] font-medium tracking-[0.07em] text-text-faint">WHAT LEAVES YOUR DEVICE</span>
     </div>
@@ -177,8 +177,8 @@
 
   <div class="mt-12 flex flex-wrap items-center gap-3.5">
         <button
-          class="inline-flex items-center rounded-btn bg-accent px-btn-x py-btn-y text-nav font-semibold text-on-accent transition-shadow
-            {selectedCountry ? 'cursor-pointer hover:shadow-lg' : 'cursor-not-allowed opacity-50'}"
+          class="inline-flex items-center rounded-btn bg-accent px-btn-x py-btn-y text-nav font-semibold text-on-accent transition-colors
+            {selectedCountry ? 'cursor-pointer hover:bg-accent/90' : 'cursor-not-allowed opacity-50'}"
           disabled={!selectedCountry}
           onclick={() => onNavigate('import')}
           >
