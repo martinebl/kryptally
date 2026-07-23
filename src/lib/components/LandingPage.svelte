@@ -85,8 +85,8 @@
             <span class="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-[11px] text-text-muted">▼</span>
           </div>
           <button
-            class="inline-flex items-center rounded-btn bg-accent px-btn-x py-btn-y text-nav font-semibold text-on-accent transition-shadow
-              {selectedCountry ? 'cursor-pointer hover:shadow-lg' : 'cursor-not-allowed opacity-50'}"
+            class="inline-flex items-center rounded-btn bg-accent px-btn-x py-btn-y text-nav font-semibold text-on-accent transition-colors
+              {selectedCountry ? 'cursor-pointer hover:bg-accent/90' : 'cursor-not-allowed opacity-50'}"
             disabled={!selectedCountry}
             onclick={() => onNavigate('import')}
           >
@@ -177,8 +177,8 @@
 
   <div class="mt-12 flex flex-wrap items-center gap-3.5">
         <button
-          class="inline-flex items-center rounded-btn bg-accent px-btn-x py-btn-y text-nav font-semibold text-on-accent transition-shadow
-            {selectedCountry ? 'cursor-pointer hover:shadow-lg' : 'cursor-not-allowed opacity-50'}"
+          class="inline-flex items-center rounded-btn bg-accent px-btn-x py-btn-y text-nav font-semibold text-on-accent transition-colors
+            {selectedCountry ? 'cursor-pointer hover:bg-accent/90' : 'cursor-not-allowed opacity-50'}"
           disabled={!selectedCountry}
           onclick={() => onNavigate('import')}
           >

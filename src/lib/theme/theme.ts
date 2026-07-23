@@ -20,13 +20,23 @@ export const resolveIsDark = (mode: ThemeMode): boolean =>
   mode === 'dark' || (mode === 'system' && window.matchMedia(DARK_MEDIA_QUERY).matches);
 
 export const applyTheme = (mode: ThemeMode): void => {
-  const isDark = resolveIsDark(mode);
-  document.documentElement.classList.toggle('dark', isDark);
+  document.documentElement.classList.toggle('dark', resolveIsDark(mode));
 
   if (isTauri()) {
-    getCurrentWindow()
-      .setTheme(mode === 'system' ? null : mode)
-      .catch((e) => console.error('Failed to sync native title bar theme', e));
+    const win = getCurrentWindow();
+
+    win.setTheme(mode === 'system' ? null : mode).catch((e) => console.error('Failed to sync native title bar theme', e));
+
+    // `prefers-color-scheme` does not reliably track the OS theme in Tauri's Linux
+    // WebView (WebKitGTK), so ask the window for the theme it resolved natively instead.
+    if (mode === 'system') {
+      win
+        .theme()
+        .then((theme) => {
+          if (theme) document.documentElement.classList.toggle('dark', theme === 'dark');
+        })
+        .catch((e) => console.error('Failed to read native system theme', e));
+    }
   }
 };
 
@@ -41,4 +51,10 @@ export const initTheme = (): void => {
   window.matchMedia(DARK_MEDIA_QUERY).addEventListener('change', () => {
     if (getStoredMode() === 'system') applyTheme('system');
   });
+
+  if (isTauri()) {
+    getCurrentWindow().onThemeChanged(({ payload: theme }) => {
+      if (getStoredMode() === 'system') document.documentElement.classList.toggle('dark', theme === 'dark');
+    });
+  }
 };

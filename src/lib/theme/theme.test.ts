@@ -2,13 +2,22 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const setThemeMock = vi.fn(() => Promise.resolve());
 let tauriEnabled = false;
+let nativeTheme: 'light' | 'dark' | null = null;
+let themeChangedListener: ((event: { payload: 'light' | 'dark' }) => void) | undefined;
 
 vi.mock('$lib/runtime', () => ({
   isTauri: () => tauriEnabled,
 }));
 
 vi.mock('@tauri-apps/api/window', () => ({
-  getCurrentWindow: () => ({ setTheme: setThemeMock }),
+  getCurrentWindow: () => ({
+    setTheme: setThemeMock,
+    theme: () => Promise.resolve(nativeTheme),
+    onThemeChanged: vi.fn((handler: (event: { payload: 'light' | 'dark' }) => void) => {
+      themeChangedListener = handler;
+      return Promise.resolve(() => {});
+    }),
+  }),
 }));
 
 import { getStoredMode, setStoredMode, resolveIsDark, applyTheme, setTheme, initTheme, STORAGE_KEY } from '$lib/theme/theme';
@@ -59,6 +68,8 @@ describe('theme', () => {
     setThemeMock.mockClear();
     tauriEnabled = false;
     matchMediaMatches = false;
+    nativeTheme = null;
+    themeChangedListener = undefined;
     stubBrowserGlobals();
   });
 
@@ -122,6 +133,27 @@ describe('theme', () => {
       applyTheme('system');
       expect(setThemeMock).toHaveBeenCalledWith(null);
     });
+
+    it('corrects system mode to the native OS theme inside Tauri, overriding an unreliable matchMedia result', async () => {
+      tauriEnabled = true;
+      matchMediaMatches = false;
+      nativeTheme = 'dark';
+
+      applyTheme('system');
+      expect(classList.classes.has('dark')).toBe(false);
+
+      await vi.waitFor(() => expect(classList.classes.has('dark')).toBe(true));
+    });
+
+    it('does not override an explicit mode with the native theme', async () => {
+      tauriEnabled = true;
+      nativeTheme = 'dark';
+
+      applyTheme('light');
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(classList.classes.has('dark')).toBe(false);
+    });
   });
 
   describe('setTheme', () => {
@@ -154,6 +186,24 @@ describe('theme', () => {
 
       matchMediaMatches = true;
       mediaChangeListener?.();
+      expect(classList.classes.has('dark')).toBe(false);
+    });
+
+    it('reacts to native theme-change events inside Tauri while in system mode', () => {
+      tauriEnabled = true;
+      setStoredMode('system');
+      initTheme();
+
+      themeChangedListener?.({ payload: 'dark' });
+      expect(classList.classes.has('dark')).toBe(true);
+    });
+
+    it('ignores native theme-change events inside Tauri while an explicit mode is stored', () => {
+      tauriEnabled = true;
+      setStoredMode('light');
+      initTheme();
+
+      themeChangedListener?.({ payload: 'dark' });
       expect(classList.classes.has('dark')).toBe(false);
     });
   });

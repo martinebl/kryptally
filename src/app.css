@@ -179,4 +179,15 @@
   body {
     @apply m-0 bg-bg text-text antialiased;
   }
+
+  /*
+   * Tailwind's preflight restores native button chrome (`appearance: button`) for
+   * the iOS Safari border-radius bug. Combined with `color-scheme: dark`, WebKitGTK
+   * (Tauri on Linux) paints that chrome using the native GTK widget theme, which
+   * masks our custom `:hover` background/color transitions. Opt every button back
+   * out of native appearance so hover styling stays under our control everywhere.
+   */
+  button {
+    appearance: none;
+  }
 }
