@@ -80,6 +80,7 @@ name = "app"
 version = "0.1.1"
 dependencies = [
  "base64 0.22.1",
+ "chrono",
  "ed25519-dalek",
  "hex",
  "hmac",

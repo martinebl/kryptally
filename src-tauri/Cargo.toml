@@ -35,9 +35,11 @@ hex = "0.4"
 urlencoding = "2"
 thiserror = "1"
 
-# Ed25519 request signing for Revolut X
+# Ed25519 request signing for Revolut X and Coinbase (CDP JWT auth)
 ed25519-dalek = { version = "2", features = ["pkcs8", "pem"] }
 base64 = "0.22"
+# RFC3339 timestamp formatting for Coinbase's fills query params
+chrono = { version = "0.4", default-features = false, features = ["std"] }
 
 # OS keyring for API secret storage
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
