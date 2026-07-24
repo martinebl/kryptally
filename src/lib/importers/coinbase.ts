@@ -2,7 +2,7 @@ import Papa from 'papaparse';
 import BigNumber from 'bignumber.js';
 import type { Transaction, TransactionType, IExchangeImporter, IImportPreprocessor } from '$lib/types';
 import { reclassifyInboundAsBuys } from '$lib/preprocessors/reclassify-inbound-as-buys';
-import { missingColumns, parseHeaders } from '$lib/importers/csv-util';
+import { missingColumns, parseHeaders, parseIsoTimestamp } from '$lib/importers/csv-util';
 
 interface CoinbaseRow {
   'Timestamp': string;
@@ -80,20 +80,16 @@ const resolveRule = (rawType: string, signedQuantity: BigNumber): TypeRule => {
  * with the raw value. Matches binance.ts's parseDate for the same reason.
  *
  * A raw value that's already strict ISO 8601 is passed through as-is (spec
- * guarantees cross-engine parsing for that format). Anything matching
- * neither shape is rejected rather than handed to `new Date()` — a silent
- * fallback there would just reintroduce the engine-dependent parsing this
- * function exists to avoid.
+ * guarantees cross-engine parsing for that format), via the shared
+ * `parseIsoTimestamp` helper — which also rejects anything matching neither
+ * shape rather than handing it to `new Date()`.
  */
 const COINBASE_TIMESTAMP_RE = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) UTC$/;
-const ISO_8601_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})$/;
 
 const parseTimestamp = (raw: string): Date => {
-  const trimmed = raw.trim();
-  const match = trimmed.match(COINBASE_TIMESTAMP_RE);
+  const match = raw.trim().match(COINBASE_TIMESTAMP_RE);
   if (match) return new Date(`${match[1]}T${match[2]}Z`);
-  if (ISO_8601_RE.test(trimmed)) return new Date(trimmed);
-  throw new Error(`Unrecognized Coinbase timestamp format: "${raw}"`);
+  return parseIsoTimestamp(raw, 'Coinbase');
 };
 
 /** Strips currency symbols (e.g. Coinbase's "kr" DKK prefix) before numeric parsing. */
