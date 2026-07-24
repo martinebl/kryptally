@@ -35,3 +35,8 @@ export function parseIsoTimestamp(raw: string, context: string): Date {
   }
   return new Date(trimmed);
 }
+
+/** Strips currency symbols (e.g. a "kr" DKK prefix) before numeric parsing. */
+export function toNumeric(raw: string): string {
+  return (raw ?? '').replace(/[^0-9.-]/g, '');
+}

@@ -2,7 +2,7 @@ import Papa from 'papaparse';
 import BigNumber from 'bignumber.js';
 import type { Transaction, TransactionType, IExchangeImporter, IImportPreprocessor } from '$lib/types';
 import { reclassifyInboundAsBuys } from '$lib/preprocessors/reclassify-inbound-as-buys';
-import { missingColumns, parseHeaders, parseIsoTimestamp } from '$lib/importers/csv-util';
+import { missingColumns, parseHeaders, parseIsoTimestamp, toNumeric } from '$lib/importers/csv-util';
 
 interface CoinbaseRow {
   'Timestamp': string;
@@ -91,9 +91,6 @@ const parseTimestamp = (raw: string): Date => {
   if (match) return new Date(`${match[1]}T${match[2]}Z`);
   return parseIsoTimestamp(raw, 'Coinbase');
 };
-
-/** Strips currency symbols (e.g. Coinbase's "kr" DKK prefix) before numeric parsing. */
-const toNumeric = (raw: string): string => (raw ?? '').replace(/[^0-9.-]/g, '');
 
 const parseSignedQuantity = (raw: string): BigNumber => new BigNumber(toNumeric(raw));
 

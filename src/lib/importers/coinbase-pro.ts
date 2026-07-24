@@ -1,7 +1,7 @@
 import Papa from 'papaparse';
 import BigNumber from 'bignumber.js';
 import type { Transaction, IExchangeImporter, IImportPreprocessor } from '$lib/types';
-import { missingColumns, parseHeaders, parseIsoTimestamp } from '$lib/importers/csv-util';
+import { missingColumns, parseHeaders, parseIsoTimestamp, toNumeric } from '$lib/importers/csv-util';
 
 interface CoinbaseProFillsRow {
   'portfolio': string;
@@ -37,9 +37,6 @@ const resolveSide = (rawSide: string): 'buy' | 'sell' => {
   if (side === 'sell') return 'sell';
   throw new Error(`Unrecognized Coinbase Pro fill side: "${rawSide}"`);
 };
-
-/** Strips currency symbols before numeric parsing, same convention as coinbase.ts. */
-const toNumeric = (raw: string): string => (raw ?? '').replace(/[^0-9.-]/g, '');
 
 const parseAmount = (raw: string): BigNumber => new BigNumber(toNumeric(raw)).abs();
 
