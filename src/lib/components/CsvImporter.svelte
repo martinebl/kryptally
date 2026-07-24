@@ -21,6 +21,7 @@
   let files: FileList | null = $state(null);
   let dragOver = $state(false);
   let error = $state('');
+  let warning = $state('');
   let rawTransactions = $state<Transaction[]>([]);
   let reviewing = $state(false);
   let ambiguous = $state<IExchangeImporter[]>([]);
@@ -60,6 +61,7 @@
     if (!fileText) return;
     detecting = true;
     error = '';
+    warning = '';
     ambiguous = [];
     try {
       const matched = detectExchange(fileText, importers);
@@ -88,6 +90,7 @@
 
     detecting = true;
     error = '';
+    warning = '';
     try {
       fileText = await files[0].text();
       const matched = detectExchange(fileText, importers);
@@ -143,6 +146,11 @@
       fileText = text;
       rawTransactions = selectedImporter.parse(text);
       error = '';
+      warning = '';
+      if (rawTransactions.length === 0) {
+        warning = 'No transaction rows found in this file.';
+        return;
+      }
       if (hasEligibleTransactions()) {
         reviewing = true;
       } else {
@@ -296,5 +304,12 @@
 {#if error}
   <div class="mt-4 rounded-lg border border-danger-border bg-danger-bg p-4">
     <p class="text-sm text-danger">{error}</p>
+  </div>
+{/if}
+
+<!-- CSV parsed successfully but contained no data rows -->
+{#if warning}
+  <div class="mt-4 rounded-lg border border-warning-border bg-warning-bg p-4">
+    <p class="text-sm text-warning">{warning}</p>
   </div>
 {/if}

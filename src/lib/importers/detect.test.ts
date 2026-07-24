@@ -14,7 +14,7 @@ const LEDGER_HEADER =
   'Operation Date,Status,Currency Ticker,Operation Type,Operation Amount,Operation Fees,Operation Hash,Account Name,Account xpub,Countervalue Ticker,Countervalue at Operation Date';
 const REVOLUT_HEADER = 'Symbol,Type,Quantity,Price,Value,Fees,Date';
 const COINBASE_HEADER =
-  'Timestamp,Transaction Type,Asset,Quantity Transacted,Spot Price Currency,Spot Price at Transaction,Subtotal,Total (inclusive of fees and/or spread),Fees and/or Spread,Notes';
+  'Timestamp,Transaction Type,Asset,Quantity Transacted,Price Currency,Price at Transaction,Subtotal,Total (inclusive of fees and/or spread),Fees and/or Spread,Notes';
 
 const importers: IExchangeImporter[] = [
   new BinanceImporter(),

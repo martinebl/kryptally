@@ -6,7 +6,7 @@ import type { IExchangeImporter } from '$lib/types';
 const bn = (n: number | string) => new BigNumber(n);
 
 const HEADER =
-  'Timestamp,Transaction Type,Asset,Quantity Transacted,Spot Price Currency,Spot Price at Transaction,Subtotal,Total (inclusive of fees and/or spread),Fees and/or Spread,Notes';
+  'Timestamp,Transaction Type,Asset,Quantity Transacted,Price Currency,Price at Transaction,Subtotal,Total (inclusive of fees and/or spread),Fees and/or Spread,Notes';
 
 const makeRow = (
   timestamp: string,
@@ -219,5 +219,81 @@ describe('CoinbaseImporter', () => {
       '\n',
     );
     expect(importer.parse(input)).toHaveLength(1);
+  });
+
+  it('parses the "YYYY-MM-DD HH:mm:ss UTC" timestamp format used by real Coinbase exports', () => {
+    const input = csv(makeRow('2022-04-12 18:05:30 UTC', 'Buy', 'BTC', '0.01', 'USD', '20000', '200', '201', '1'));
+    const [tx] = importer.parse(input);
+
+    expect(tx.date).toEqual(new Date('2022-04-12T18:05:30.000Z'));
+  });
+
+  it('throws on a Timestamp matching neither the Coinbase nor the ISO 8601 format, instead of silently falling back to engine-dependent native parsing', () => {
+    const input = csv(makeRow('04/12/2022 18:05:30', 'Buy', 'BTC', '0.01', 'USD', '20000', '200', '201', '1'));
+
+    expect(() => importer.parse(input)).toThrow(/Unrecognized Coinbase timestamp format/);
+  });
+
+  it('strips currency-symbol prefixes (e.g. a "kr" DKK prefix) from fiat amount fields', () => {
+    const input = csv(
+      makeRow('2022-06-01T00:00:00Z', 'Buy', 'BTC', '0.002', 'DKK', 'kr140000.5', 'kr280.00', 'kr282.50', 'kr2.50'),
+    );
+    const [tx] = importer.parse(input);
+
+    expect(tx.fiatValue!.isEqualTo(bn('282.50'))).toBe(true);
+    expect(tx.feeAmount!.isEqualTo(bn('2.50'))).toBe(true);
+  });
+
+  it('uses the sign of Quantity Transacted, not the type keyword, to set direction for unrecognized fiat movement types', () => {
+    const inbound = csv(
+      makeRow('2022-07-01T00:00:00Z', 'Pro Withdrawal', 'EUR', '75', 'DKK', 'kr12.30', 'kr558.75', 'kr558.75', 'kr0.00'),
+    );
+    const [inTx] = importer.parse(inbound);
+    expect(inTx.type).toBe('transfer');
+    expect(inTx.toAsset).toBe('EUR');
+    expect(inTx.toAmount!.isEqualTo(bn('75'))).toBe(true);
+    expect(inTx.fromAsset).toBeUndefined();
+
+    const outbound = csv(
+      makeRow('2022-07-02T00:00:00Z', 'Exchange Deposit', 'EUR', '-40', 'DKK', 'kr12.30', '-kr298.00', '-kr298.00', 'kr0.00'),
+    );
+    const [outTx] = importer.parse(outbound);
+    expect(outTx.type).toBe('transfer');
+    expect(outTx.fromAsset).toBe('EUR');
+    expect(outTx.fromAmount!.isEqualTo(bn('40'))).toBe(true);
+    expect(outTx.toAsset).toBeUndefined();
+  });
+
+  it('accepts extra columns beyond the required set (ID, Sender Address, Recipient Address)', () => {
+    const extraHeader = `ID,${HEADER},Sender Address,Recipient Address`;
+    const input = [
+      extraHeader,
+      `7,${makeRow('2022-08-01T00:00:00Z', 'Buy', 'BTC', '0.01', 'USD', '20000', '200', '201', '1')},,`,
+    ].join('\n');
+    const [tx] = importer.parse(input);
+
+    expect(tx.type).toBe('buy');
+  });
+
+  describe('with the "Transactions" / "User" preamble real exports include', () => {
+    const withPreamble = (...lines: string[]) =>
+      ['Transactions', 'User,Jane Example,ab12cd34-0000-4000-8000-000000000000', `ID,${HEADER},Sender Address,Recipient Address`, ...lines].join(
+        '\n',
+      );
+
+    it('detect() returns true', () => {
+      expect(importer.detect(withPreamble())).toBe(true);
+    });
+
+    it('parse() strips the preamble and parses the data rows', () => {
+      const input = withPreamble(
+        `3,${makeRow('2022-09-10T00:00:00Z', 'Buy', 'ETH', '0.75', 'USD', '1500.00', '1125.00', '1130.00', '5.00')},,`,
+      );
+      const [tx] = importer.parse(input);
+
+      expect(tx.type).toBe('buy');
+      expect(tx.toAsset).toBe('ETH');
+      expect(tx.toAmount!.isEqualTo(bn('0.75'))).toBe(true);
+    });
   });
 });

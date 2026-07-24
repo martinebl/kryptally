@@ -1,8 +1,10 @@
 import type { Transaction, IImportPreprocessor } from '$lib/types';
+import { isFiat } from '$lib/converters/fiat-currencies';
 
 const isInboundTransferWithFiatData = (tx: Transaction): boolean =>
   tx.type === 'transfer' &&
   tx.toAsset !== undefined &&
+  !isFiat(tx.toAsset) &&
   tx.toAmount !== undefined &&
   tx.fiatCurrency !== undefined &&
   tx.fiatValue !== undefined &&

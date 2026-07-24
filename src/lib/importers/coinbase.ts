@@ -9,8 +9,8 @@ interface CoinbaseRow {
   'Transaction Type': string;
   'Asset': string;
   'Quantity Transacted': string;
-  'Spot Price Currency': string;
-  'Spot Price at Transaction': string;
+  'Price Currency': string;
+  'Price at Transaction': string;
   'Subtotal': string;
   'Total (inclusive of fees and/or spread)': string;
   'Fees and/or Spread': string;
@@ -22,13 +22,29 @@ const REQUIRED_COLUMNS = [
   'Transaction Type',
   'Asset',
   'Quantity Transacted',
-  'Spot Price Currency',
-  'Spot Price at Transaction',
+  'Price Currency',
+  'Price at Transaction',
   'Subtotal',
   'Total (inclusive of fees and/or spread)',
   'Fees and/or Spread',
   'Notes',
 ] as const;
+
+/**
+ * Real Coinbase exports lead with a "Transactions" title line and a
+ * "User,<name>,<id>" line before the actual header row. Locate the header by
+ * its two most stable columns rather than assuming line 0 is the header.
+ */
+const HEADER_MARKERS = ['Timestamp', 'Transaction Type'] as const;
+
+const stripPreamble = (csv: string): string => {
+  const lines = csv.split(/\r?\n/);
+  const headerIndex = lines.findIndex((line) => {
+    const fields = line.split(',').map((f) => f.trim());
+    return HEADER_MARKERS.every((marker) => fields.includes(marker));
+  });
+  return headerIndex <= 0 ? csv : lines.slice(headerIndex).join('\n');
+};
 
 interface TypeRule {
   type: TransactionType;
@@ -40,7 +56,7 @@ interface TypeRule {
  * Coinbase Earn, learning rewards) aren't confirmed from official docs, so
  * these are matched by keyword rather than exact string.
  */
-const resolveRule = (rawType: string): TypeRule => {
+const resolveRule = (rawType: string, signedQuantity: BigNumber): TypeRule => {
   const type = rawType.trim().toLowerCase();
   if (type === 'buy') return { type: 'buy', direction: 'in' };
   if (type === 'sell') return { type: 'sell', direction: 'out' };
@@ -49,26 +65,56 @@ const resolveRule = (rawType: string): TypeRule => {
   if (type === 'convert') return { type: 'trade', direction: 'out' };
   if (type.includes('staking') || type.includes('rewards income')) return { type: 'staking', direction: 'in' };
   if (type.includes('learning') || type.includes('earn')) return { type: 'airdrop', direction: 'in' };
-  // Unrecognized type: keep the row as an inbound transfer rather than
-  // dropping it, matching ledger.ts's default-to-transfer convention.
-  return { type: 'transfer', direction: 'in' };
+  // Unrecognized type (e.g. fiat "Deposit"/"Exchange Deposit"/"Pro Withdrawal"
+  // rows): Coinbase names these from the other account's perspective, not
+  // this ledger's, so the sign of Quantity Transacted is the reliable
+  // direction signal rather than the type string.
+  return { type: 'transfer', direction: signedQuantity.isNegative() ? 'out' : 'in' };
 };
 
-const parseQuantity = (raw: string): BigNumber => new BigNumber(raw).abs();
+/**
+ * Coinbase's export uses "YYYY-MM-DD HH:mm:ss UTC" — not ISO 8601. Native
+ * `Date` parsing of that non-standard format is engine-dependent (works in
+ * V8/Node, but returns Invalid Date in WebKit, which is what Tauri uses on
+ * Linux), so build a strict ISO 8601 string instead of trusting `new Date()`
+ * with the raw value. Matches binance.ts's parseDate for the same reason.
+ *
+ * A raw value that's already strict ISO 8601 is passed through as-is (spec
+ * guarantees cross-engine parsing for that format). Anything matching
+ * neither shape is rejected rather than handed to `new Date()` — a silent
+ * fallback there would just reintroduce the engine-dependent parsing this
+ * function exists to avoid.
+ */
+const COINBASE_TIMESTAMP_RE = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) UTC$/;
+const ISO_8601_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})$/;
+
+const parseTimestamp = (raw: string): Date => {
+  const trimmed = raw.trim();
+  const match = trimmed.match(COINBASE_TIMESTAMP_RE);
+  if (match) return new Date(`${match[1]}T${match[2]}Z`);
+  if (ISO_8601_RE.test(trimmed)) return new Date(trimmed);
+  throw new Error(`Unrecognized Coinbase timestamp format: "${raw}"`);
+};
+
+/** Strips currency symbols (e.g. Coinbase's "kr" DKK prefix) before numeric parsing. */
+const toNumeric = (raw: string): string => (raw ?? '').replace(/[^0-9.-]/g, '');
+
+const parseSignedQuantity = (raw: string): BigNumber => new BigNumber(toNumeric(raw));
 
 /** Blank or zero fiat fields mean "not recorded", same convention as ledger.ts's countervalue parsing. */
 const parseFiatField = (raw: string): BigNumber | undefined => {
   const trimmed = raw?.trim() ?? '';
   if (trimmed === '') return undefined;
-  const value = new BigNumber(trimmed).abs();
+  const value = new BigNumber(toNumeric(trimmed)).abs();
   return value.isNaN() || value.isZero() ? undefined : value;
 };
 
 const rowToTransaction = (row: CoinbaseRow, index: number): Transaction => {
-  const { type, direction } = resolveRule(row['Transaction Type']);
+  const signedQuantity = parseSignedQuantity(row['Quantity Transacted']);
+  const { type, direction } = resolveRule(row['Transaction Type'], signedQuantity);
   const asset = row['Asset'].trim();
-  const quantity = parseQuantity(row['Quantity Transacted']);
-  const fiatCurrency = row['Spot Price Currency']?.trim() || undefined;
+  const quantity = signedQuantity.abs();
+  const fiatCurrency = row['Price Currency']?.trim() || undefined;
   const fiatValue = parseFiatField(row['Total (inclusive of fees and/or spread)']);
   const fee = parseFiatField(row['Fees and/or Spread']);
   const notes = row['Notes']?.trim();
@@ -86,7 +132,7 @@ const rowToTransaction = (row: CoinbaseRow, index: number): Transaction => {
 
   return {
     id: `coinbase-${row['Timestamp']}-${index}`,
-    date: new Date(row['Timestamp']),
+    date: parseTimestamp(row['Timestamp']),
     type,
     ...assetLeg,
     ...fiatLeg,
@@ -105,7 +151,7 @@ export class CoinbaseImporter implements IExchangeImporter {
   ];
 
   detect(csv: string): boolean {
-    const headers = parseHeaders(csv);
+    const headers = parseHeaders(stripPreamble(csv));
     return missingColumns(headers, REQUIRED_COLUMNS).length === 0;
   }
 
@@ -115,7 +161,7 @@ export class CoinbaseImporter implements IExchangeImporter {
       throw new Error('CSV is empty');
     }
 
-    const result = Papa.parse<CoinbaseRow>(trimmed, {
+    const result = Papa.parse<CoinbaseRow>(stripPreamble(trimmed), {
       header: true,
       skipEmptyLines: 'greedy',
     });
