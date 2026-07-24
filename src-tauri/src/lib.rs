@@ -1,4 +1,5 @@
 mod binance;
+mod coinbase;
 mod revolut_x;
 mod secrets;
 
@@ -31,6 +32,11 @@ pub fn run() {
             revolut_x::revolut_x_save_credentials,
             revolut_x::revolut_x_clear_credentials,
             revolut_x::revolut_x_has_credentials,
+            coinbase::coinbase_fetch_accounts,
+            coinbase::coinbase_fetch_fills,
+            coinbase::coinbase_save_credentials,
+            coinbase::coinbase_clear_credentials,
+            coinbase::coinbase_has_credentials,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

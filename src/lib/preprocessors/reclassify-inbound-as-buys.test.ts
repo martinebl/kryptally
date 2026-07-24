@@ -70,6 +70,22 @@ describe('reclassifyInboundAsBuys', () => {
     expect(result[0].type).toBe('transfer');
   });
 
+  it('does not modify inbound transfers whose toAsset is itself fiat (e.g. a Coinbase EUR deposit)', () => {
+    const txs = [makeTx({
+      id: 'tx-1',
+      type: 'transfer',
+      date: new Date('2021-03-01T10:00:00.000Z'),
+      toAsset: 'EUR',
+      toAmount: bn('30'),
+      fiatCurrency: 'DKK',
+      fiatValue: bn('223.63'),
+    })];
+
+    const result = preprocessor.apply(txs);
+
+    expect(result[0].type).toBe('transfer');
+  });
+
   it('does not modify inbound transfers with zero fiat value', () => {
     const txs = [makeTx({
       id: 'tx-1',
