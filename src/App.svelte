@@ -229,7 +229,7 @@
   <footer class="mt-auto border-t border-border bg-surface">
     <div class="mx-auto flex max-w-page flex-wrap items-center justify-between gap-4 px-6 py-7 text-meta text-text-muted">
       <span>Kryptally</span>
-      <span class="font-mono text-text-faint">v{version} · Apache-2.0 licensed</span>
+      <span class="font-mono text-text-faint">v{version} · AGPL-3.0 licensed</span>
     </div>
   </footer>
 </div>
