@@ -8,3 +8,5 @@ export type { ILastFetchRepository } from './last-fetch-repository';
 export { createLastFetchRepository } from './last-fetch-repository';
 export type { IPairRepository, PairData } from './pair-repository';
 export { createPairRepository } from './pair-repository';
+export type { ICustomImporterRepository } from './custom-importer-repository';
+export { createCustomImporterRepository } from './custom-importer-repository';

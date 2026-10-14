@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Transaction } from '$lib/types';
+  import type { CustomImporterConfig, Transaction } from '$lib/types';
   import type { CostBasisMethod, CountryConfig } from '$lib/types/tax-rules';
   import { setCryptoConverter, setCurrentPriceFetcher, setPersistPriceEntry } from '$lib/context';
   import { createCoinGeckoCryptoToFiatConverter, preflightResolve, setUserResolutions, type CoinListEntry } from '$lib/converters/coingecko';
@@ -10,11 +10,12 @@
   import LandingPage from '$lib/components/LandingPage.svelte'
   import ImportPage from '$lib/components/ImportPage.svelte'
   import ResultsPage from '$lib/components/ResultsPage.svelte'
+  import ImportersPage from '$lib/components/importers/ImportersPage.svelte'
   import TestResultsPage from '$lib/components/TestResultsPage.svelte'
   import CoinDisambiguator from '$lib/components/CoinDisambiguator.svelte'
   import ThemeToggle from '$lib/components/common/ThemeToggle.svelte'
   import { availableCountries, findCountry, allowedCostBasisMethods } from '$lib/rules';
-  import { createIndexedDBStorage, createPriceRepository, createTransactionRepository } from '$lib/storage';
+  import { createCustomImporterRepository, createIndexedDBStorage, createPriceRepository, createTransactionRepository } from '$lib/storage';
   import { initTheme } from '$lib/theme';
   import { version } from '../version.json';
 
@@ -109,6 +110,12 @@
   }).catch((e) => console.error('Failed to load stored transactions', e));
   let ambiguousCoins = $state<Record<string, CoinListEntry[]>>({});
 
+  const customImporterRepo = createCustomImporterRepository(storage);
+  let customImporters = $state<CustomImporterConfig[]>([]);
+  customImporterRepo.list().then((stored) => {
+    customImporters = stored;
+  }).catch((e) => console.error('Failed to load custom importers', e));
+
   const navigate = (page: string) => {
     currentPage = page;
     window.scrollTo(0, 0);
@@ -186,6 +193,13 @@
         >
           Results
         </button>
+        <button
+          class="cursor-pointer border-none bg-transparent transition-colors
+            {currentPage === 'importers' ? 'font-semibold text-accent' : 'text-text-muted hover:text-text-heading'}"
+          onclick={() => navigate('importers')}
+        >
+          Importers
+        </button>
         <ThemeToggle />
       </div>
     </nav>
@@ -211,9 +225,16 @@
         storedTransactionCount={transactions.length}
         onClearHistory={clearTransactions}
         {storage}
+        {customImporters}
       />
     {:else if currentPage === 'results' && countryConfig}
       <ResultsPage {transactions} {countryConfig} costBasisMethod={effectiveCostBasisMethod} />
+    {:else if currentPage === 'importers'}
+      <ImportersPage
+        configs={customImporters}
+        repo={customImporterRepo}
+        onConfigsChange={(next) => { customImporters = next; }}
+      />
     <!-- {:else if currentPage === 'test-results'}
       <TestResultsPage /> -->
     {/if}
