@@ -1,11 +1,7 @@
 <script lang="ts">
-  import type { Transaction } from '$lib/types';
+  import type { CustomImporterConfig, Transaction } from '$lib/types';
   import type { CountryConfig } from '$lib/types/tax-rules';
-  import { LedgerImporter } from '$lib/importers/ledger';
-  import { BinanceImporter } from '$lib/importers/binance';
-  import { RevolutXImporter } from '$lib/importers/revolut-x';
-  import { CoinbaseImporter } from '$lib/importers/coinbase';
-  import { CoinbaseProImporter } from '$lib/importers/coinbase-pro';
+  import { createBuiltinImporters, createCustomImporter } from '$lib/importers';
   import { BinanceLiveSource, RevolutXLiveSource, CoinbaseLiveSource } from '$lib/sources';
   import CsvImporter from '$lib/components/CsvImporter.svelte';
   import LiveImporter from '$lib/components/LiveImporter.svelte';
@@ -27,17 +23,14 @@
     storedTransactionCount: number;
     onClearHistory: () => void;
     storage: IStorage;
+    /** User-defined importer configs, listed after the built-ins. */
+    customImporters: CustomImporterConfig[];
   }
 
-  const { onImport, onNavigate, pricesByAsset, countryConfig, storedTransactionCount, onClearHistory, storage }: Props = $props();
+  const { onImport, onNavigate, pricesByAsset, countryConfig, storedTransactionCount, onClearHistory, storage, customImporters }: Props = $props();
 
-  const importers = [
-    new LedgerImporter(),
-    new BinanceImporter(),
-    new RevolutXImporter(),
-    new CoinbaseImporter(),
-    new CoinbaseProImporter(),
-  ];
+  const builtinImporters = createBuiltinImporters();
+  const importers = $derived([...builtinImporters, ...customImporters.map((c) => createCustomImporter(c))]);
 
   const liveSources = [new BinanceLiveSource(), new RevolutXLiveSource(), new CoinbaseLiveSource()];
 
@@ -151,6 +144,13 @@
 
       {#if activeTab === 'csv'}
         <CsvImporter {importers} onConfirm={handleEnrich} onFileSelected={handleCsvFileSelected} />
+        <p class="mt-4 text-sm text-text">
+          Exchange not listed?
+          <button
+            class="font-semibold text-text-heading underline underline-offset-2 hover:text-accent"
+            onclick={() => onNavigate('importers')}
+          >Create a custom importer</button> for its CSV export.
+        </p>
       {:else}
         <!-- Live exchange tab -->
         {#if isTauri()}

@@ -1,0 +1,170 @@
+[
+  {
+    "schemaVersion": 1,
+    "id": "ledger",
+    "name": "Ledger",
+    "header": { "mode": "auto" },
+    "requiredColumns": [
+      "Operation Date",
+      "Currency Ticker",
+      "Operation Type",
+      "Operation Amount",
+      "Operation Fees",
+      "Operation Hash"
+    ],
+    "delimiter": ",",
+    "decimalSeparator": ".",
+    "dateFormats": ["iso"],
+    "timezone": "utc",
+    "columns": {
+      "date": "Operation Date",
+      "type": "Operation Type",
+      "asset": "Currency Ticker",
+      "amount": "Operation Amount",
+      "total": "Countervalue at Operation Date",
+      "fee": "Operation Fees",
+      "txId": "Operation Hash",
+      "notes": "Operation Hash"
+    },
+    "notesPrefix": "tx: ",
+    "type": {
+      "mode": "column",
+      "rules": [
+        { "match": "equals", "value": "IN", "kind": "transfer-in" },
+        { "match": "equals", "value": "NFT_IN", "kind": "transfer-in" },
+        { "match": "equals", "value": "OUT", "kind": "transfer-out" },
+        { "match": "equals", "value": "NFT_OUT", "kind": "transfer-out" },
+        { "match": "equals", "value": "FEES", "kind": "fee" }
+      ],
+      "fallback": "transfer-out"
+    },
+    "quoteCurrency": { "mode": "column", "column": "Countervalue Ticker" },
+    "feeCurrency": { "mode": "asset" },
+    "preprocessors": ["reclassify-inbound-as-buys"]
+  },
+  {
+    "schemaVersion": 1,
+    "id": "coinbase",
+    "name": "Coinbase",
+    "header": { "mode": "auto" },
+    "requiredColumns": [
+      "Timestamp",
+      "Transaction Type",
+      "Asset",
+      "Quantity Transacted",
+      "Price Currency",
+      "Price at Transaction",
+      "Subtotal",
+      "Total (inclusive of fees and/or spread)",
+      "Fees and/or Spread",
+      "Notes"
+    ],
+    "delimiter": ",",
+    "decimalSeparator": ".",
+    "dateFormats": ["YYYY-MM-DD HH:mm:ss UTC", "iso"],
+    "timezone": "utc",
+    "columns": {
+      "date": "Timestamp",
+      "type": "Transaction Type",
+      "asset": "Asset",
+      "amount": "Quantity Transacted",
+      "total": "Total (inclusive of fees and/or spread)",
+      "fee": "Fees and/or Spread",
+      "notes": "Notes"
+    },
+    "type": {
+      "mode": "column",
+      "rules": [
+        { "match": "equals", "value": "buy", "kind": "buy" },
+        { "match": "equals", "value": "sell", "kind": "sell" },
+        { "match": "equals", "value": "send", "kind": "transfer-out" },
+        { "match": "equals", "value": "receive", "kind": "transfer-in" },
+        { "match": "equals", "value": "convert", "kind": "trade-out" },
+        { "match": "contains", "value": "staking", "kind": "staking" },
+        { "match": "contains", "value": "rewards income", "kind": "staking" },
+        { "match": "contains", "value": "learning", "kind": "airdrop" },
+        { "match": "contains", "value": "earn", "kind": "airdrop" }
+      ],
+      "fallback": "transfer-by-sign"
+    },
+    "quoteCurrency": { "mode": "column", "column": "Price Currency" },
+    "feeCurrency": { "mode": "quote" },
+    "preprocessors": ["reclassify-inbound-as-buys"]
+  },
+  {
+    "schemaVersion": 1,
+    "id": "coinbase-pro",
+    "name": "Coinbase Pro",
+    "header": { "mode": "auto" },
+    "requiredColumns": [
+      "portfolio",
+      "trade id",
+      "product",
+      "side",
+      "created at",
+      "size",
+      "size unit",
+      "price",
+      "fee",
+      "total",
+      "price/fee/total unit"
+    ],
+    "delimiter": ",",
+    "decimalSeparator": ".",
+    "dateFormats": ["iso"],
+    "timezone": "utc",
+    "columns": {
+      "date": "created at",
+      "type": "side",
+      "asset": "size unit",
+      "amount": "size",
+      "total": "total",
+      "fee": "fee",
+      "txId": "trade id"
+    },
+    "type": {
+      "mode": "column",
+      "rules": [
+        { "match": "equals", "value": "buy", "kind": "buy" },
+        { "match": "equals", "value": "sell", "kind": "sell" }
+      ]
+    },
+    "quoteCurrency": { "mode": "column", "column": "price/fee/total unit" },
+    "feeCurrency": { "mode": "quote" },
+    "preprocessors": []
+  },
+  {
+    "schemaVersion": 1,
+    "id": "revolut-x",
+    "name": "Revolut X",
+    "header": { "mode": "auto" },
+    "requiredColumns": ["Symbol", "Type", "Quantity", "Price", "Value", "Fees", "Date"],
+    "delimiter": ",",
+    "decimalSeparator": ".",
+    "dateFormats": ["D MMM YYYY, HH:mm[:ss]"],
+    "timezone": "local",
+    "columns": {
+      "date": "Date",
+      "type": "Type",
+      "asset": "Symbol",
+      "amount": "Quantity",
+      "total": "Value",
+      "fee": "Fees"
+    },
+    "type": {
+      "mode": "column",
+      "rules": [
+        { "match": "equals", "value": "other", "kind": "ignore" },
+        { "match": "startsWith", "value": "buy", "kind": "buy" },
+        { "match": "startsWith", "value": "sell", "kind": "sell" },
+        { "match": "equals", "value": "send", "kind": "transfer-out" },
+        { "match": "equals", "value": "receive", "kind": "transfer-in" },
+        { "match": "equals", "value": "learn reward", "kind": "airdrop" }
+      ],
+      "fallback": "transfer-out"
+    },
+    "quoteCurrency": { "mode": "embedded" },
+    "feeCurrency": { "mode": "embedded" },
+    "preprocessors": []
+  }
+]

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import BigNumber from 'bignumber.js';
-import { LedgerImporter } from '$lib/importers/ledger';
+import { createCustomImporter } from '$lib/importers/custom';
+import { builtinConfig } from '$lib/importers/builtin';
 import type { IExchangeImporter } from '$lib/types';
 
 const bn = (n: number | string) => new BigNumber(n);
@@ -25,8 +26,8 @@ const makeRow = (
 
 const csv = (...rows: string[]) => [HEADER, ...rows].join('\n');
 
-describe('LedgerImporter', () => {
-  const importer: IExchangeImporter = new LedgerImporter();
+describe('Ledger (built-in config)', () => {
+  const importer: IExchangeImporter = createCustomImporter(builtinConfig('ledger'));
 
   it('has exchangeName "Ledger"', () => {
     expect(importer.exchangeName).toBe('Ledger');
@@ -128,7 +129,7 @@ describe('LedgerImporter', () => {
   });
 
   it('exposes preprocessors', () => {
-    const ledger = new LedgerImporter();
+    const ledger = createCustomImporter(builtinConfig('ledger'));
     expect(ledger.preprocessors.length).toBeGreaterThan(0);
     expect(ledger.preprocessors[0].id).toBe('reclassify-inbound-as-buys');
   });

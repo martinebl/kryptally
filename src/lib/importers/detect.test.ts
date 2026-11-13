@@ -1,12 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  BinanceImporter,
-  LedgerImporter,
-  RevolutXImporter,
-  CoinbaseImporter,
-  CoinbaseProImporter,
-  detectExchange,
-} from '$lib/importers';
+import { BinanceImporter, detectExchange, createCustomImporter, builtinConfig } from '$lib/importers';
 import type { IExchangeImporter } from '$lib/types';
 
 const BINANCE_HEADER =
@@ -19,12 +12,17 @@ const COINBASE_HEADER =
 const COINBASE_PRO_HEADER =
   'portfolio,trade id,product,side,created at,size,size unit,price,fee,total,price/fee/total unit';
 
+const ledger = () => createCustomImporter(builtinConfig('ledger'));
+const revolutX = () => createCustomImporter(builtinConfig('revolut-x'));
+const coinbase = () => createCustomImporter(builtinConfig('coinbase'));
+const coinbasePro = () => createCustomImporter(builtinConfig('coinbase-pro'));
+
 const importers: IExchangeImporter[] = [
   new BinanceImporter(),
-  new LedgerImporter(),
-  new RevolutXImporter(),
-  new CoinbaseImporter(),
-  new CoinbaseProImporter(),
+  ledger(),
+  revolutX(),
+  coinbase(),
+  coinbasePro(),
 ];
 
 describe('detectExchange', () => {
@@ -77,44 +75,44 @@ describe('detectExchange', () => {
   });
 
   it('does not false-positive a Binance header against Ledger or Revolut X', () => {
-    expect(new LedgerImporter().detect(BINANCE_HEADER)).toBe(false);
-    expect(new RevolutXImporter().detect(BINANCE_HEADER)).toBe(false);
+    expect(ledger().detect(BINANCE_HEADER)).toBe(false);
+    expect(revolutX().detect(BINANCE_HEADER)).toBe(false);
   });
 
   it('does not false-positive a Ledger header against Binance or Revolut X', () => {
     expect(new BinanceImporter().detect(LEDGER_HEADER)).toBe(false);
-    expect(new RevolutXImporter().detect(LEDGER_HEADER)).toBe(false);
+    expect(revolutX().detect(LEDGER_HEADER)).toBe(false);
   });
 
   it('does not false-positive a Revolut X header against Binance or Ledger', () => {
     expect(new BinanceImporter().detect(REVOLUT_HEADER)).toBe(false);
-    expect(new LedgerImporter().detect(REVOLUT_HEADER)).toBe(false);
+    expect(ledger().detect(REVOLUT_HEADER)).toBe(false);
   });
 
   it('does not false-positive a Coinbase header against Binance, Ledger, or Revolut X', () => {
     expect(new BinanceImporter().detect(COINBASE_HEADER)).toBe(false);
-    expect(new LedgerImporter().detect(COINBASE_HEADER)).toBe(false);
-    expect(new RevolutXImporter().detect(COINBASE_HEADER)).toBe(false);
+    expect(ledger().detect(COINBASE_HEADER)).toBe(false);
+    expect(revolutX().detect(COINBASE_HEADER)).toBe(false);
   });
 
   it('does not false-positive Binance, Ledger, or Revolut X headers against Coinbase', () => {
-    expect(new CoinbaseImporter().detect(BINANCE_HEADER)).toBe(false);
-    expect(new CoinbaseImporter().detect(LEDGER_HEADER)).toBe(false);
-    expect(new CoinbaseImporter().detect(REVOLUT_HEADER)).toBe(false);
+    expect(coinbase().detect(BINANCE_HEADER)).toBe(false);
+    expect(coinbase().detect(LEDGER_HEADER)).toBe(false);
+    expect(coinbase().detect(REVOLUT_HEADER)).toBe(false);
   });
 
   it('does not false-positive Coinbase Pro against the regular Coinbase header, or vice versa', () => {
-    expect(new CoinbaseProImporter().detect(COINBASE_HEADER)).toBe(false);
-    expect(new CoinbaseImporter().detect(COINBASE_PRO_HEADER)).toBe(false);
+    expect(coinbasePro().detect(COINBASE_HEADER)).toBe(false);
+    expect(coinbase().detect(COINBASE_PRO_HEADER)).toBe(false);
   });
 
   it('does not false-positive a Coinbase Pro header against Binance, Ledger, or Revolut X, or vice versa', () => {
     expect(new BinanceImporter().detect(COINBASE_PRO_HEADER)).toBe(false);
-    expect(new LedgerImporter().detect(COINBASE_PRO_HEADER)).toBe(false);
-    expect(new RevolutXImporter().detect(COINBASE_PRO_HEADER)).toBe(false);
-    expect(new CoinbaseProImporter().detect(BINANCE_HEADER)).toBe(false);
-    expect(new CoinbaseProImporter().detect(LEDGER_HEADER)).toBe(false);
-    expect(new CoinbaseProImporter().detect(REVOLUT_HEADER)).toBe(false);
+    expect(ledger().detect(COINBASE_PRO_HEADER)).toBe(false);
+    expect(revolutX().detect(COINBASE_PRO_HEADER)).toBe(false);
+    expect(coinbasePro().detect(BINANCE_HEADER)).toBe(false);
+    expect(coinbasePro().detect(LEDGER_HEADER)).toBe(false);
+    expect(coinbasePro().detect(REVOLUT_HEADER)).toBe(false);
   });
 
   it('accepts a CSV with extra columns beyond the required set', () => {

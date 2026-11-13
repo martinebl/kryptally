@@ -1,14 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import BigNumber from 'bignumber.js';
-import { RevolutXImporter } from '$lib/importers/revolut-x';
+import { createCustomImporter } from '$lib/importers/custom';
+import { builtinConfig } from '$lib/importers/builtin';
 
 const header = 'Symbol,Type,Quantity,Price,Value,Fees,Date';
 
 const makeCsv = (...rows: string[]): string =>
   [header, ...rows].join('\n');
 
-describe('RevolutXImporter', () => {
-  const importer = new RevolutXImporter();
+describe('Revolut X (built-in config)', () => {
+  const importer = createCustomImporter(builtinConfig('revolut-x'));
 
   it('has the correct exchange name', () => {
     expect(importer.exchangeName).toBe('Revolut X');

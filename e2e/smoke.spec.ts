@@ -22,12 +22,15 @@ test('nav tabs render', async ({ page }) => {
   // Nav tabs are visible (target header nav buttons specifically)
   const nav = page.locator('header nav');
   await expect(nav.getByRole('button', { name: 'Home' })).toBeVisible();
-  await expect(nav.getByRole('button', { name: 'Import' })).toBeVisible();
+  await expect(nav.getByRole('button', { name: 'Import', exact: true })).toBeVisible();
   await expect(nav.getByRole('button', { name: 'Results' })).toBeVisible();
+  await expect(nav.getByRole('button', { name: 'Importers' })).toBeVisible();
 
   // Import/Results tabs are disabled without country selected
-  await expect(nav.getByRole('button', { name: 'Import' })).toBeDisabled();
+  await expect(nav.getByRole('button', { name: 'Import', exact: true })).toBeDisabled();
   await expect(nav.getByRole('button', { name: 'Results' })).toBeDisabled();
+  // Importers does not depend on a country
+  await expect(nav.getByRole('button', { name: 'Importers' })).toBeEnabled();
 });
 
 test('badge component renders correctly', async ({ page }) => {

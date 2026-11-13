@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import BigNumber from 'bignumber.js';
-import { CoinbaseImporter } from '$lib/importers/coinbase';
+import { createCustomImporter } from '$lib/importers/custom';
+import { builtinConfig } from '$lib/importers/builtin';
 import type { IExchangeImporter } from '$lib/types';
 
 const bn = (n: number | string) => new BigNumber(n);
@@ -23,8 +24,8 @@ const makeRow = (
 
 const csv = (...rows: string[]) => [HEADER, ...rows].join('\n');
 
-describe('CoinbaseImporter', () => {
-  const importer: IExchangeImporter = new CoinbaseImporter();
+describe('Coinbase (built-in config)', () => {
+  const importer: IExchangeImporter = createCustomImporter(builtinConfig('coinbase'));
 
   it('has exchangeName "Coinbase"', () => {
     expect(importer.exchangeName).toBe('Coinbase');
@@ -231,7 +232,7 @@ describe('CoinbaseImporter', () => {
   it('throws on a Timestamp matching neither the Coinbase nor the ISO 8601 format, instead of silently falling back to engine-dependent native parsing', () => {
     const input = csv(makeRow('04/12/2022 18:05:30', 'Buy', 'BTC', '0.01', 'USD', '20000', '200', '201', '1'));
 
-    expect(() => importer.parse(input)).toThrow(/Unrecognized Coinbase timestamp format/);
+    expect(() => importer.parse(input)).toThrow(/Row 1: Unrecognized date/);
   });
 
   it('strips currency-symbol prefixes (e.g. a "kr" DKK prefix) from fiat amount fields', () => {

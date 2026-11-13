@@ -4,3 +4,5 @@ export * from './results';
 export * from './converters';
 export * from './importers';
 export * from './sources';
+export * from './custom-importer';
+

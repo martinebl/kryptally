@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import BigNumber from 'bignumber.js';
-import { CoinbaseProImporter } from '$lib/importers/coinbase-pro';
+import { createCustomImporter } from '$lib/importers/custom';
+import { builtinConfig } from '$lib/importers/builtin';
 import type { IExchangeImporter } from '$lib/types';
 
 const bn = (n: number | string) => new BigNumber(n);
@@ -23,8 +24,8 @@ const makeRow = (
 
 const csv = (...rows: string[]) => [HEADER, ...rows].join('\n');
 
-describe('CoinbaseProImporter', () => {
-  const importer: IExchangeImporter = new CoinbaseProImporter();
+describe('Coinbase Pro (built-in config)', () => {
+  const importer: IExchangeImporter = createCustomImporter(builtinConfig('coinbase-pro'));
 
   it('has exchangeName "Coinbase Pro"', () => {
     expect(importer.exchangeName).toBe('Coinbase Pro');
@@ -122,7 +123,7 @@ describe('CoinbaseProImporter', () => {
       makeRow('44455566', 'ETH-USD', 'CONVERT', '2021-01-05T00:00:00.000Z', '0.5', 'ETH', '2000', '1', '-1001', 'USD'),
     );
 
-    expect(() => importer.parse(input)).toThrow(/Unrecognized Coinbase Pro fill side/);
+    expect(() => importer.parse(input)).toThrow(/Row 1: Unrecognized type "CONVERT"/);
   });
 
   it('omits fee fields when the fee is zero', () => {
@@ -140,7 +141,7 @@ describe('CoinbaseProImporter', () => {
       makeRow('12312312', 'ETH-USD', 'BUY', '2021-01-05 00:00:00 UTC', '0.5', 'ETH', '2000', '1', '-1001', 'USD'),
     );
 
-    expect(() => importer.parse(input)).toThrow(/Unrecognized Coinbase Pro timestamp format/);
+    expect(() => importer.parse(input)).toThrow(/Row 1: Unrecognized date/);
   });
 
   it('assigns unique ids per row', () => {
@@ -161,5 +162,20 @@ describe('CoinbaseProImporter', () => {
       makeRow('33333333', 'ETH-USD', 'BUY', '2021-01-01T00:00:00.000Z', '0.1', 'ETH', '2000', '1', '-201', 'USD'),
     ].join('\n');
     expect(importer.parse(input)).toHaveLength(1);
+  });
+
+  it('maps a crypto-quoted fill to a trade so the quote asset is disposed, keeping its value and ticker', () => {
+    const tx = importer.parse(csv(makeRow('48151623', 'ETH-BTC', 'BUY', '2021-06-11T08:30:00.000Z', '2.5', 'ETH', '0.061', '0.0002', '-0.1527', 'BTC')))[0];
+    expect(tx).toMatchObject({
+      type: 'trade',
+      fromAsset: 'BTC', fromAmount: bn('0.1527'),
+      toAsset: 'ETH', toAmount: bn('2.5'),
+      fiatCurrency: 'BTC', fiatValue: bn('0.1527'),
+    });
+  });
+
+  it('maps a stablecoin-quoted sell to a trade and keeps the stablecoin ticker', () => {
+    const tx = importer.parse(csv(makeRow('42424242', 'SOL-USDT', 'SELL', '2021-09-03T14:00:00.000Z', '7', 'SOL', '120', '0.5', '839.5', 'USDT')))[0];
+    expect(tx).toMatchObject({ type: 'trade', toAsset: 'USDT', fiatCurrency: 'USDT', fiatValue: bn('839.5') });
   });
 });
