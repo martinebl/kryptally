@@ -185,6 +185,13 @@
           Import
         </button>
         <button
+          class="cursor-pointer border-none bg-transparent transition-colors
+            {currentPage === 'importers' ? 'font-semibold text-accent' : 'text-text-muted hover:text-text-heading'}"
+          onclick={() => navigate('importers')}
+        >
+          Importers
+        </button>
+        <button
           class="border-none bg-transparent transition-colors
             {countryConfig ? 'cursor-pointer hover:text-text-heading' : 'cursor-not-allowed opacity-40'}
             {currentPage === 'results' ? 'font-semibold text-accent' : 'text-text-muted'}"
@@ -192,13 +199,6 @@
           onclick={() => navigate('results')}
         >
           Results
-        </button>
-        <button
-          class="cursor-pointer border-none bg-transparent transition-colors
-            {currentPage === 'importers' ? 'font-semibold text-accent' : 'text-text-muted hover:text-text-heading'}"
-          onclick={() => navigate('importers')}
-        >
-          Importers
         </button>
         <ThemeToggle />
       </div>

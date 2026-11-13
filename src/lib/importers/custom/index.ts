@@ -10,5 +10,6 @@ export {
   guessDelimiter,
   addRulesForValues,
   previewImport,
+  requiredColumnChoices,
 } from '$lib/importers/custom/editor-helpers';
 export type { PreviewResult } from '$lib/importers/custom/editor-helpers';

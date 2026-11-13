@@ -95,3 +95,14 @@ export const previewImport = (config: CustomImporterConfig, sample: string, limi
     return { transactions: [], total: 0, error: e instanceof Error ? e.message : String(e) };
   }
 };
+
+/**
+ * Columns offered as required-column checkboxes: the sample's headers, then
+ * the saved and current required columns — so unchecking one never hides it,
+ * even when no sample is loaded.
+ */
+export const requiredColumnChoices = (
+  headers: readonly string[],
+  savedRequired: readonly string[],
+  currentRequired: readonly string[],
+): string[] => [...new Set([...headers, ...savedRequired, ...currentRequired])];

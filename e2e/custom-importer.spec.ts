@@ -76,3 +76,20 @@ test('creates a custom importer and imports a file with it', async ({ page }) =>
   await nav(page).getByRole('button', { name: 'Importers' }).click();
   await expect(page.getByText(IMPORTER_NAME)).toBeVisible();
 });
+
+test('an unchecked required column stays available to re-check without a sample', async ({ page }) => {
+  await page.goto('/');
+  await nav(page).getByRole('button', { name: 'Importers' }).click();
+  await page.getByRole('listitem').filter({ hasText: 'Ledger' }).getByRole('button', { name: 'Duplicate to edit' }).click();
+  await expect(page.getByRole('heading', { name: 'New importer' })).toBeVisible();
+
+  const column = page.getByRole('checkbox', { name: 'Operation Hash' });
+  await expect(column).toBeChecked();
+
+  await column.uncheck();
+  await expect(column).toBeVisible();
+  await expect(column).not.toBeChecked();
+
+  await column.check();
+  await expect(column).toBeChecked();
+});

@@ -6,9 +6,11 @@
     draft: CustomImporterConfig;
     /** Header row of the loaded sample; empty when no sample is loaded. */
     headers: string[];
+    /** Columns offered as required-column checkboxes. */
+    columnChoices: string[];
   }
 
-  let { draft = $bindable(), headers }: Props = $props();
+  let { draft = $bindable(), headers, columnChoices }: Props = $props();
 
   const ROLES: { key: keyof ColumnMapping; label: string; hint: string; required?: boolean }[] = [
     { key: 'date', label: 'Date', hint: 'When the activity happened', required: true },
@@ -20,8 +22,6 @@
     { key: 'txId', label: 'Transaction id', hint: 'Optional reference' },
     { key: 'notes', label: 'Notes', hint: 'Copied onto the transaction' },
   ];
-
-  const allColumns = $derived([...new Set([...headers, ...draft.requiredColumns])]);
 
   const toggleRequired = (column: string) => {
     draft.requiredColumns = draft.requiredColumns.includes(column)
@@ -59,11 +59,11 @@
   <fieldset class="mt-5">
     <legend class={LABEL}>Required columns</legend>
     <p class="{HINT} mb-2">A file is recognised as this format when it contains all of these.</p>
-    {#if allColumns.length === 0}
+    {#if columnChoices.length === 0}
       <p class="text-sm text-text-muted">Load a sample file to pick from its columns.</p>
     {:else}
       <div class="flex flex-wrap gap-2">
-        {#each allColumns as column (column)}
+        {#each columnChoices as column (column)}
           <label class="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border px-2.5 py-1 text-xs text-text-heading">
             <input type="checkbox" checked={draft.requiredColumns.includes(column)} onchange={() => toggleRequired(column)} />
             {column}

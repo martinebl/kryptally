@@ -7,6 +7,7 @@ import {
   guessDelimiter,
   addRulesForValues,
   previewImport,
+  requiredColumnChoices,
 } from '$lib/importers/custom/editor-helpers';
 import type { CustomImporterConfig } from '$lib/types';
 
@@ -93,5 +94,15 @@ describe('guessDelimiter', () => {
 
   it('defaults to comma for single-column input', () => {
     expect(guessDelimiter('justone')).toBe(',');
+  });
+});
+
+describe('requiredColumnChoices', () => {
+  it('offers the sample headers followed by any other known columns, without duplicates', () => {
+    expect(requiredColumnChoices(['When', 'Coin'], ['Coin', 'Qty'], ['When'])).toEqual(['When', 'Coin', 'Qty']);
+  });
+
+  it('keeps an unchecked saved column on offer when no sample is loaded', () => {
+    expect(requiredColumnChoices([], ['When', 'Coin', 'Qty'], ['When', 'Qty'])).toEqual(['When', 'Coin', 'Qty']);
   });
 });

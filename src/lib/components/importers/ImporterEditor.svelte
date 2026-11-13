@@ -1,6 +1,13 @@
 <script lang="ts">
   import type { CustomImporterConfig } from '$lib/types';
-  import { distinctColumnValues, guessDelimiter, readHeaders, readTable, validateConfig } from '$lib/importers/custom';
+  import {
+    distinctColumnValues,
+    guessDelimiter,
+    readHeaders,
+    readTable,
+    requiredColumnChoices,
+    validateConfig,
+  } from '$lib/importers/custom';
   import FormatFields from '$lib/components/importers/FormatFields.svelte';
   import ColumnFields from '$lib/components/importers/ColumnFields.svelte';
   import TypeFields from '$lib/components/importers/TypeFields.svelte';
@@ -28,6 +35,7 @@
   let saveError = $state('');
 
   const headers = $derived(sample ? readHeaders(sample, draft) : []);
+  const columnChoices = $derived(requiredColumnChoices(headers, initial.requiredColumns, draft.requiredColumns));
   const typeValues = $derived(
     sample && draft.type.mode === 'column' ? distinctColumnValues(readTable(sample, draft).rows, draft.columns.type) : [],
   );
@@ -70,7 +78,7 @@
   </div>
 
   <FormatFields bind:draft />
-  <ColumnFields bind:draft {headers} />
+  <ColumnFields bind:draft {headers} {columnChoices} />
   <TypeFields bind:draft sampleValues={typeValues} />
   <CurrencyFields bind:draft />
   <ImporterPreview config={draft} {sample} />
