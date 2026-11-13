@@ -150,6 +150,15 @@ describe('createCustomImporter', () => {
       });
     });
 
+    it('does not make a one-legged trade when a non-fiat-quoted buy/sell has no value', () => {
+      const buy = parseOne(baseConfig(), { total: '0', ccy: 'USDT' });
+      const sell = parseOne(baseConfig(), { kind: 'sold', ccy: 'BTC' });
+      expect(buy).toMatchObject({ type: 'buy', toAsset: 'ETH', toAmount: bn('1.75') });
+      expect(buy.fromAsset).toBeUndefined();
+      expect(sell).toMatchObject({ type: 'sell', fromAsset: 'ETH', fromAmount: bn('1.75') });
+      expect(sell.toAsset).toBeUndefined();
+    });
+
     it('keeps the quote currency as written in the file (it is part of the dedup key)', () => {
       const tx = parseOne(baseConfig(), { total: '10', ccy: 'eur' });
       expect(tx).toMatchObject({ fromAsset: 'eur', fiatCurrency: 'eur', type: 'buy' });

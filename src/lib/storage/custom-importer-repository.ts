@@ -5,18 +5,22 @@ const KEY = 'kryptally-custom-importers';
 
 const SUPPORTED_SCHEMA_VERSION = 1;
 
-const parse = (raw: string | null): CustomImporterConfig[] => {
+/** Every stored entry, including ones this build cannot read. */
+const parseAll = (raw: string | null): unknown[] => {
   if (!raw) return [];
   try {
     const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed)
-      ? (parsed as CustomImporterConfig[]).filter((c) => c?.schemaVersion === SUPPORTED_SCHEMA_VERSION)
-      : [];
+    return Array.isArray(parsed) ? parsed : [];
   } catch (e) {
     console.warn('Ignoring corrupted stored custom importers', e);
     return [];
   }
 };
+
+const isSupported = (entry: unknown): entry is CustomImporterConfig =>
+  (entry as CustomImporterConfig | null)?.schemaVersion === SUPPORTED_SCHEMA_VERSION;
+
+const parse = (raw: string | null): CustomImporterConfig[] => parseAll(raw).filter(isSupported);
 
 export interface ICustomImporterRepository {
   /** All user-defined importer configs, in creation order. */
@@ -35,8 +39,11 @@ export const createCustomImporterRepository = (storage: IStorage): ICustomImport
     const write = pendingWrite
       .catch(() => {}) // a failed earlier write must not block later ones
       .then(async () => {
-        const next = fn(parse(await storage.get(KEY)));
-        await storage.set(KEY, JSON.stringify(next));
+        const all = parseAll(await storage.get(KEY));
+        const next = fn(all.filter(isSupported));
+        // Entries from a newer schema are skipped, not deleted.
+        const unsupported = all.filter((entry) => !isSupported(entry));
+        await storage.set(KEY, JSON.stringify([...unsupported, ...next]));
         return next;
       });
     pendingWrite = write;

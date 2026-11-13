@@ -8,6 +8,7 @@ Kryptally is a local-first, privacy-first cryptocurrency tax calculator. Tax rul
 npm run check   # Type-check (svelte-check + tsc)
 npm run test    # Run all tests (vitest run)
 npm run test:watch # Run tests in watch mode
+npm run test:e2e   # Run Playwright end-to-end tests (e2e/) — NOT covered by `npm run test`
 npm run dev     # Start dev server
 npm run build   # Production build
 npm run preview # Preview production build
@@ -65,7 +66,7 @@ Modules expose functionality through barrel exports (`index.ts`). Use TypeScript
 - Write tests before implementing new functionality (TDD).
 - Test against the interface contract, not implementation details.
 - **Never copy real dates or amounts from user-provided CSV snippets into test data.** Randomize them so tests are independent of real user data.
-- Run `npm run test` and `cargo test` after changes to catch regressions.
+- Run `npm run test`, `npm run test:e2e` and `cargo test` after changes to catch regressions.
 
 ## Price resolution order
 

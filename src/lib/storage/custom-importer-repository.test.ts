@@ -45,6 +45,15 @@ describe('createCustomImporterRepository', () => {
     expect((await repo.list()).map((c) => c.id)).toEqual(['a']);
   });
 
+  it('keeps entries with an unsupported schema version when writing', async () => {
+    const future = { ...config('b'), schemaVersion: 7 };
+    const storage = createInMemoryStorage({ [KEY]: JSON.stringify([config('a'), future]) });
+    const repo = createCustomImporterRepository(storage);
+    await repo.save(config('c'));
+    await repo.remove('a');
+    expect(JSON.parse((await storage.get(KEY)) ?? '[]')).toEqual([future, config('c')]);
+  });
+
   it('saves new configs and updates existing ones by id', async () => {
     const repo = createCustomImporterRepository(createInMemoryStorage());
     await repo.save(config('a'));

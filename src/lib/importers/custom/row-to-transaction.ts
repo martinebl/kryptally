@@ -86,10 +86,13 @@ const KIND_TO_TYPE: Record<Exclude<RowKind, 'ignore'>, TransactionType> = {
 /**
  * Buys/sells against a non-fiat quote (BTC, USDT, …) are crypto→crypto
  * trades: the engine only disposes the `from` leg for `trade`/`sell`, so a
- * `buy` paid in USDT would never consume the USDT lots.
+ * `buy` paid in USDT would never consume the USDT lots. Only when the quote
+ * amount is known — otherwise there is no quote leg and it stays a buy/sell.
  */
-const resolveType = (kind: Exclude<RowKind, 'ignore'>, quote: string | undefined): TransactionType =>
-  (kind === 'buy' || kind === 'sell') && quote !== undefined && !isIsoFiat(quote) ? 'trade' : KIND_TO_TYPE[kind];
+const resolveType = (kind: Exclude<RowKind, 'ignore'>, pricedQuote: string | undefined): TransactionType =>
+  (kind === 'buy' || kind === 'sell') && pricedQuote !== undefined && !isIsoFiat(pricedQuote)
+    ? 'trade'
+    : KIND_TO_TYPE[kind];
 
 const mapRow = (config: CustomImporterConfig, row: Row, index: number): Transaction | null => {
   const kind = resolveKind(config, row);
@@ -119,7 +122,7 @@ const mapRow = (config: CustomImporterConfig, row: Row, index: number): Transact
   return {
     id: `${config.id}-${txId || 'row'}-${index}`,
     date: parseDateWithFormats(cell(row, config.columns.date), config.dateFormats, config.timezone),
-    type: resolveType(kind, quote),
+    type: resolveType(kind, priced?.currency),
     ...assetLeg,
     ...quoteLeg,
     ...(fee.amount && feeAsset ? { feeAsset, feeAmount: fee.amount } : {}),
